@@ -51,6 +51,7 @@ test('running all audits populates scores and the issue list', async ({ page }) 
   await expect(page.getByTestId('seo-metric-warnings-value')).toHaveText(/^\d+$/);
   await expect(page.getByTestId('seo-metric-passed-value')).toHaveText(/^\d+$/);
 
+  await expect(rowsIn(page, ISSUES_TABLE).first()).toBeVisible();
   const issues = await rowsIn(page, ISSUES_TABLE).count();
   expect(issues).toBeGreaterThan(0);
   await expect(page.getByTestId('issue-count')).toHaveText(`${issues} issue(s)`);
@@ -66,6 +67,7 @@ test('the issue count equals the errors plus warnings reported above it', async 
 
   const critical = await toNumber('seo-metric-critical-value');
   const warnings = await toNumber('seo-metric-warnings-value');
+  await expect(rowsIn(page, ISSUES_TABLE).first()).toBeVisible();
   const issues = await rowsIn(page, ISSUES_TABLE).count();
 
   expect(issues).toBe(critical + warnings);
@@ -73,6 +75,7 @@ test('the issue count equals the errors plus warnings reported above it', async 
 
 test('every page in the catalogue appears in the page table', async ({ page }) => {
   await page.goto('/seo');
+  await expect(rowsIn(page, PAGES_TABLE).first()).toBeVisible();
   expect(await rowsIn(page, PAGES_TABLE).count()).toBeGreaterThanOrEqual(15);
 });
 

@@ -58,6 +58,7 @@ test('running all audits populates scores and recommendations', async ({ page })
     'Not assessed',
   );
 
+  await expect(rowsIn(page, RECOMMENDATIONS_TABLE).first()).toBeVisible();
   const count = await rowsIn(page, RECOMMENDATIONS_TABLE).count();
   expect(count).toBeGreaterThan(0);
   await expect(page.getByTestId('geo-recommendation-count')).toHaveText(
@@ -74,11 +75,13 @@ test('the recommendation count equals the rules not yet met', async ({ page }) =
       '',
     ),
   );
+  await expect(rowsIn(page, RECOMMENDATIONS_TABLE).first()).toBeVisible();
   expect(await rowsIn(page, RECOMMENDATIONS_TABLE).count()).toBe(gaps);
 });
 
 test('every catalogue page appears in the readiness table', async ({ page }) => {
   await page.goto('/geo');
+  await expect(rowsIn(page, PAGES_TABLE).first()).toBeVisible();
   expect(await rowsIn(page, PAGES_TABLE).count()).toBeGreaterThanOrEqual(15);
 });
 

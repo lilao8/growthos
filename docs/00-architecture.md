@@ -242,3 +242,12 @@ npm run build
 - `GEO_RULE_VERSION = geo-1.0.0`。AI Readiness 分档阈值（80/55/30）在 config 中可配置，描述的是内容结构就绪度，不是被引用概率。
 - 两个审计引擎完全解耦：各自的 config / rules / engine / service / UI 与独立的数据加载路径，单个引擎失败不会显示另一个的结果。
 - GEO 模型的三条固有局限写在界面上：原创性只能验证"声明+材料"不能验证真伪；来源存在不等于来源可靠；关键词命中不等于语义理解。
+
+## 实施记录更新（Dispatch 5）
+
+- **SCHEMA_VERSION 3 → 4**：`DemoState` 增加 `contentIdeas`。
+- Content Opportunity Score 口径：`0.35×SEO + 0.25×GEO + 0.20×commercialIntent + 0.20×productRelevance`，四项输入均 0–100，权重合计为 1（有测试锁定），结果取整为 0–100。意图映射 Transactional 100 / Commercial 80 / Informational 40 / Navigational 30，集中在 `INTENT_COMMERCIAL_VALUE`。
+- **机会分 ≠ 审计分**：`seoOpportunity` / `geoOpportunity` / `productRelevance` 是编辑者输入的判断，与 Dispatch 3/4 的审计分无关，也不是关键词搜索量。`opportunityBreakdown()` 为每项标记 `entered` / `derived`，详情页并排显示目标商品的实测审计分并声明其不参与计算。
+- 内容 id 由 topic 派生并在冲突时加序号；改标题不改 id，以免链接和已存状态失效。
+- **`TableWrapper` 必须保留 `relative`**：绝对定位的后代（如 `sr-only` 标签）否则会以根元素为包含块、逃出 `overflow-x` 裁剪，造成整页横向溢出。
+- 门禁脚本需逐条捕获退出码；`{ ...; } > log` 的分组写法只反映最后一条命令的退出码，会漏掉中间的失败。

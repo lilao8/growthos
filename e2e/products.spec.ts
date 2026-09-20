@@ -39,6 +39,7 @@ test('shows Not audited instead of a score, since no audit has run', async ({ pa
 
 test('search narrows the catalogue and tolerates case and spacing', async ({ page }) => {
   await page.goto('/products');
+  await expect(rows(page).first()).toBeVisible();
   const total = await rows(page).count();
 
   await page.getByTestId('product-search').fill('  RIDGELINE  ');
@@ -86,6 +87,7 @@ test('an impossible combination shows an explained empty state', async ({ page }
 
 test('clear filters restores the full catalogue', async ({ page }) => {
   await page.goto('/products');
+  await expect(rows(page).first()).toBeVisible();
   const total = await rows(page).count();
 
   await page.getByTestId('product-search').fill('tarp');

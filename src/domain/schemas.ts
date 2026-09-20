@@ -3,10 +3,14 @@ import {
   AUDIT_KINDS,
   CHANNELS,
   CHECK_STATUSES,
+  CONTENT_STATUSES,
+  CONTENT_TYPES,
   FUNNEL_STAGES,
+  FUNNEL_STAGES_CONTENT,
   INDEXABILITY_STATES,
   PRODUCT_CATEGORIES,
   PRODUCT_STATUSES,
+  SEARCH_INTENTS,
   SEVERITIES,
 } from './types';
 import { isIsoDate } from './demo-window';
@@ -165,4 +169,30 @@ export const storedAuditResultSchema = z.object({
   coverage: z.number().min(0).max(1),
   auditedAt: z.string().min(1),
   inputFingerprint: z.string().min(1),
+});
+
+// ---------------------------------------------------------------------------
+// Content ideas (Dispatch 5)
+// ---------------------------------------------------------------------------
+
+/** Editor-supplied opportunity judgements, on a 0–100 scale. */
+export const opportunityScoreSchema = z
+  .number()
+  .int({ message: 'Opportunity must be a whole number' })
+  .min(0, { message: 'Opportunity must be between 0 and 100' })
+  .max(100, { message: 'Opportunity must be between 0 and 100' });
+
+export const contentIdeaSchema = z.object({
+  id: z.string().min(1),
+  topic: z.string().min(1),
+  primaryKeyword: z.string().min(1),
+  secondaryKeywords: z.array(z.string().min(1)),
+  searchIntent: z.enum(SEARCH_INTENTS),
+  funnelStage: z.enum(FUNNEL_STAGES_CONTENT),
+  contentType: z.enum(CONTENT_TYPES),
+  status: z.enum(CONTENT_STATUSES),
+  targetProductId: z.string().min(1).nullable(),
+  seoOpportunity: opportunityScoreSchema,
+  geoOpportunity: opportunityScoreSchema,
+  productRelevance: opportunityScoreSchema,
 });

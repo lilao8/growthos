@@ -6,7 +6,11 @@ import type { ReactNode } from 'react';
  */
 
 export function TableWrapper({ children }: { children: ReactNode }) {
-  return <div className="w-full overflow-x-auto">{children}</div>;
+  // `relative` matters: an absolutely positioned descendant — a visually hidden
+  // label, for instance — would otherwise be positioned against the root and
+  // escape this container's clipping, pushing the whole page sideways on a
+  // narrow screen. Making this the containing block keeps the scroll local.
+  return <div className="relative w-full overflow-x-auto">{children}</div>;
 }
 
 export function Table({

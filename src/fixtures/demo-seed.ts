@@ -4,6 +4,7 @@ import {
   buildCatalogueProducts,
   buildCatalogueSnapshots,
 } from './demo-catalogue';
+import { buildDemoContentIdeas } from './demo-content';
 
 /**
  * The seed state: the records a user can edit, before any of their edits.
@@ -32,6 +33,7 @@ export function buildDemoSeedState(): DemoState {
     // No audits have been run in a fresh demo: a score must be earned by an
     // explicit audit, never shipped as seed data.
     auditResults: [],
+    contentIdeas: buildDemoContentIdeas(),
   };
 
   // The fixture is parsed like any other boundary input: a bad fixture should

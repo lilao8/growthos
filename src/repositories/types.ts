@@ -1,6 +1,12 @@
 import { z } from 'zod';
-import type { PageSnapshot, Product, StoredAuditResult } from '@/domain/types';
+import type {
+  ContentIdea,
+  PageSnapshot,
+  Product,
+  StoredAuditResult,
+} from '@/domain/types';
 import {
+  contentIdeaSchema,
   pageSnapshotSchema,
   productSchema,
   storedAuditResultSchema,
@@ -16,7 +22,7 @@ import {
  */
 
 /** Bumped whenever the persisted shape changes; older payloads are discarded. */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /**
  * Everything the demo persists.
@@ -31,6 +37,7 @@ export interface DemoState {
   products: Product[];
   pageSnapshots: PageSnapshot[];
   auditResults: StoredAuditResult[];
+  contentIdeas: ContentIdea[];
 }
 
 export const demoStateSchema = z.object({
@@ -38,6 +45,7 @@ export const demoStateSchema = z.object({
   products: z.array(productSchema),
   pageSnapshots: z.array(pageSnapshotSchema),
   auditResults: z.array(storedAuditResultSchema),
+  contentIdeas: z.array(contentIdeaSchema),
 });
 
 export type PersistedDemoState = z.infer<typeof demoStateSchema>;

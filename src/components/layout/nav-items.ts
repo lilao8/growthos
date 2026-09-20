@@ -53,7 +53,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Content',
     purpose:
       'Content plan driven by keyword, search intent, funnel stage and target product.',
-    implemented: false,
+    implemented: true,
     dispatch: 'Dispatch 5',
   },
   {
