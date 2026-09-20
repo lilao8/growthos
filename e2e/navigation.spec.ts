@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
 const ROUTES = [
   { path: '/dashboard', label: 'Dashboard', implemented: true },
   { path: '/products', label: 'Products', implemented: true },
-  { path: '/seo', label: 'SEO Audit', implemented: false },
+  { path: '/seo', label: 'SEO Audit', implemented: true },
   { path: '/geo', label: 'GEO Audit', implemented: false },
   { path: '/content', label: 'Content', implemented: false },
   { path: '/analytics', label: 'Analytics', implemented: false },

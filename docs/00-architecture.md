@@ -222,3 +222,14 @@ npm run build
 - QA 接缝新增 `storage-error`：读取正常但保存失败，用于验证「未保存 + 保留输入」的恢复路径；`error` 仍表示数据加载失败。
 - 筛选控件采用 `aria-pressed` 切换按钮，不使用隐藏在 label 中的复选框。
 - **待补**：`AuditResult` 尚未进入持久化状态，因此商品 SEO 编辑后的「审计 stale 标记」在 Dispatch 3 才能实现。
+
+## 实施记录更新（Dispatch 3）
+
+- **SCHEMA_VERSION 1 → 2**：`DemoState` 增加 `auditResults`。审计是带时间戳的显式用户动作，因此结果持久化；但商品上仍不存分数，分数从该页最新审计读取。
+- 类型拆分：`StoredAuditResult`（持久化，含 `inputFingerprint`）与 `AuditResult`（视图，含 `stale`）。**stale 在读取时由指纹比对得出，不是存储的标志位**，因此结果不可能在页面已改动后仍自称最新。
+- `src/domain/audit-fingerprint.ts` 用 FNV-1a 对"审计实际读取的快照字段 + 主关键词"取哈希，非安全用途。
+- `src/domain/audit-lookup.ts` 的 `readAudit` / `upsertAudit` 按 `kind` 区分，Dispatch 4 的 GEO 审计可直接复用。
+- SEO 评分口径：可评估项等权（pass=1 / warning=0.5 / error=0），unknown 完全排除在分子分母之外并体现为 coverage 下降；零可评估项返回 null。
+- 组合分数为已审计页面分数的**算术平均**，未审计页面排除而非计 0，界面写明覆盖页数。
+- `SEO_RULE_VERSION = seo-1.0.0`。阈值与规则判定逻辑变更需升版；结果携带产出时的版本，跨版本比较分数无意义。
+- keyword-usage 采用两级匹配（逐字出现 / 词覆盖率），并把 headings、FAQ、规格表计入"页面内容"。理由见 `docs/reports/dispatch-03.md` 已知问题 1。

@@ -37,7 +37,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'SEO Audit',
     purpose:
       'Rule-based page audit covering metadata, headings, canonical, links and indexability.',
-    implemented: false,
+    implemented: true,
     dispatch: 'Dispatch 3',
   },
   {

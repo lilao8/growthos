@@ -29,6 +29,9 @@ export function buildDemoSeedState(): DemoState {
     schemaVersion: SCHEMA_VERSION,
     products: buildCatalogueProducts(),
     pageSnapshots: buildCatalogueSnapshots(),
+    // No audits have been run in a fresh demo: a score must be earned by an
+    // explicit audit, never shipped as seed data.
+    auditResults: [],
   };
 
   // The fixture is parsed like any other boundary input: a bad fixture should

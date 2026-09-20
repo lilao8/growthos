@@ -1,6 +1,10 @@
 import { z } from 'zod';
-import type { PageSnapshot, Product } from '@/domain/types';
-import { pageSnapshotSchema, productSchema } from '@/domain/schemas';
+import type { PageSnapshot, Product, StoredAuditResult } from '@/domain/types';
+import {
+  pageSnapshotSchema,
+  productSchema,
+  storedAuditResultSchema,
+} from '@/domain/schemas';
 
 /**
  * Persistence contract.
@@ -12,22 +16,28 @@ import { pageSnapshotSchema, productSchema } from '@/domain/schemas';
  */
 
 /** Bumped whenever the persisted shape changes; older payloads are discarded. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /**
- * Everything the demo persists. Derived values (audit scores, metrics) are never
- * stored — they are recomputed from these records plus the rule engines.
+ * Everything the demo persists.
+ *
+ * Audit results are stored because running an audit is an explicit user action
+ * with a timestamp — re-deriving them on every render would erase the record of
+ * when a page was last checked. Scores themselves are still never stored on the
+ * product; they are read from the latest audit for that page.
  */
 export interface DemoState {
   schemaVersion: number;
   products: Product[];
   pageSnapshots: PageSnapshot[];
+  auditResults: StoredAuditResult[];
 }
 
 export const demoStateSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
   products: z.array(productSchema),
   pageSnapshots: z.array(pageSnapshotSchema),
+  auditResults: z.array(storedAuditResultSchema),
 });
 
 export type PersistedDemoState = z.infer<typeof demoStateSchema>;

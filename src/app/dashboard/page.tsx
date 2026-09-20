@@ -1,4 +1,5 @@
 import { DashboardView } from '@/components/dashboard/dashboard-view';
+import { SeoHealthView } from '@/components/dashboard/seo-health-view';
 import { PageHeader } from '@/components/ui/page-header';
 import { DEMO_WINDOW } from '@/domain/demo-window';
 import { formatDateRange } from '@/domain/format';
@@ -33,6 +34,7 @@ export default async function DashboardPage({
         </p>
       </PageHeader>
       <DashboardView mode={mode} />
+      <SeoHealthView mode={mode} />
     </>
   );
 }

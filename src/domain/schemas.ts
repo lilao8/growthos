@@ -1,10 +1,13 @@
 import { z } from 'zod';
 import {
+  AUDIT_KINDS,
   CHANNELS,
+  CHECK_STATUSES,
   FUNNEL_STAGES,
   INDEXABILITY_STATES,
   PRODUCT_CATEGORIES,
   PRODUCT_STATUSES,
+  SEVERITIES,
 } from './types';
 import { isIsoDate } from './demo-window';
 
@@ -136,3 +139,29 @@ export const sessionFactSchema = z
 export type ParsedProduct = z.infer<typeof productSchema>;
 export type ParsedPageSnapshot = z.infer<typeof pageSnapshotSchema>;
 export type ParsedSessionFact = z.infer<typeof sessionFactSchema>;
+
+// ---------------------------------------------------------------------------
+// Audit results (Dispatch 3 / 4)
+// ---------------------------------------------------------------------------
+
+export const auditCheckSchema = z.object({
+  ruleId: z.string().min(1),
+  status: z.enum(CHECK_STATUSES),
+  severity: z.enum(SEVERITIES),
+  message: z.string().min(1),
+  explanation: z.string().min(1),
+  recommendation: z.string().min(1),
+  evidence: z.string().nullable(),
+});
+
+export const storedAuditResultSchema = z.object({
+  id: z.string().min(1),
+  pageId: z.string().min(1),
+  kind: z.enum(AUDIT_KINDS),
+  ruleVersion: z.string().min(1),
+  checks: z.array(auditCheckSchema).min(1),
+  score: z.number().int().min(0).max(100).nullable(),
+  coverage: z.number().min(0).max(1),
+  auditedAt: z.string().min(1),
+  inputFingerprint: z.string().min(1),
+});

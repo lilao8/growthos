@@ -152,7 +152,15 @@ export interface AuditCheck {
   evidence: string | null;
 }
 
-export interface AuditResult {
+/**
+ * What is persisted when an audit runs.
+ *
+ * `inputFingerprint` is a hash of the snapshot fields the audit actually read.
+ * Staleness is derived by comparing it against the current snapshot rather than
+ * being stored as a flag, so a result can never claim to be current after the
+ * page it graded has changed.
+ */
+export interface StoredAuditResult {
   id: string;
   pageId: string;
   kind: AuditKind;
@@ -163,7 +171,11 @@ export interface AuditResult {
   /** Evaluable checks / total checks, 0–1. */
   coverage: number;
   auditedAt: string;
-  /** Set when the underlying snapshot changed after this audit ran. */
+  inputFingerprint: string;
+}
+
+/** A stored result plus the staleness computed against the live snapshot. */
+export interface AuditResult extends StoredAuditResult {
   stale: boolean;
 }
 

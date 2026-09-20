@@ -194,7 +194,11 @@ export function ProductDetailView({
             <dl>
               <DetailRow
                 label="SEO score"
-                value={seoScore === null ? NOT_AUDITED : String(seoScore)}
+                value={
+                  seoScore === null
+                    ? NOT_AUDITED
+                    : `${seoScore}${row.seoStale ? ' (stale)' : ''}`
+                }
                 testId="detail-seo-score"
               />
               <DetailRow
@@ -300,9 +304,26 @@ export function ProductDetailView({
               />
             </dl>
           )}
+          {snapshot !== null && (
+            <p className="mt-4 text-sm">
+              <Link
+                href={`/seo/${snapshot.id}`}
+                className="underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                data-testid="link-to-seo-audit"
+              >
+                {row.seoAudit === null
+                  ? 'Run the SEO audit for this page'
+                  : 'Open the SEO audit for this page'}
+              </Link>
+            </p>
+          )}
           <p className="mt-3 text-xs text-[var(--color-ink-muted)]">
-            No audit has run against this snapshot yet. Scoring arrives in
-            Dispatch 3 and 4.
+            {row.seoAudit === null
+              ? 'No SEO audit has run against this snapshot yet.'
+              : row.seoStale
+                ? 'The snapshot changed after the last SEO audit, so the score above is stale. Re-run the audit to refresh it.'
+                : `Last SEO audit: ${row.seoAudit.auditedAt} (${row.seoAudit.ruleVersion}).`}{' '}
+            GEO scoring arrives in Dispatch 4.
           </p>
         </CardBody>
       </Card>

@@ -17,7 +17,8 @@ import {
   validateSeoEdit,
   type FieldErrors,
 } from '@/domain/product-seo';
-import type { PageSnapshot, Product } from '@/domain/types';
+import type { AuditResult, PageSnapshot, Product } from '@/domain/types';
+import { readAudit } from '@/domain/audit-lookup';
 import type { DemoState, DemoStateRepository } from '@/repositories/types';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
 
@@ -34,15 +35,18 @@ export interface ProductServiceDeps {
 }
 
 /**
- * A catalogue row. `seoScore` and `geoScore` are null throughout Dispatch 2:
- * the audit engines do not exist yet, and inventing a score would be worse than
- * showing "Not audited".
+ * A catalogue row. A score is null until an audit has actually been run for
+ * that page — "Not audited" is the honest display, and inventing a number
+ * would be worse. `geoScore` stays null until Dispatch 4.
  */
 export interface ProductRow {
   product: Product;
   metrics: ProductMetrics;
   seoScore: number | null;
   geoScore: number | null;
+  /** Set when the page has been audited but the content has changed since. */
+  seoStale: boolean;
+  seoAudit: AuditResult | null;
 }
 
 export type ProductListState =
@@ -101,12 +105,28 @@ async function loadData(deps: ProductServiceDeps): Promise<LoadedData> {
   };
 }
 
-function toRow(product: Product, metrics: Map<string, ProductMetrics>): ProductRow {
+function toRow(product: Product, data: LoadedData): ProductRow {
+  const snapshot = data.state.pageSnapshots.find(
+    (candidate) => candidate.productId === product.id,
+  );
+  const audit =
+    snapshot === undefined
+      ? null
+      : readAudit(
+          data.state.auditResults,
+          snapshot,
+          product.primaryKeyword,
+          'seo',
+        );
+
   return {
     product,
-    metrics: metrics.get(product.id) ?? emptyProductMetrics(product.id),
-    // Filled in by Dispatch 3 (SEO) and Dispatch 4 (GEO).
-    seoScore: null,
+    metrics: data.metrics.get(product.id) ?? emptyProductMetrics(product.id),
+    // A score exists only where an audit has been run against this page.
+    seoScore: audit?.score ?? null,
+    seoStale: audit?.stale ?? false,
+    seoAudit: audit,
+    // Filled in by Dispatch 4.
     geoScore: null,
   };
 }
@@ -135,7 +155,7 @@ export async function loadProductList(
 
   return {
     status: 'ready',
-    rows: matched.map((product) => toRow(product, data.metrics)),
+    rows: matched.map((product) => toRow(product, data)),
     totalCount,
     queryActive,
   };
@@ -162,7 +182,7 @@ export async function loadProductDetail(
 
   return {
     status: 'ready',
-    row: toRow(product, data.metrics),
+    row: toRow(product, data),
     snapshot:
       data.state.pageSnapshots.find(
         (snapshot) => snapshot.productId === product.id,

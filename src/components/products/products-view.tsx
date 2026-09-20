@@ -266,7 +266,7 @@ export function ProductsView({ mode }: { mode: DemoDataMode | null }) {
                   </TR>
                 </THead>
                 <TBody>
-                  {state.rows.map(({ product, metrics, seoScore, geoScore }) => (
+                  {state.rows.map(({ product, metrics, seoScore, geoScore, seoStale }) => (
                     <TR key={product.id}>
                       <TD>
                         <span className="font-mono text-xs">{product.sku}</span>
@@ -296,7 +296,10 @@ export function ProductsView({ mode }: { mode: DemoDataMode | null }) {
                             {NOT_AUDITED}
                           </span>
                         ) : (
-                          seoScore
+                          <span className="flex items-center gap-2 tabular-nums">
+                            {seoScore}
+                            {seoStale && <Badge tone="muted">Stale</Badge>}
+                          </span>
                         )}
                       </TD>
                       <TD>
