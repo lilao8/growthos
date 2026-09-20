@@ -1,3 +1,7 @@
+import type { DemoStateRepository } from '@/repositories/types';
+import { createBrowserStateRepository } from '@/repositories/browser-state-repository';
+import { createFailingStateRepository } from '@/repositories/memory-state-repository';
+import { buildDemoSeedState } from '@/fixtures/demo-seed';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
 import {
   createDelayedTrafficRepository,
@@ -20,7 +24,13 @@ import {
  * to it.
  */
 
-export const DEMO_DATA_MODES = ['empty', 'error', 'slow', 'flaky'] as const;
+export const DEMO_DATA_MODES = [
+  'empty',
+  'error',
+  'slow',
+  'flaky',
+  'storage-error',
+] as const;
 export type DemoDataMode = (typeof DEMO_DATA_MODES)[number];
 
 export function parseDemoDataMode(value: string | null): DemoDataMode | null {
@@ -28,6 +38,20 @@ export function parseDemoDataMode(value: string | null): DemoDataMode | null {
   return (DEMO_DATA_MODES as readonly string[]).includes(value)
     ? (value as DemoDataMode)
     : null;
+}
+
+/**
+ * The editable catalogue persists to browser storage, except under the
+ * `storage-error` seam, where reads still succeed but every save fails — which
+ * is what makes the "nothing was saved, your input is still here" path testable.
+ */
+export function resolveStateRepository(
+  mode: DemoDataMode | null,
+): DemoStateRepository {
+  const seed = buildDemoSeedState();
+  return mode === 'storage-error'
+    ? createFailingStateRepository(seed)
+    : createBrowserStateRepository(seed);
 }
 
 export function resolveTrafficRepository(
@@ -43,6 +67,9 @@ export function resolveTrafficRepository(
         createFixtureTrafficRepository(),
         1200,
       );
+    case 'storage-error':
+      // Loading works; only saving fails.
+      return createFixtureTrafficRepository();
     case 'flaky':
       // Fails once, then succeeds — so a successful retry is observable.
       return createFlakyTrafficRepository(1);

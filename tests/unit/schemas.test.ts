@@ -26,6 +26,7 @@ const validSession: SessionFact = {
   source: 'google',
   landingPageId: 'snap_ridgeline_2p_tent',
   stages: ['session', 'product_view', 'add_to_cart'],
+  viewedProductIds: ['prd_ridgeline_2p_tent'],
   orderId: null,
 };
 

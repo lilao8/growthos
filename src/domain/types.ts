@@ -257,6 +257,12 @@ export interface SessionFact {
   source: string;
   landingPageId: string;
   stages: FunnelStage[];
+  /**
+   * Products whose detail was viewed in this session. Empty unless `stages`
+   * reaches product_view: landing on a page records the entry point, while a
+   * product view is a separate engagement event, so a bounce has none.
+   */
+  viewedProductIds: string[];
   orderId: string | null;
 }
 

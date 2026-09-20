@@ -70,8 +70,10 @@ describe('demo state service', () => {
     );
 
     expect(status.brandReady).toBe(true);
-    expect(status.productCount).toBe(3);
-    expect(status.snapshotCount).toBe(2);
+    // The brief requires at least 15 SKUs; asserting the floor rather than an
+    // exact count keeps this from breaking every time the catalogue grows.
+    expect(status.productCount).toBeGreaterThanOrEqual(15);
+    expect(status.snapshotCount).toBe(status.productCount);
     expect(status.windowStart).toBe('2026-06-03');
     expect(status.windowEnd).toBe('2026-08-31');
     expect(status.windowDays).toBe(90);

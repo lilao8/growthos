@@ -101,16 +101,37 @@ const orderedStagesSchema = z
     { message: 'Funnel stages must be an ordered prefix of FUNNEL_STAGES' },
   );
 
-export const sessionFactSchema = z.object({
-  sessionId: z.string().min(1),
-  userId: z.string().min(1),
-  date: isoDateSchema,
-  channel: z.enum(CHANNELS),
-  source: z.string().min(1),
-  landingPageId: z.string().min(1),
-  stages: orderedStagesSchema,
-  orderId: z.string().min(1).nullable(),
-});
+export const sessionFactSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    userId: z.string().min(1),
+    date: isoDateSchema,
+    channel: z.enum(CHANNELS),
+    source: z.string().min(1),
+    landingPageId: z.string().min(1),
+    stages: orderedStagesSchema,
+    viewedProductIds: z.array(z.string().min(1)),
+    orderId: z.string().min(1).nullable(),
+  })
+  // A product view is an engagement event, so the two records must agree: a
+  // session that never reached product_view cannot have viewed a product, and
+  // one that did must name at least one.
+  .refine(
+    (session) =>
+      session.stages.includes('product_view')
+        ? session.viewedProductIds.length > 0
+        : session.viewedProductIds.length === 0,
+    {
+      message:
+        'viewedProductIds must be non-empty exactly when stages include product_view',
+      path: ['viewedProductIds'],
+    },
+  )
+  .refine(
+    (session) =>
+      new Set(session.viewedProductIds).size === session.viewedProductIds.length,
+    { message: 'viewedProductIds must not repeat', path: ['viewedProductIds'] },
+  );
 
 export type ParsedProduct = z.infer<typeof productSchema>;
 export type ParsedPageSnapshot = z.infer<typeof pageSnapshotSchema>;

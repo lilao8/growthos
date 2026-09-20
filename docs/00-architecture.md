@@ -213,3 +213,12 @@ npm run build
 - 新增 `?demo=` QA 接缝（`empty` / `error` / `slow` / `flaky`），用于真实触发 loading / empty / error 状态。封闭白名单，未知值回落真实 fixture。
 - 侧边栏断点为 Tailwind `lg`（1024px）；以下宽度折叠为 Header 披露面板。
 - `src/fixtures/demo-traffic.ts` 为阶段性流量数据，Dispatch 6 建立完整分析数据集时替换。
+
+## 实施记录更新（Dispatch 2）
+
+- `SessionFact` 新增 `viewedProductIds`：商品转化率的分母是「浏览过该商品的会话」，仅靠 `landingPageId` 无法计算。schema 约束为「到达 product_view 时非空、否则为空，且不得重复」。落地页是入口，商品浏览是独立事件，二者语义不同。
+- 演示目录集中在 `src/fixtures/demo-catalogue.ts`：17 个 SKU（15 active / 1 draft / 1 archived），每个配一份页面快照。快照质量刻意参差，缺陷是显式授权的，供 Dispatch 3/4 的审计引擎评分。
+- 商品级派生指标口径见 `src/domain/product-metrics.ts`：商品营收按订单行分摊，全商品营收之和等于订单营收；商品转化率分母各不相同，不可相加或求平均。
+- QA 接缝新增 `storage-error`：读取正常但保存失败，用于验证「未保存 + 保留输入」的恢复路径；`error` 仍表示数据加载失败。
+- 筛选控件采用 `aria-pressed` 切换按钮，不使用隐藏在 label 中的复选框。
+- **待补**：`AuditResult` 尚未进入持久化状态，因此商品 SEO 编辑后的「审计 stale 标记」在 Dispatch 3 才能实现。

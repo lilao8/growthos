@@ -18,6 +18,7 @@ function session(
     channel: 'Direct' as Channel,
     source: '(direct)',
     landingPageId: 'snap_a',
+    viewedProductIds: overrides.stages.includes('product_view') ? ['prd_a'] : [],
     orderId: null,
     ...overrides,
   };

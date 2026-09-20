@@ -1,9 +1,25 @@
-import { notFound } from 'next/navigation';
-import { ModulePlaceholder } from '@/components/module-placeholder';
-import { findNavItem } from '@/components/layout/nav-items';
+import { ProductsView } from '@/components/products/products-view';
+import { PageHeader } from '@/components/ui/page-header';
+import { parseDemoDataMode } from '@/services/demo-data-source';
 
-export default function Page() {
-  const item = findNavItem('/products');
-  if (item === undefined) notFound();
-  return <ModulePlaceholder item={item} />;
+interface ProductsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function ProductsPage({
+  searchParams,
+}: ProductsPageProps) {
+  const params = await searchParams;
+  const raw = params['demo'];
+  const mode = parseDemoDataMode(typeof raw === 'string' ? raw : null);
+
+  return (
+    <>
+      <PageHeader
+        title="Products"
+        description="The NorthTrail Outdoor catalogue. Search and filter the SKUs, then open one to edit its SEO metadata."
+      />
+      <ProductsView mode={mode} />
+    </>
+  );
 }

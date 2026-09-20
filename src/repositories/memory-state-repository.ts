@@ -30,3 +30,24 @@ export function createMemoryStateRepository(
     },
   };
 }
+
+/**
+ * Always-failing adapter. Used by the documented QA seam to exercise the save
+ * error path, which a local storage backend would otherwise never reach.
+ */
+export function createFailingStateRepository(
+  seed: DemoState,
+  message = 'Demo storage is unavailable.',
+): DemoStateRepository {
+  return {
+    async load(): Promise<StateLoadResult> {
+      return { status: 'unavailable', state: cloneState(seed), error: null };
+    },
+    async save(): Promise<void> {
+      throw new Error(message);
+    },
+    async reset(): Promise<StateLoadResult> {
+      return { status: 'unavailable', state: cloneState(seed), error: null };
+    },
+  };
+}

@@ -1,8 +1,4 @@
-import {
-  addDays,
-  DEMO_WINDOW,
-  type DateWindow,
-} from '@/domain/demo-window';
+import { addDays, DEMO_WINDOW, type DateWindow } from '@/domain/demo-window';
 import { apportionCents, sumCents } from '@/domain/money';
 import { createRandomSource, DEMO_SEED, type RandomSource } from '@/domain/seed';
 import type {
@@ -14,17 +10,17 @@ import type {
   SessionFact,
 } from '@/domain/types';
 import { buildDemoSeedState } from './demo-seed';
+import { catalogueDemandWeights, snapshotIdFor } from './demo-catalogue';
 
 /**
  * Deterministic traffic fixture.
  *
- * Scope note (Dispatch 1): this is a small, provisional data set sized to make
- * the six dashboard metrics real rather than hard-coded. The full analytics data
- * set — daily channel spend, AI referral sources, per-channel CAC/ROAS — is built
- * in Dispatch 6, which this module is shaped to grow into.
+ * Scope note: this is a provisional data set sized to make product and
+ * dashboard metrics real rather than hard-coded. Daily channel spend, AI
+ * referral detail and per-channel CAC/ROAS are built in Dispatch 6.
  *
  * Nothing here calls Math.random(). The same seed always produces the same
- * sessions, so the dashboard shows identical numbers on every machine and reload.
+ * sessions, so every screen shows identical numbers on every machine and reload.
  */
 
 const BASE_SESSIONS_PER_DAY = 30;
@@ -41,30 +37,37 @@ interface ChannelProfile {
 }
 
 const CHANNEL_PROFILES: readonly ChannelProfile[] = [
-  { channel: 'Organic Search', weight: 34, sources: ['google', 'bing'], intent: 1.15 },
-  { channel: 'Direct', weight: 15, sources: ['(direct)'], intent: 1.2 },
-  { channel: 'Paid Search', weight: 12, sources: ['google-ads'], intent: 1.05 },
-  { channel: 'Meta', weight: 12, sources: ['facebook', 'instagram'], intent: 0.78 },
-  { channel: 'Email', weight: 9, sources: ['klaviyo'], intent: 1.35 },
-  { channel: 'TikTok', weight: 8, sources: ['tiktok'], intent: 0.62 },
-  { channel: 'Referral', weight: 6, sources: ['outdoorgearlab', 'reddit'], intent: 0.95 },
+  { channel: 'Organic Search', weight: 34, sources: ['google', 'bing'], intent: 1.1 },
+  { channel: 'Direct', weight: 15, sources: ['(direct)'], intent: 1.15 },
+  { channel: 'Paid Search', weight: 12, sources: ['google-ads'], intent: 1.0 },
+  { channel: 'Meta', weight: 12, sources: ['facebook', 'instagram'], intent: 0.72 },
+  { channel: 'Email', weight: 9, sources: ['klaviyo'], intent: 1.3 },
+  { channel: 'TikTok', weight: 8, sources: ['tiktok'], intent: 0.55 },
+  { channel: 'Referral', weight: 6, sources: ['outdoorgearlab', 'reddit'], intent: 0.9 },
   {
     channel: 'AI Referral',
     weight: 4,
     // Demo source labels only. Real AI referral traffic is frequently
     // mislabelled or invisible in analytics; Dispatch 6 states that limitation.
     sources: ['chatgpt', 'perplexity', 'gemini', 'copilot'],
-    intent: 1.1,
+    intent: 1.05,
   },
 ];
 
-/** Base stage-to-stage progression, before the channel intent multiplier. */
+/**
+ * Base stage-to-stage progression, before the channel intent multiplier.
+ * Tuned so the whole-site conversion rate lands in the 2–3% band that a real
+ * DTC outdoor brand would report.
+ */
 const STAGE_RATES = {
-  productView: 0.62,
-  addToCart: 0.28,
-  checkout: 0.45,
-  purchase: 0.33,
+  productView: 0.6,
+  addToCart: 0.24,
+  checkout: 0.42,
+  purchase: 0.3,
 } as const;
+
+/** Expensive items convert worse than cheap ones, as they do in reality. */
+const PRICE_CONVERSION_PIVOT_CENTS = 15000;
 
 const DISCOUNT_SHARE = 0.15;
 const DISCOUNT_RATE = 0.1;
@@ -76,22 +79,28 @@ export interface TrafficFixture {
   orderItems: OrderItem[];
 }
 
+interface WeightedProduct {
+  product: Product;
+  weight: number;
+}
+
 function weekdayIndex(date: string): number {
   return new Date(`${date}T00:00:00.000Z`).getUTCDay();
 }
 
-function pickWeighted(
+function pickWeighted<T>(
   source: RandomSource,
-  profiles: readonly ChannelProfile[],
-): ChannelProfile {
-  const total = profiles.reduce((sum, profile) => sum + profile.weight, 0);
+  items: readonly T[],
+  weightOf: (item: T) => number,
+): T {
+  const total = items.reduce((sum, item) => sum + weightOf(item), 0);
   let roll = source.next() * total;
-  for (const profile of profiles) {
-    roll -= profile.weight;
-    if (roll <= 0) return profile;
+  for (const item of items) {
+    roll -= weightOf(item);
+    if (roll <= 0) return item;
   }
-  const last = profiles[profiles.length - 1];
-  if (last === undefined) throw new RangeError('No channel profiles configured');
+  const last = items[items.length - 1];
+  if (last === undefined) throw new RangeError('Cannot pick from an empty list');
   return last;
 }
 
@@ -101,35 +110,56 @@ function pickFrom<T>(source: RandomSource, items: readonly T[]): T {
   return item;
 }
 
+/**
+ * Price resistance: a $429 tent converts worse than a $45 headlamp. Returns a
+ * multiplier around 1.0 so the site-wide rate stays in a believable band.
+ */
+function priceResistance(product: Product): number {
+  const ratio = PRICE_CONVERSION_PIVOT_CENTS / product.priceCents;
+  return Math.min(1.35, Math.max(0.55, 0.75 + ratio * 0.35));
+}
+
 /** Walks the funnel in order, so `stages` is always a valid ordered prefix. */
-function walkStages(source: RandomSource, intent: number): FunnelStage[] {
+function walkStages(
+  source: RandomSource,
+  intent: number,
+  resistance: number,
+): FunnelStage[] {
   const stages: FunnelStage[] = ['session'];
   if (source.next() > STAGE_RATES.productView) return stages;
   stages.push('product_view');
 
-  if (source.next() > STAGE_RATES.addToCart * intent) return stages;
+  if (source.next() > STAGE_RATES.addToCart * intent * resistance) return stages;
   stages.push('add_to_cart');
 
   if (source.next() > STAGE_RATES.checkout * intent) return stages;
   stages.push('checkout');
 
-  if (source.next() > STAGE_RATES.purchase * intent) return stages;
+  if (source.next() > STAGE_RATES.purchase * intent * resistance) return stages;
   stages.push('purchase');
   return stages;
 }
 
+/**
+ * Order lines are drawn from the products the session actually viewed, so a
+ * purchase can never be attributed to a product nobody looked at.
+ */
 function buildOrderLines(
   source: RandomSource,
   orderId: string,
-  products: readonly Product[],
+  viewed: readonly Product[],
 ): OrderItem[] {
-  const lineCount = source.next() < 0.2 ? 2 : 1;
-  const chosen: Product[] = [];
-  for (let i = 0; i < lineCount; i += 1) {
-    const candidate = pickFrom(source, products);
-    if (!chosen.some((product) => product.id === candidate.id)) {
-      chosen.push(candidate);
-    }
+  const primary = viewed[0];
+  if (primary === undefined) {
+    throw new RangeError('A purchasing session must have viewed a product');
+  }
+
+  const chosen: Product[] = [primary];
+  const second = viewed[1];
+  // A second viewed product joins the order sometimes — a real basket is mostly
+  // one item, occasionally two.
+  if (second !== undefined && source.next() < 0.28) {
+    chosen.push(second);
   }
 
   const quantities = chosen.map(() => (source.next() < 0.12 ? 2 : 1));
@@ -159,11 +189,19 @@ export function generateTrafficFixture(
 ): TrafficFixture {
   const source = createRandomSource(seed);
   const state = buildDemoSeedState();
-  // Only sellable products can appear on an order line.
-  const sellable = state.products.filter((product) => product.status === 'active');
-  const landingPageIds = state.pageSnapshots.map((snapshot) => snapshot.id);
-  if (sellable.length === 0 || landingPageIds.length === 0) {
-    throw new Error('Traffic fixture needs at least one product and one page');
+  const weights = new Map(
+    catalogueDemandWeights().map(({ productId, weight }) => [productId, weight]),
+  );
+
+  // Archived and draft products get no traffic: they are not live pages.
+  const live: WeightedProduct[] = state.products
+    .filter((product) => product.status === 'active')
+    .map((product) => ({
+      product,
+      weight: weights.get(product.id) ?? 1,
+    }));
+  if (live.length === 0) {
+    throw new Error('Traffic fixture needs at least one active product');
   }
 
   const sessions: SessionFact[] = [];
@@ -188,16 +226,37 @@ export function generateTrafficFixture(
 
     for (let i = 0; i < daySessions; i += 1) {
       const sessionId = `ses_${date}_${String(i).padStart(3, '0')}`;
-      const profile = pickWeighted(source, CHANNEL_PROFILES);
+      const profile = pickWeighted(source, CHANNEL_PROFILES, (p) => p.weight);
       const userId = `usr_${String(
         1 + Math.floor(source.next() * userPoolSize),
       ).padStart(5, '0')}`;
-      const stages = walkStages(source, profile.intent);
+
+      // The entry page is chosen by relative search demand; it decides which
+      // product the session is "about".
+      const landing = pickWeighted(source, live, (entry) => entry.weight);
+      const stages = walkStages(
+        source,
+        profile.intent,
+        priceResistance(landing.product),
+      );
+
+      const viewed: Product[] = [];
+      if (stages.includes('product_view')) {
+        viewed.push(landing.product);
+        // Some sessions browse on to a second or third product.
+        const extra = source.next() < 0.35 ? (source.next() < 0.3 ? 2 : 1) : 0;
+        for (let n = 0; n < extra; n += 1) {
+          const candidate = pickWeighted(source, live, (entry) => entry.weight);
+          if (!viewed.some((product) => product.id === candidate.product.id)) {
+            viewed.push(candidate.product);
+          }
+        }
+      }
 
       let orderId: string | null = null;
       if (stages.includes('purchase')) {
         orderId = `ord_${date}_${String(i).padStart(3, '0')}`;
-        const lines = buildOrderLines(source, orderId, sellable);
+        const lines = buildOrderLines(source, orderId, viewed);
         const revenueCents = sumCents(
           lines.map(
             (line) => line.unitPriceCents * line.quantity - line.discountCents,
@@ -224,8 +283,9 @@ export function generateTrafficFixture(
         date,
         channel: profile.channel,
         source: pickFrom(source, profile.sources),
-        landingPageId: pickFrom(source, landingPageIds),
+        landingPageId: snapshotIdFor(landing.product.id),
         stages,
+        viewedProductIds: viewed.map((product) => product.id),
         orderId,
       });
     }

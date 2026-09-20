@@ -29,7 +29,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Products',
     purpose:
       'Catalogue with search, filters and editable SEO metadata for each SKU.',
-    implemented: false,
+    implemented: true,
     dispatch: 'Dispatch 2',
   },
   {
