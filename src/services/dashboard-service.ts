@@ -1,32 +1,54 @@
 import { DEMO_WINDOW, type DateWindow } from '@/domain/demo-window';
 import {
+  analyticsTotals,
+  channelRows,
+  dailySeries,
+  type ChannelRow,
+  type DailyPoint,
+} from '@/domain/analytics/channel-metrics';
+import {
   summarizeDashboard,
+  ORGANIC_CHANNEL,
   type DashboardSummary,
 } from '@/domain/dashboard-summary';
+import type { MetricValue } from '@/domain/metrics';
+import type { Cents } from '@/domain/types';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
 import { createFixtureTrafficRepository } from '@/repositories/traffic-repository';
 
 /**
- * Dashboard service: loads facts, delegates the arithmetic to the pure
- * summariser, and classifies the outcome. The component renders whatever comes
- * back and owns none of this logic.
+ * Dashboard service.
+ *
+ * Since Dispatch 6 this reads the same channel calculations the Analytics
+ * module uses, rather than a parallel implementation — the dashboard headline
+ * and the analytics table cannot disagree because there is only one sum.
  */
 
+export interface DashboardHeadline extends DashboardSummary {
+  /** Revenue attributed to the Organic Search channel. */
+  organicRevenueCents: Cents;
+  cacCents: MetricValue;
+  roas: MetricValue;
+  users: number;
+}
+
 export type DashboardState =
-  | { status: 'ready'; summary: DashboardSummary }
-  | { status: 'empty'; summary: DashboardSummary }
+  | {
+      status: 'ready';
+      summary: DashboardHeadline;
+      daily: DailyPoint[];
+      channels: ChannelRow[];
+    }
+  | { status: 'empty'; summary: DashboardHeadline }
   | { status: 'error'; message: string };
 
 export async function loadDashboard(
   repository: TrafficRepository = createFixtureTrafficRepository(),
   window: DateWindow = DEMO_WINDOW,
 ): Promise<DashboardState> {
-  let sessions;
-  let orders;
+  let data;
   try {
-    const data = await repository.load();
-    sessions = data.sessions;
-    orders = data.orders;
+    data = await repository.load();
   } catch (cause) {
     return {
       status: 'error',
@@ -37,10 +59,36 @@ export async function loadDashboard(
     };
   }
 
-  const summary = summarizeDashboard(sessions, orders, window);
+  const input = {
+    sessions: data.sessions,
+    orders: data.orders,
+    channelSpend: data.channelSpend,
+    window,
+  };
+
+  const base = summarizeDashboard(data.sessions, data.orders, window);
+  const totals = analyticsTotals(input);
+  const channels = channelRows(input);
+  const organic = channels.find((row) => row.channel === ORGANIC_CHANNEL);
+
+  const summary: DashboardHeadline = {
+    ...base,
+    organicRevenueCents: organic?.revenueCents ?? 0,
+    cacCents: totals.cacCents,
+    roas: totals.roas,
+    users: totals.users,
+  };
+
   // No sessions in the window is an empty result, not a failure: the screen
   // should explain there is nothing to report rather than show zeros as fact.
-  return summary.sessions === 0
-    ? { status: 'empty', summary }
-    : { status: 'ready', summary };
+  if (summary.sessions === 0) {
+    return { status: 'empty', summary };
+  }
+
+  return {
+    status: 'ready',
+    summary,
+    daily: dailySeries(input),
+    channels,
+  };
 }

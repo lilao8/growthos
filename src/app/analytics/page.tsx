@@ -1,9 +1,25 @@
-import { notFound } from 'next/navigation';
-import { ModulePlaceholder } from '@/components/module-placeholder';
-import { findNavItem } from '@/components/layout/nav-items';
+import { AnalyticsView } from '@/components/analytics/analytics-view';
+import { PageHeader } from '@/components/ui/page-header';
+import { parseDemoDataMode } from '@/services/demo-data-source';
 
-export default function Page() {
-  const item = findNavItem('/analytics');
-  if (item === undefined) notFound();
-  return <ModulePlaceholder item={item} />;
+interface AnalyticsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function AnalyticsPage({
+  searchParams,
+}: AnalyticsPageProps) {
+  const params = await searchParams;
+  const raw = params['demo'];
+  const mode = parseDemoDataMode(typeof raw === 'string' ? raw : null);
+
+  return (
+    <>
+      <PageHeader
+        title="Analytics"
+        description="Traffic, revenue and acquisition cost by channel, on one shared set of definitions."
+      />
+      <AnalyticsView mode={mode} />
+    </>
+  );
 }

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * Dashboard: the six metrics, the data window, and the loading / empty / error
+ * Dashboard: the headline metrics, the data window, and the loading / empty / error
  * / retry states driven through the documented `?demo=` QA seam.
  */
 
@@ -12,6 +12,9 @@ const METRIC_IDS = [
   'metric-conversion-rate',
   'metric-aov',
   'metric-organic-traffic',
+  'metric-organic-revenue',
+  'metric-cac',
+  'metric-roas',
 ] as const;
 
 test('root redirects to the dashboard', async ({ page }) => {
@@ -20,15 +23,15 @@ test('root redirects to the dashboard', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 });
 
-test('shows exactly the six Dispatch 1 metrics with real values', async ({ page }) => {
+test('shows exactly the nine headline metrics with real values', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.getByTestId('dashboard-ready')).toBeVisible();
 
   for (const id of METRIC_IDS) {
     await expect(page.getByTestId(id)).toBeVisible();
   }
-  // No seventh metric card has crept in from a later dispatch.
-  await expect(page.locator('[data-metric-card]')).toHaveCount(6);
+  // No extra metric card has crept in from a later dispatch.
+  await expect(page.locator('[data-metric-card]')).toHaveCount(9);
 
   await expect(page.getByTestId('metric-sessions-value')).toHaveText(/^[\d,]+$/);
   await expect(page.getByTestId('metric-revenue-value')).toHaveText(/^\$[\d,]+\.\d{2}$/);
@@ -36,6 +39,9 @@ test('shows exactly the six Dispatch 1 metrics with real values', async ({ page 
   await expect(page.getByTestId('metric-conversion-rate-value')).toHaveText(/^\d+\.\d{2}%$/);
   await expect(page.getByTestId('metric-aov-value')).toHaveText(/^\$[\d,]+\.\d{2}$/);
   await expect(page.getByTestId('metric-organic-traffic-value')).toHaveText(/^[\d,]+$/);
+  await expect(page.getByTestId('metric-organic-revenue-value')).toHaveText(/^\$[\d,]+\.\d{2}$/);
+  await expect(page.getByTestId('metric-cac-value')).toHaveText(/^\$[\d,]+\.\d{2}$/);
+  await expect(page.getByTestId('metric-roas-value')).toHaveText(/^\d+\.\d{2}x$/);
 });
 
 test('organic traffic never exceeds total sessions', async ({ page }) => {

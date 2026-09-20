@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BarChart, TrendChart } from '@/components/charts/trend-chart';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { MetricCard } from '@/components/ui/metric-card';
 import {
@@ -17,18 +19,19 @@ import {
   THead,
   TR,
 } from '@/components/ui/table';
-import type { DashboardSummary } from '@/domain/dashboard-summary';
+import type { DashboardHeadline } from '@/services/dashboard-service';
 import {
   formatInteger,
   formatMoneyMetric,
+  formatMultiple,
   formatPercent,
 } from '@/domain/format';
 import { loadDashboard, type DashboardState } from '@/services/dashboard-service';
-import type { TrafficRepository } from '@/repositories/traffic-repository';
 import {
   resolveTrafficRepository,
   type DemoDataMode,
 } from '@/services/demo-data-source';
+import type { TrafficRepository } from '@/repositories/traffic-repository';
 
 /**
  * Dashboard presentation. It renders what the service returns and formats with
@@ -78,9 +81,31 @@ const METRIC_DEFINITIONS = [
     formula: 'count(sessions where channel = Organic Search)',
     denominator: 'Not a ratio',
   },
+  {
+    key: 'organic-revenue',
+    label: 'Organic Revenue',
+    definition: 'Revenue from orders attributed to Organic Search.',
+    formula: 'sum(revenue where channel = Organic Search)',
+    denominator: 'Not a ratio',
+  },
+  {
+    key: 'cac',
+    label: 'CAC',
+    definition: 'Acquisition spend ÷ new customers. Independent of order count.',
+    formula: 'acquisition spend ÷ new customers',
+    denominator: 'N/A when no new customers',
+  },
+  {
+    key: 'roas',
+    label: 'ROAS',
+    definition:
+      'Revenue attributed to paid channels ÷ ad spend. Earned channels take no part.',
+    formula: 'paid-attributed revenue ÷ ad spend',
+    denominator: 'N/A when ad spend = 0',
+  },
 ] as const;
 
-function MetricGrid({ summary }: { summary: DashboardSummary }) {
+function MetricGrid({ summary }: { summary: DashboardHeadline }) {
   const values: Record<string, string> = {
     sessions: formatInteger(summary.sessions),
     revenue: formatMoneyMetric(summary.revenueCents),
@@ -88,6 +113,9 @@ function MetricGrid({ summary }: { summary: DashboardSummary }) {
     'conversion-rate': formatPercent(summary.conversionRate),
     aov: formatMoneyMetric(summary.averageOrderValueCents),
     'organic-traffic': formatInteger(summary.organicSessions),
+    'organic-revenue': formatMoneyMetric(summary.organicRevenueCents),
+    cac: formatMoneyMetric(summary.cacCents),
+    roas: formatMultiple(summary.roas),
   };
 
   return (
@@ -161,11 +189,77 @@ function DashboardLoader({
     );
   }
 
-  const { summary } = state;
+  const { summary, daily, channels } = state;
+  const rankedChannels = [...channels].sort((a, b) => b.sessions - a.sessions);
+  const peak = daily.reduce(
+    (best, point) => (point.sessions > best.sessions ? point : best),
+    daily[0] ?? { date: '', sessions: 0, orders: 0, revenueCents: 0 },
+  );
 
   return (
     <div className="flex flex-col gap-6" data-testid="dashboard-ready">
       <MetricGrid summary={summary} />
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader
+            title="Traffic trend"
+            description="Sessions per day over the demo window."
+          >
+            <Link
+              href="/analytics"
+              className="text-sm underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              data-testid="dashboard-analytics-link"
+            >
+              Open analytics
+            </Link>
+          </CardHeader>
+          <CardBody>
+            <TrendChart
+              points={daily.map((point) => ({
+                label: point.date,
+                value: point.sessions,
+              }))}
+              ariaId="dashboard-trend-summary"
+            />
+            <p
+              id="dashboard-trend-summary"
+              className="mt-2 text-xs text-[var(--color-ink-muted)]"
+              data-testid="dashboard-trend-summary"
+            >
+              {formatInteger(summary.sessions)} sessions from{' '}
+              {summary.window.start} to {summary.window.end}. Busiest day{' '}
+              {peak.date} with {formatInteger(peak.sessions)} sessions. Daily
+              figures are listed in Analytics.
+            </p>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Channel mix"
+            description="Sessions by channel, from the same calculation Analytics uses."
+          />
+          <CardBody>
+            <BarChart
+              data={rankedChannels.map((row) => ({
+                label: row.channel,
+                value: row.sessions,
+              }))}
+              ariaId="dashboard-channel-summary"
+            />
+            <p
+              id="dashboard-channel-summary"
+              className="mt-2 text-xs text-[var(--color-ink-muted)]"
+              data-testid="dashboard-channel-summary"
+            >
+              {rankedChannels[0]?.channel} is the largest channel with{' '}
+              {formatInteger(rankedChannels[0]?.sessions ?? 0)} sessions of{' '}
+              {formatInteger(summary.sessions)}.
+            </p>
+          </CardBody>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader
@@ -209,12 +303,21 @@ function DashboardLoader({
               refunds at all.
             </li>
             <li>
-              Organic Revenue, CAC, ROAS, add-to-cart rate, checkout rate,
-              traffic trend and channel breakdown arrive in Dispatch 6 and 7.
+              Attribution is last-touch and single-channel: each session carries
+              one channel. Real multi-touch attribution would give other numbers.
+            </li>
+            <li>
+              Add-to-cart rate, checkout rate and conversion alerts arrive in
+              Dispatch 7.
             </li>
           </ul>
         </CardBody>
       </Card>
+
+      <p className="sr-only" data-testid="dashboard-user-note">
+        {formatInteger(summary.users)} distinct users in this window. Channel
+        user counts overlap and must not be added together.
+      </p>
     </div>
   );
 }

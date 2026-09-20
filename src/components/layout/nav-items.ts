@@ -61,7 +61,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Analytics',
     purpose:
       'Channel performance: sessions, users, revenue, orders, CAC and ROAS.',
-    implemented: false,
+    implemented: true,
     dispatch: 'Dispatch 6',
   },
   {

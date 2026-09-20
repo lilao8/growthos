@@ -1,4 +1,9 @@
-import type { Order, OrderItem, SessionFact } from '@/domain/types';
+import type {
+  ChannelSpend,
+  Order,
+  OrderItem,
+  SessionFact,
+} from '@/domain/types';
 import { getTrafficFixture } from '@/fixtures/demo-traffic';
 
 /**
@@ -11,6 +16,7 @@ export interface TrafficData {
   sessions: SessionFact[];
   orders: Order[];
   orderItems: OrderItem[];
+  channelSpend: ChannelSpend[];
 }
 
 export interface TrafficRepository {
@@ -26,6 +32,7 @@ export function createFixtureTrafficRepository(): TrafficRepository {
         sessions: fixture.sessions,
         orders: fixture.orders,
         orderItems: fixture.orderItems,
+        channelSpend: fixture.channelSpend,
       };
     },
   };
@@ -35,7 +42,7 @@ export function createFixtureTrafficRepository(): TrafficRepository {
 export function createEmptyTrafficRepository(): TrafficRepository {
   return {
     async load(): Promise<TrafficData> {
-      return { sessions: [], orders: [], orderItems: [] };
+      return { sessions: [], orders: [], orderItems: [], channelSpend: [] };
     },
   };
 }
