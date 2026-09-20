@@ -37,7 +37,7 @@ export interface ProductServiceDeps {
 /**
  * A catalogue row. A score is null until an audit has actually been run for
  * that page — "Not audited" is the honest display, and inventing a number
- * would be worse. `geoScore` stays null until Dispatch 4.
+ * would be worse.
  */
 export interface ProductRow {
   product: Product;
@@ -46,7 +46,9 @@ export interface ProductRow {
   geoScore: number | null;
   /** Set when the page has been audited but the content has changed since. */
   seoStale: boolean;
+  geoStale: boolean;
   seoAudit: AuditResult | null;
+  geoAudit: AuditResult | null;
 }
 
 export type ProductListState =
@@ -109,7 +111,7 @@ function toRow(product: Product, data: LoadedData): ProductRow {
   const snapshot = data.state.pageSnapshots.find(
     (candidate) => candidate.productId === product.id,
   );
-  const audit =
+  const seoAudit =
     snapshot === undefined
       ? null
       : readAudit(
@@ -118,16 +120,22 @@ function toRow(product: Product, data: LoadedData): ProductRow {
           product.primaryKeyword,
           'seo',
         );
+  // GEO never reads the keyword, so an empty one is passed deliberately.
+  const geoAudit =
+    snapshot === undefined
+      ? null
+      : readAudit(data.state.auditResults, snapshot, '', 'geo');
 
   return {
     product,
     metrics: data.metrics.get(product.id) ?? emptyProductMetrics(product.id),
     // A score exists only where an audit has been run against this page.
-    seoScore: audit?.score ?? null,
-    seoStale: audit?.stale ?? false,
-    seoAudit: audit,
-    // Filled in by Dispatch 4.
-    geoScore: null,
+    seoScore: seoAudit?.score ?? null,
+    geoScore: geoAudit?.score ?? null,
+    seoStale: seoAudit?.stale ?? false,
+    geoStale: geoAudit?.stale ?? false,
+    seoAudit,
+    geoAudit,
   };
 }
 

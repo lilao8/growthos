@@ -17,6 +17,7 @@ function check(status: CheckStatus, ruleId = `rule-${status}`): AuditCheck {
     explanation: 'e',
     recommendation: 'r',
     evidence: null,
+    points: null,
   };
 }
 

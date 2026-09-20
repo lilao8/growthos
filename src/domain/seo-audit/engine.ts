@@ -89,7 +89,7 @@ export function runSeoAudit({
     score: summary.score,
     coverage: summary.coverage,
     auditedAt: now,
-    inputFingerprint: auditInputFingerprint(snapshot, primaryKeyword),
+    inputFingerprint: auditInputFingerprint('seo', snapshot, primaryKeyword),
   };
 }
 

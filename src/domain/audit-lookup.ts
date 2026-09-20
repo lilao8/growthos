@@ -32,7 +32,8 @@ export function withStaleness(
   return {
     ...stored,
     stale:
-      stored.inputFingerprint !== auditInputFingerprint(snapshot, primaryKeyword),
+      stored.inputFingerprint !==
+      auditInputFingerprint(stored.kind, snapshot, primaryKeyword),
   };
 }
 

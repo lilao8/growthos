@@ -152,6 +152,7 @@ export const auditCheckSchema = z.object({
   explanation: z.string().min(1),
   recommendation: z.string().min(1),
   evidence: z.string().nullable(),
+  points: z.number().min(0).max(10).nullable(),
 });
 
 export const storedAuditResultSchema = z.object({

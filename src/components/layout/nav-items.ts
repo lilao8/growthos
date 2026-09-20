@@ -45,7 +45,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'GEO Audit',
     purpose:
       'Internal heuristic for how readable a page is to generative search systems.',
-    implemented: false,
+    implemented: true,
     dispatch: 'Dispatch 4',
   },
   {

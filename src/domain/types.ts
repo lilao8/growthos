@@ -150,6 +150,12 @@ export interface AuditCheck {
   recommendation: string;
   /** Raw observed input backing this verdict, shown in the UI as proof. */
   evidence: string | null;
+  /**
+   * Points this rule contributed, for engines that band their rules (GEO scores
+   * each rule 0, 5 or 10). null where the engine weights checks by status
+   * instead, as the SEO engine does.
+   */
+  points: number | null;
 }
 
 /**

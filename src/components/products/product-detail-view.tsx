@@ -203,7 +203,11 @@ export function ProductDetailView({
               />
               <DetailRow
                 label="GEO score"
-                value={geoScore === null ? NOT_AUDITED : String(geoScore)}
+                value={
+                  geoScore === null
+                    ? NOT_AUDITED
+                    : `${geoScore}${row.geoStale ? ' (stale)' : ''}`
+                }
                 testId="detail-geo-score"
               />
               <DetailRow
@@ -305,7 +309,7 @@ export function ProductDetailView({
             </dl>
           )}
           {snapshot !== null && (
-            <p className="mt-4 text-sm">
+            <p className="mt-4 flex flex-wrap gap-4 text-sm">
               <Link
                 href={`/seo/${snapshot.id}`}
                 className="underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
@@ -315,15 +319,28 @@ export function ProductDetailView({
                   ? 'Run the SEO audit for this page'
                   : 'Open the SEO audit for this page'}
               </Link>
+              <Link
+                href={`/geo/${snapshot.id}`}
+                className="underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                data-testid="link-to-geo-audit"
+              >
+                {row.geoAudit === null
+                  ? 'Run the GEO audit for this page'
+                  : 'Open the GEO audit for this page'}
+              </Link>
             </p>
           )}
           <p className="mt-3 text-xs text-[var(--color-ink-muted)]">
             {row.seoAudit === null
               ? 'No SEO audit has run against this snapshot yet.'
               : row.seoStale
-                ? 'The snapshot changed after the last SEO audit, so the score above is stale. Re-run the audit to refresh it.'
+                ? 'The snapshot changed after the last SEO audit, so the SEO score above is stale.'
                 : `Last SEO audit: ${row.seoAudit.auditedAt} (${row.seoAudit.ruleVersion}).`}{' '}
-            GEO scoring arrives in Dispatch 4.
+            {row.geoAudit === null
+              ? 'No GEO audit has run against it either.'
+              : row.geoStale
+                ? 'The GEO score is stale for the same reason.'
+                : `Last GEO audit: ${row.geoAudit.auditedAt} (${row.geoAudit.ruleVersion}).`}
           </p>
         </CardBody>
       </Card>

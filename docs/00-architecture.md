@@ -233,3 +233,12 @@ npm run build
 - 组合分数为已审计页面分数的**算术平均**，未审计页面排除而非计 0，界面写明覆盖页数。
 - `SEO_RULE_VERSION = seo-1.0.0`。阈值与规则判定逻辑变更需升版；结果携带产出时的版本，跨版本比较分数无意义。
 - keyword-usage 采用两级匹配（逐字出现 / 词覆盖率），并把 headings、FAQ、规格表计入"页面内容"。理由见 `docs/reports/dispatch-03.md` 已知问题 1。
+
+## 实施记录更新（Dispatch 4）
+
+- **SCHEMA_VERSION 2 → 3**：`AuditCheck` 增加 `points`。GEO 每条规则计 0/5/10 分，SEO 按状态加权计分，`points` 在 SEO 结果中一律为 null。
+- **指纹按 `AuditKind` 区分**：SEO 读商品主关键词，故关键词变更使 SEO 结果 stale；GEO 不读关键词，故关键词变更不使 GEO 结果 stale。把不受影响的结果标成 stale 等于让用户白做一次审计。
+- GEO 评分口径：可评估规则等权，`score = round(100 × 已得分 / (可评估条数 × 10))`；输入未采集的规则从分子分母同时移除并体现为 coverage 下降，绝不计 0。
+- `GEO_RULE_VERSION = geo-1.0.0`。AI Readiness 分档阈值（80/55/30）在 config 中可配置，描述的是内容结构就绪度，不是被引用概率。
+- 两个审计引擎完全解耦：各自的 config / rules / engine / service / UI 与独立的数据加载路径，单个引擎失败不会显示另一个的结果。
+- GEO 模型的三条固有局限写在界面上：原创性只能验证"声明+材料"不能验证真伪；来源存在不等于来源可靠；关键词命中不等于语义理解。

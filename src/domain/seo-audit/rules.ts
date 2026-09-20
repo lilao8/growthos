@@ -45,6 +45,8 @@ function check(
     explanation: SEO_RULE_META[ruleId].rationale,
     recommendation,
     evidence,
+    // The SEO engine weights checks by status, not by per-rule points.
+    points: null,
   };
 }
 

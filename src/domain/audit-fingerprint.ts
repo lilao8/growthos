@@ -1,4 +1,4 @@
-import type { PageSnapshot } from './types';
+import type { AuditKind, PageSnapshot } from './types';
 
 /**
  * Staleness detection.
@@ -48,12 +48,20 @@ export function snapshotFingerprint(snapshot: PageSnapshot): string {
 }
 
 /**
- * The primary keyword lives on the product, not the snapshot, but the keyword
- * usage rule reads it — so it has to take part in the fingerprint too.
+ * Each engine fingerprints exactly what it reads.
+ *
+ * The SEO engine reads the product's primary keyword as well as the snapshot,
+ * so changing the keyword must make an SEO result stale. The GEO engine never
+ * looks at the keyword, so a keyword edit must NOT invalidate a GEO result —
+ * marking it stale would tell the user to redo work that cannot change.
  */
 export function auditInputFingerprint(
+  kind: AuditKind,
   snapshot: PageSnapshot,
   primaryKeyword: string,
 ): string {
-  return `${snapshotFingerprint(snapshot)}-${fnv1a(primaryKeyword.trim().toLowerCase())}`;
+  const base = snapshotFingerprint(snapshot);
+  return kind === 'seo'
+    ? `${base}-${fnv1a(primaryKeyword.trim().toLowerCase())}`
+    : base;
 }
