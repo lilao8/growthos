@@ -69,7 +69,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Funnel',
     purpose:
       'Session-level conversion funnel with stage drop-off and the largest loss point.',
-    implemented: false,
+    implemented: true,
     dispatch: 'Dispatch 7',
   },
   {

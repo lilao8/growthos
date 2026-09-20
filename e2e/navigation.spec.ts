@@ -12,7 +12,7 @@ const ROUTES = [
   { path: '/geo', label: 'GEO Audit', implemented: true },
   { path: '/content', label: 'Content', implemented: true },
   { path: '/analytics', label: 'Analytics', implemented: true },
-  { path: '/funnel', label: 'Funnel', implemented: false },
+  { path: '/funnel', label: 'Funnel', implemented: true },
   { path: '/recommendations', label: 'Recommendations', implemented: false },
 ] as const;
 

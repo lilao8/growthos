@@ -13,6 +13,8 @@ const METRIC_IDS = [
   'metric-aov',
   'metric-organic-traffic',
   'metric-organic-revenue',
+  'metric-add-to-cart-rate',
+  'metric-checkout-rate',
   'metric-cac',
   'metric-roas',
 ] as const;
@@ -23,7 +25,7 @@ test('root redirects to the dashboard', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 });
 
-test('shows exactly the nine headline metrics with real values', async ({ page }) => {
+test('shows exactly the eleven headline metrics with real values', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.getByTestId('dashboard-ready')).toBeVisible();
 
@@ -31,7 +33,7 @@ test('shows exactly the nine headline metrics with real values', async ({ page }
     await expect(page.getByTestId(id)).toBeVisible();
   }
   // No extra metric card has crept in from a later dispatch.
-  await expect(page.locator('[data-metric-card]')).toHaveCount(9);
+  await expect(page.locator('[data-metric-card]')).toHaveCount(11);
 
   await expect(page.getByTestId('metric-sessions-value')).toHaveText(/^[\d,]+$/);
   await expect(page.getByTestId('metric-revenue-value')).toHaveText(/^\$[\d,]+\.\d{2}$/);

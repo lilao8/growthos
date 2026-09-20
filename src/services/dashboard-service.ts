@@ -11,7 +11,12 @@ import {
   ORGANIC_CHANNEL,
   type DashboardSummary,
 } from '@/domain/dashboard-summary';
-import type { MetricValue } from '@/domain/metrics';
+import { buildFunnel, type FunnelReport } from '@/domain/funnel/funnel-metrics';
+import {
+  funnelRecommendations,
+  type FunnelRecommendation,
+} from '@/domain/funnel/recommendations';
+import { safeRatio, type MetricValue } from '@/domain/metrics';
 import type { Cents } from '@/domain/types';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
 import { createFixtureTrafficRepository } from '@/repositories/traffic-repository';
@@ -30,6 +35,10 @@ export interface DashboardHeadline extends DashboardSummary {
   cacCents: MetricValue;
   roas: MetricValue;
   users: number;
+  /** Sessions reaching add-to-cart ÷ sessions. */
+  addToCartRate: MetricValue;
+  /** Sessions reaching checkout ÷ sessions. */
+  checkoutRate: MetricValue;
 }
 
 export type DashboardState =
@@ -38,6 +47,9 @@ export type DashboardState =
       summary: DashboardHeadline;
       daily: DailyPoint[];
       channels: ChannelRow[];
+      funnel: FunnelReport;
+      /** The funnel findings worth surfacing on the dashboard. */
+      alerts: FunnelRecommendation[];
     }
   | { status: 'empty'; summary: DashboardHeadline }
   | { status: 'error'; message: string };
@@ -71,12 +83,20 @@ export async function loadDashboard(
   const channels = channelRows(input);
   const organic = channels.find((row) => row.channel === ORGANIC_CHANNEL);
 
+  // The funnel is built from the same sessions, so the dashboard's cart and
+  // checkout rates and the funnel page cannot disagree.
+  const funnel = buildFunnel({ sessions: data.sessions, window });
+  const stageSessions = (stage: string): number =>
+    funnel.stages.find((row) => row.stage === stage)?.sessions ?? 0;
+
   const summary: DashboardHeadline = {
     ...base,
     organicRevenueCents: organic?.revenueCents ?? 0,
     cacCents: totals.cacCents,
     roas: totals.roas,
     users: totals.users,
+    addToCartRate: safeRatio(stageSessions('add_to_cart'), funnel.totalSessions),
+    checkoutRate: safeRatio(stageSessions('checkout'), funnel.totalSessions),
   };
 
   // No sessions in the window is an empty result, not a failure: the screen
@@ -90,5 +110,10 @@ export async function loadDashboard(
     summary,
     daily: dailySeries(input),
     channels,
+    funnel,
+    alerts: funnelRecommendations({
+      transitions: funnel.transitions,
+      largestDropOff: funnel.largestDropOff,
+    }),
   };
 }

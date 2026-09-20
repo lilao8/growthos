@@ -89,6 +89,20 @@ const METRIC_DEFINITIONS = [
     denominator: 'Not a ratio',
   },
   {
+    key: 'add-to-cart-rate',
+    label: 'Add-to-cart Rate',
+    definition: 'Sessions that reached add-to-cart, as a share of all sessions.',
+    formula: 'add-to-cart sessions ÷ sessions',
+    denominator: 'N/A when sessions = 0',
+  },
+  {
+    key: 'checkout-rate',
+    label: 'Checkout Rate',
+    definition: 'Sessions that reached checkout, as a share of all sessions.',
+    formula: 'checkout sessions ÷ sessions',
+    denominator: 'N/A when sessions = 0',
+  },
+  {
     key: 'cac',
     label: 'CAC',
     definition: 'Acquisition spend ÷ new customers. Independent of order count.',
@@ -114,6 +128,8 @@ function MetricGrid({ summary }: { summary: DashboardHeadline }) {
     aov: formatMoneyMetric(summary.averageOrderValueCents),
     'organic-traffic': formatInteger(summary.organicSessions),
     'organic-revenue': formatMoneyMetric(summary.organicRevenueCents),
+    'add-to-cart-rate': formatPercent(summary.addToCartRate),
+    'checkout-rate': formatPercent(summary.checkoutRate),
     cac: formatMoneyMetric(summary.cacCents),
     roas: formatMultiple(summary.roas),
   };
@@ -189,7 +205,10 @@ function DashboardLoader({
     );
   }
 
-  const { summary, daily, channels } = state;
+  const { summary, daily, channels, funnel, alerts } = state;
+  // One card per step, not one per hypothesis — the dashboard is a signal, and
+  // the funnel page carries the detail.
+  const alertSteps = [...new Map(alerts.map((item) => [item.transitionLabel, item])).values()];
   const rankedChannels = [...channels].sort((a, b) => b.sessions - a.sessions);
   const peak = daily.reduce(
     (best, point) => (point.sessions > best.sessions ? point : best),
@@ -263,6 +282,66 @@ function DashboardLoader({
 
       <Card>
         <CardHeader
+          title="Conversion alerts"
+          description="Funnel steps performing below this project's threshold. Each is a prompt to look, not a finding."
+        >
+          <Link
+            href="/funnel"
+            className="text-sm underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+            data-testid="dashboard-funnel-link"
+          >
+            Open the funnel
+          </Link>
+        </CardHeader>
+        <CardBody className="flex flex-col gap-3">
+          {funnel.largestDropOff !== null && (
+            <p className="text-sm" data-testid="dashboard-largest-drop">
+              <strong>Largest drop-off: {funnel.largestDropOff.label}.</strong>{' '}
+              {formatPercent(funnel.largestDropOff.dropOffRate)} of{' '}
+              {formatInteger(funnel.largestDropOff.fromSessions)} sessions are
+              lost there.
+            </p>
+          )}
+
+          {alertSteps.length === 0 ? (
+            <p className="text-sm text-[var(--color-ink-muted)]">
+              Every funnel step is at or above its threshold.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2" data-testid="dashboard-alerts">
+              {alertSteps.map((alert) => (
+                <li
+                  key={alert.transitionLabel}
+                  className="rounded-md border border-[var(--color-line)] px-4 py-3 text-sm"
+                  data-testid={`dashboard-alert-${alert.from}-${alert.to}`}
+                >
+                  <span className="font-medium">{alert.transitionLabel}</span>{' '}
+                  {alert.raisedBecause === 'below-threshold' ? (
+                    <>
+                      converts at {formatPercent(alert.conversion)}, below the{' '}
+                      {formatPercent(alert.threshold)} threshold, on{' '}
+                      {formatInteger(alert.sampleSessions)} sessions.
+                    </>
+                  ) : (
+                    <>
+                      loses the largest share in the funnel —{' '}
+                      {formatPercent(alert.dropOffRate)} of{' '}
+                      {formatInteger(alert.sampleSessions)} sessions. Its{' '}
+                      {formatPercent(alert.conversion)} conversion is within the{' '}
+                      {formatPercent(alert.threshold)} threshold, so this is
+                      about volume, not underperformance.
+                    </>
+                  )}
+                  {alert.confidence === 'low' && ' Sample is small.'}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
           title="How these numbers are defined"
           description="One shared definition per metric, used by every module in the project."
         />
@@ -307,8 +386,8 @@ function DashboardLoader({
               one channel. Real multi-touch attribution would give other numbers.
             </li>
             <li>
-              Add-to-cart rate, checkout rate and conversion alerts arrive in
-              Dispatch 7.
+              Conversion alerts below are hypotheses to test, not diagnoses. The
+              funnel shows where sessions are lost, never why.
             </li>
           </ul>
         </CardBody>
