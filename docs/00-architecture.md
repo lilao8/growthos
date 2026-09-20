@@ -205,3 +205,11 @@ npm run build
 本地开发：`npm run dev`（默认 3000 端口）。E2E 使用 **3100** 端口，可用 `E2E_PORT` 覆盖；Playwright 会自行构建并启动生产服务器，不需要手工先跑 `npm run build`。
 
 测试隔离：E2E 的浏览器存储命名空间是 `growthos.e2e`，集成测试用 `growthos.test`，默认演示命名空间 `growthos.demo`，三者互不干扰。测试从不清空非测试数据。
+
+## 实施记录更新（Dispatch 1）
+
+- `typecheck` 脚本改为 `next typegen && tsc --noEmit`。开启 typedRoutes 后路由类型是构建产物，全新检出直接跑 `tsc` 会因 `Route` 类型缺失报错。
+- 新增只读数据层 `TrafficRepository`：会话与订单是不可编辑的演示事实，不进入持久化的 `DemoState`，浏览器存储只保存用户能改的数据。
+- 新增 `?demo=` QA 接缝（`empty` / `error` / `slow` / `flaky`），用于真实触发 loading / empty / error 状态。封闭白名单，未知值回落真实 fixture。
+- 侧边栏断点为 Tailwind `lg`（1024px）；以下宽度折叠为 Header 披露面板。
+- `src/fixtures/demo-traffic.ts` 为阶段性流量数据，Dispatch 6 建立完整分析数据集时替换。
