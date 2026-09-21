@@ -184,7 +184,12 @@ test('Amazon findings reach the recommendations list', async ({ page }) => {
     page.locator('[data-source="amazon"]').first(),
   ).toBeVisible();
 
-  const card = page.locator('[data-testid^="rec-"][data-source]').first();
+  // Scoped by category: the Amazon source now covers listing-quality AND
+  // advertising tasks, so "first Amazon card" is no longer a listing task.
+  const card = page
+    .locator('[data-testid^="rec-"][data-category="Amazon listing"]')
+    .first();
+  await expect(card).toBeVisible();
   const id = ((await card.getAttribute('data-testid')) ?? '').replace(/^rec-/, '');
   await page.getByTestId(`rec-link-${id}`).click();
   await expect(page).toHaveURL(/\/amazon\/lst_/);

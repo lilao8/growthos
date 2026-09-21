@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  activeNavHref,
   findNavItem,
   NAV_ITEMS,
   SECONDARY_NAV_ITEMS,
@@ -28,6 +29,7 @@ describe('navigation items', () => {
       '/analytics',
       '/funnel',
       '/amazon',
+      '/amazon/advertising',
       '/recommendations',
     ]);
   });
@@ -38,6 +40,18 @@ describe('navigation items', () => {
     }
     expect(findNavItem('/recommendations')?.dispatch).toBe('Dispatch 8');
     expect(findNavItem('/amazon')?.dispatch).toBe('Dispatch 10');
+    expect(findNavItem('/amazon/advertising')?.dispatch).toBe('Dispatch 11');
+  });
+
+  it('marks only the most specific entry as current', () => {
+    // Without a longest-match rule, /amazon/advertising would light up both
+    // the Amazon entry and its own, giving two aria-current="page" links.
+    expect(activeNavHref('/amazon/advertising')).toBe('/amazon/advertising');
+    expect(activeNavHref('/amazon/lst_something')).toBe('/amazon');
+    expect(activeNavHref('/amazon')).toBe('/amazon');
+    expect(activeNavHref('/seo/snap_thing')).toBe('/seo');
+    expect(activeNavHref('/about-project')).toBe('/about-project');
+    expect(activeNavHref('/nowhere')).toBeNull();
   });
 
   it('has no duplicate routes or labels', () => {

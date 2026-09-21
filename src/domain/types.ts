@@ -499,3 +499,91 @@ export interface ListingAuditResult {
 export interface ListingAudit extends ListingAuditResult {
   stale: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Amazon advertising and reports (Dispatch 11)
+// ---------------------------------------------------------------------------
+
+/**
+ * The advertising side of the Amazon channel.
+ *
+ * The distinction that matters most here, and the one most often fudged: a
+ * **target** is what you told Amazon to bid on, a **customer search term** is
+ * what a shopper actually typed. A broad-match target on "camping stove" can be
+ * matched to hundreds of search terms you never chose. Harvesting and negating
+ * are exactly the work of moving between those two sets, so the model keeps
+ * them as separate entities and never collapses one into the other.
+ *
+ * All of this is seeded demo data shaped like a Search Term Report and a
+ * Business Report. Nothing is fetched: this project never calls the Amazon
+ * Advertising API or SP-API, and never crawls.
+ */
+
+export const AD_CAMPAIGN_TYPES = ['SP', 'SB', 'SD'] as const;
+export type AdCampaignType = (typeof AD_CAMPAIGN_TYPES)[number];
+
+export const AD_TARGETING_TYPES = ['auto', 'manual'] as const;
+export type AdTargetingType = (typeof AD_TARGETING_TYPES)[number];
+
+/**
+ * `auto` is not a match type a seller chooses — it is what Amazon reports for
+ * targets it picked itself. Kept in the same union because the report does.
+ */
+export const AD_MATCH_TYPES = ['broad', 'phrase', 'exact', 'auto'] as const;
+export type AdMatchType = (typeof AD_MATCH_TYPES)[number];
+
+export const AD_CAMPAIGN_STATUSES = ['enabled', 'paused'] as const;
+export type AdCampaignStatus = (typeof AD_CAMPAIGN_STATUSES)[number];
+
+export interface AdCampaign {
+  id: string;
+  name: string;
+  type: AdCampaignType;
+  targetingType: AdTargetingType;
+  /** One advertised listing per campaign in the MVP, so ad sales attribute cleanly. */
+  listingId: string;
+  dailyBudgetCents: Cents;
+  status: AdCampaignStatus;
+}
+
+export interface AdTarget {
+  id: string;
+  campaignId: string;
+  /** What the seller bid on. For an auto target, Amazon's own label. */
+  expression: string;
+  matchType: AdMatchType;
+  bidCents: Cents;
+}
+
+/**
+ * One row of a Search Term Report: a target, a customer search term and a day.
+ *
+ * `adSalesCents` and `adOrders` are attributed sales — what Amazon credits to
+ * the click within its attribution window. They are not the same thing as the
+ * ASIN's total sales that day, which is why TACOS needs the Business Report
+ * as well.
+ */
+export interface SearchTermRow {
+  date: IsoDate;
+  targetId: string;
+  customerSearchTerm: string;
+  impressions: number;
+  clicks: number;
+  spendCents: Cents;
+  adSalesCents: Cents;
+  adOrders: number;
+}
+
+/** One row of a Business Report: per ASIN, per day. */
+export interface AsinDailyReport {
+  date: IsoDate;
+  listingId: string;
+  /** Amazon's own session definition, not the storefront's. Never added to it. */
+  sessions: number;
+  pageViews: number;
+  unitsOrdered: number;
+  /** Total sales for the ASIN that day, advertising and organic together. */
+  totalSalesCents: Cents;
+  /** 0–1 share of page views where this seller held the buy box. */
+  buyBoxPercentage: number;
+}

@@ -49,6 +49,7 @@ GrowthOS 针对四类具体的失效方式设计：
 | **Analytics** | 流量从哪来，每个渠道花多少、回多少？ | 渠道表（sessions / users / revenue / orders / CVR / AOV / CAC / ROAS）、每日趋势、低样本标记 |
 | **Funnel** | 旅程中会话在哪一步丢失？ | 会话级漏斗、逐层去重计数、阶段转化与流失率、最大流失点、带验证方法的假设 |
 | **Amazon** | 我们的亚马逊 listing 能不能卖，最差的是哪个？ | 17 个 ASIN 的 listing 质量审计，14 条规则（标题结构、五点描述、主图合规、**按字节计的后台搜索词**、变体关系、评论健康度、Buy Box 等） |
+| **Amazon Ads** | 哪些搜索词值得投，哪些在烧钱？ | Search Term 报表分析、ACOS/TACOS/CTR/CVR/CPC、收割与否定候选、Unit Session Percentage 与自然占比 |
 | **Recommendations** | 综合以上，周一早上该做什么？ | 汇总五类来源的统一任务清单，稳定 ID、影响/工作量四象限、证据、深链、完成状态持久化 |
 | **About this project** | 我在看什么，该信到什么程度？ | 动机、问题、模块关系、模型局限、演示路径、**demo reset** |
 
@@ -129,6 +130,9 @@ ChannelSpend(每渠道每天一条)
 | Organic Traffic / Revenue | channel = Organic Search 的 sessions / revenue | |
 | Add-to-cart / Checkout Rate | 到达该阶段的去重会话数 ÷ sessions | |
 | CAC | acquisitionSpend ÷ newCustomers | **独立于订单数**；acquisitionSpend ⊇ adSpend |
+| ACOS / TACOS（Amazon） | adSpend ÷ adSales；adSpend ÷ totalSales | **不换算成 ROAS 并排比较**：归因窗口不同，ACOS 只覆盖广告销售 |
+| CVR（Amazon） | adOrders ÷ clicks | **分母是点击，不是会话**——与独立站 CVR 不可同列 |
+| Unit Session %（Amazon） | unitsOrdered ÷ sessions | Amazon 会话，**绝不与站点会话相加** |
 | ROAS | paidAttributedRevenue ÷ adSpend | 非付费渠道 N/A；站点 ROAS 只计入买了媒体的渠道所带来的营收 |
 | Stage Conversion / Drop-off | 下一阶段 ÷ 上一阶段；1 − 该值 | 全程同一批会话，后续阶段必须按序发生 |
 

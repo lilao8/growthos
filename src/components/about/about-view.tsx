@@ -65,6 +65,12 @@ const DEMO_PATH = [
     seconds: 60,
   },
   {
+    step: 'Amazon Ads',
+    href: '/amazon/advertising' as const,
+    what: 'Show the search term table: what a shopper typed versus what we bid on are two columns, not one. Then a harvest candidate and a negation candidate, and say that both are suggestions the project will never act on itself.',
+    seconds: 60,
+  },
+  {
     step: 'Recommendations',
     href: '/recommendations' as const,
     what: 'The whole project lands here: one prioritised list with evidence and a deep link back to each finding. Mark one done, reload, show it stuck.',
@@ -103,7 +109,11 @@ const LIMITATIONS = [
   },
   {
     heading: 'The two channels are never added together',
-    body: 'The storefront and Amazon share this catalogue, but an Amazon session and a storefront session are counted differently and mean different things. Nothing in this project adds them, and ACOS is never silently converted into ROAS for a side-by-side comparison — the attribution windows do not match. Two honest numbers side by side beat one misleading total.',
+    body: 'The storefront and Amazon share this catalogue, but an Amazon session and a storefront session are counted differently and mean different things. Nothing in this project adds them, and ACOS is never silently converted into ROAS for a side-by-side comparison — the attribution windows do not match, and ACOS covers only advertising-attributed sales. Conversion rate is the sharpest case: on Amazon it is orders ÷ clicks, on the storefront it is purchasing sessions ÷ sessions. Two honest numbers side by side beat one misleading total.',
+  },
+  {
+    heading: 'The target ACOS is a choice, not a benchmark',
+    body: 'A brand buying market share runs a deliberately high ACOS; one funding itself from cashflow runs a low one. This project picks a figure so the rules have something to compare against and says so on screen. Harvest and negation candidates are suggestions to test — nothing here changes a bid, a budget or a negative keyword list.',
   },
   {
     heading: 'It is a workbench, not a store',

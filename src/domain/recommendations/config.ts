@@ -419,3 +419,44 @@ export const DEFAULT_AMAZON_WEIGHT: Weighting = {
   effort: 3,
   rationale: 'No specific weighting for this rule; treated as a middling fix.',
 };
+
+/**
+ * Advertising weightings.
+ *
+ * Effort is low across the board because these are changes inside the ad
+ * console — adding an exact target or a negative keyword takes minutes. What
+ * varies is impact, and the honest ordering is: stop the bleeding first, then
+ * take control of what already works.
+ */
+export const AD_WEIGHTS: Record<string, Weighting> = {
+  'negate-search-term': {
+    impact: 4,
+    effort: 1,
+    rationale:
+      'Spend going to a term that has never converted is the clearest waste in an ad account, and adding a negative keyword takes a minute. Impact is 4 rather than 5 because the money saved is usually modest next to a listing or price problem.',
+  },
+  'harvest-search-term': {
+    impact: 3,
+    effort: 1,
+    rationale:
+      'The term is already being served, so this buys control over its bid rather than new volume. Cheap to do, real but bounded upside.',
+  },
+  'campaign-acos': {
+    impact: 4,
+    effort: 3,
+    rationale:
+      'A campaign well above target ACOS is spending faster than the brand intends, but the fix is bid and targeting work with an uncertain outcome, not a single edit.',
+  },
+  'low-organic-share': {
+    impact: 4,
+    effort: 5,
+    rationale:
+      'An ASIN that stops selling the moment ads pause is a structural risk. Building organic demand is a long programme of listing, review and content work, not an ad change.',
+  },
+};
+
+export const DEFAULT_AD_WEIGHT: Weighting = {
+  impact: 3,
+  effort: 2,
+  rationale: 'No specific weighting for this rule; treated as a cheap fix with moderate upside.',
+};

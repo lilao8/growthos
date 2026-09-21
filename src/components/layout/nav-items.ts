@@ -99,6 +99,16 @@ export const NAV_ITEMS: readonly NavItem[] = [
       'Are our Amazon listings fit to sell, and which one is worst?',
   },
   {
+    href: '/amazon/advertising',
+    label: 'Amazon Ads',
+    purpose:
+      'Search term performance, campaign efficiency, and which terms to harvest or negate.',
+    implemented: true,
+    dispatch: 'Dispatch 11',
+    question:
+      'Which search terms are worth bidding on, and which are burning money?',
+  },
+  {
     href: '/recommendations',
     label: 'Recommendations',
     purpose:
@@ -126,6 +136,25 @@ export const SECONDARY_NAV_ITEMS: readonly NavItem[] = [
     question: 'What am I looking at, and how far should I trust it?',
   },
 ];
+
+/**
+ * The nav entry a path belongs to, preferring the most specific match.
+ *
+ * Without this, `/amazon/advertising` matches both the `/amazon` entry (by
+ * prefix) and its own entry (exactly), and the sidebar marks two links as the
+ * current page. Longest matching href wins.
+ */
+export function activeNavHref(pathname: string): string | null {
+  let best: string | null = null;
+  for (const item of [...NAV_ITEMS, ...SECONDARY_NAV_ITEMS]) {
+    const matches =
+      pathname === item.href || pathname.startsWith(`${item.href}/`);
+    if (matches && (best === null || item.href.length > best.length)) {
+      best = item.href;
+    }
+  }
+  return best;
+}
 
 export function findNavItem(href: string): NavItem | undefined {
   return [...NAV_ITEMS, ...SECONDARY_NAV_ITEMS].find(

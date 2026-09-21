@@ -5,6 +5,7 @@ import { buildFunnel } from '@/domain/funnel/funnel-metrics';
 import { funnelRecommendations as funnelAdvice } from '@/domain/funnel/recommendations';
 import { readListingAudit } from '@/domain/amazon/engine';
 import {
+  advertisingRecommendations,
   amazonRecommendations,
   analyticsRecommendations,
   contentRecommendations,
@@ -12,6 +13,7 @@ import {
   geoRecommendations,
   mergeWithStatuses,
   seoRecommendations,
+  type AdvertisingFindings,
   type AuditedListing,
   type AuditedPage,
   type ScoredContentIdea,
@@ -33,6 +35,8 @@ import {
 } from '@/domain/types';
 import type { DemoState, DemoStateRepository } from '@/repositories/types';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
+import type { AmazonAdsRepository } from '@/repositories/amazon-ads-repository';
+import { loadAdvertising } from '@/services/amazon-ads-service';
 
 /**
  * Recommendation service.
@@ -45,6 +49,8 @@ import type { TrafficRepository } from '@/repositories/traffic-repository';
 export interface RecommendationDeps {
   state: DemoStateRepository;
   traffic: TrafficRepository;
+  /** Optional: without it the advertising source simply contributes nothing. */
+  ads?: AmazonAdsRepository;
   window?: DateWindow;
   /** Injected so status timestamps are deterministic in tests. */
   now?: () => string;
@@ -163,6 +169,47 @@ export async function loadRecommendations(
       null,
   }));
 
+  // Advertising is optional: a caller without a report source gets a list
+  // without advertising tasks rather than an error.
+  let advertising: Recommendation[] = [];
+  if (deps.ads !== undefined) {
+    const ads = await loadAdvertising({
+      ads: deps.ads,
+      state: deps.state,
+      window,
+    });
+    if (ads.status === 'ready') {
+      const productIdByListing = new Map(
+        state.amazonListings.map((listing) => [listing.id, listing.productId]),
+      );
+      const findings: AdvertisingFindings = {
+        harvest: ads.view.harvest,
+        negations: ads.view.negations,
+        overTargetCampaigns: ads.view.overTargetCampaigns.map((row) => ({
+          campaignId: row.campaign.id,
+          campaignName: row.campaign.name,
+          listingId: row.campaign.listingId,
+          acos: row.acos ?? 0,
+          spendCents: row.spendCents,
+          clicks: row.clicks,
+        })),
+        lowOrganicAsins: ads.view.asins
+          .filter((row) => row.lowOrganicShare)
+          .map((row) => ({
+            listingId: row.listingId,
+            title: row.label?.title ?? row.listingId,
+            organicShare: row.organicShare ?? 0,
+            totalSalesCents: row.totalSalesCents,
+          })),
+        targetAcos: ads.view.config.targetAcos,
+        organicShareFloor: ads.view.config.organicShareFloor,
+        ruleVersion: ads.view.ruleVersion,
+        productIdFor: (listingId) => productIdByListing.get(listingId) ?? null,
+      };
+      advertising = advertisingRecommendations(findings);
+    }
+  }
+
   const generated = [
     ...seoRecommendations(auditedPages(state, 'seo')),
     ...geoRecommendations(auditedPages(state, 'geo')),
@@ -178,6 +225,7 @@ export async function loadRecommendations(
       }),
     ),
     ...amazonRecommendations(auditedListings(state)),
+    ...advertising,
   ];
 
   const merged = mergeWithStatuses(generated, state.recommendationStatuses);

@@ -3,7 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { NAV_ITEMS, SECONDARY_NAV_ITEMS, type NavItem } from './nav-items';
+import {
+  activeNavHref,
+  NAV_ITEMS,
+  SECONDARY_NAV_ITEMS,
+  type NavItem,
+} from './nav-items';
 import { DEMO_WINDOW } from '@/domain/demo-window';
 import { formatDateRange } from '@/domain/format';
 import { DEMO_BRAND } from '@/fixtures/demo-seed';
@@ -24,12 +29,14 @@ function NavList({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  // Resolved once against every route, so a nested page marks only its own
+  // entry rather than its parent's as well.
+  const current = activeNavHref(pathname);
 
   return (
     <ul className="flex flex-col gap-1">
       {items.map((item) => {
-        const active =
-          pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const active = current === item.href;
         return (
           <li key={item.href}>
             <Link

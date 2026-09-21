@@ -4,17 +4,23 @@ import { GEO_RULE_META, type GeoRuleId } from '../geo-audit/config';
 import { STAGE_LABELS } from '../funnel/funnel-metrics';
 import type { FunnelRecommendation } from '../funnel/recommendations';
 import type { ChannelRow } from '../analytics/channel-metrics';
+import type {
+  HarvestCandidate,
+  NegationCandidate,
+} from '../amazon/harvest';
 import { formatCents } from '../money';
 // CAC and AOV are division results and may carry fractional cents, so they go
 // through the metric formatter, which rounds, rather than the strict one.
 import { formatMoneyMetric } from '../format';
 import { recommendationId } from '../stable-id';
 import {
+  AD_WEIGHTS,
   AMAZON_WEIGHTS,
   ANALYTICS_THRESHOLDS,
   ANALYTICS_WEIGHTS,
   CONTENT_THRESHOLDS,
   CONTENT_WEIGHT,
+  DEFAULT_AD_WEIGHT,
   DEFAULT_AMAZON_WEIGHT,
   DEFAULT_FUNNEL_WEIGHT,
   DEFAULT_GEO_WEIGHT,
@@ -291,6 +297,134 @@ export function amazonRecommendations(
       );
     }
   }
+  return items;
+}
+
+// ---------------------------------------------------------------------------
+// Amazon advertising
+// ---------------------------------------------------------------------------
+
+export interface AdvertisingFindings {
+  harvest: readonly HarvestCandidate[];
+  negations: readonly NegationCandidate[];
+  overTargetCampaigns: readonly {
+    campaignId: string;
+    campaignName: string;
+    listingId: string;
+    acos: number;
+    spendCents: number;
+    clicks: number;
+  }[];
+  lowOrganicAsins: readonly {
+    listingId: string;
+    title: string;
+    organicShare: number;
+    totalSalesCents: number;
+  }[];
+  targetAcos: number;
+  organicShareFloor: number;
+  ruleVersion: string;
+  /** Resolves a listing to the product behind it, for the task's link. */
+  productIdFor: (listingId: string) => string | null;
+}
+
+/**
+ * Advertising findings as tasks.
+ *
+ * Every one of these is a suggestion to test. Nothing here changes a bid, a
+ * budget or a negative keyword list, and the wording keeps that distinction —
+ * the funnel module set the same rule for the same reason.
+ */
+export function advertisingRecommendations(
+  findings: AdvertisingFindings,
+): Recommendation[] {
+  const items: Recommendation[] = [];
+  const link = '/amazon/advertising';
+
+  for (const item of findings.negations) {
+    items.push(
+      build({
+        source: 'amazon',
+        ruleId: 'negate-search-term',
+        // Keyed by term and target: the same wasteful query under two targets
+        // is two separate decisions with two separate bids.
+        sourceEntityId: `${item.sourceTargetId}:${item.customerSearchTerm}`,
+        title: `Wasted spend on “${item.customerSearchTerm}”`,
+        category: 'Amazon advertising',
+        reason: item.reason,
+        suggestedAction: item.suggestedAction,
+        evidence: `${item.evidence} · ${formatCents(item.spendCents)} spent`,
+        link,
+        relatedProductId: findings.productIdFor(item.listingId),
+        ruleVersion: findings.ruleVersion,
+        weighting: AD_WEIGHTS['negate-search-term'] ?? DEFAULT_AD_WEIGHT,
+        severeFailure: true,
+      }),
+    );
+  }
+
+  for (const item of findings.harvest) {
+    items.push(
+      build({
+        source: 'amazon',
+        ruleId: 'harvest-search-term',
+        sourceEntityId: `${item.sourceTargetId}:${item.customerSearchTerm}`,
+        title: `Harvest “${item.customerSearchTerm}” into its own target`,
+        category: 'Amazon advertising',
+        reason: item.reason,
+        suggestedAction: item.suggestedAction,
+        evidence: item.evidence,
+        link,
+        relatedProductId: findings.productIdFor(item.listingId),
+        ruleVersion: findings.ruleVersion,
+        weighting: AD_WEIGHTS['harvest-search-term'] ?? DEFAULT_AD_WEIGHT,
+        severeFailure: false,
+      }),
+    );
+  }
+
+  for (const row of findings.overTargetCampaigns) {
+    items.push(
+      build({
+        source: 'amazon',
+        ruleId: 'campaign-acos',
+        sourceEntityId: row.campaignId,
+        title: `ACOS above target — ${row.campaignName}`,
+        category: 'Amazon advertising',
+        reason: `This campaign is running at an ACOS of ${(row.acos * 100).toFixed(1)}% against a target of ${(findings.targetAcos * 100).toFixed(0)}%, on ${row.clicks} clicks. It may be bidding above what the conversion rate supports, or matching queries the listing does not answer.`,
+        suggestedAction:
+          'Read the campaign’s own search term rows before changing a bid: a high ACOS driven by a few irrelevant queries is a negation problem, while one spread evenly across relevant queries is a bid or a listing problem. The two have different fixes.',
+        evidence: `ACOS ${(row.acos * 100).toFixed(1)}% · ${formatCents(row.spendCents)} spent · ${row.clicks} clicks`,
+        link,
+        relatedProductId: findings.productIdFor(row.listingId),
+        ruleVersion: findings.ruleVersion,
+        weighting: AD_WEIGHTS['campaign-acos'] ?? DEFAULT_AD_WEIGHT,
+        severeFailure: false,
+      }),
+    );
+  }
+
+  for (const row of findings.lowOrganicAsins) {
+    items.push(
+      build({
+        source: 'amazon',
+        ruleId: 'low-organic-share',
+        sourceEntityId: row.listingId,
+        title: `Sales depend on advertising — ${row.title}`,
+        category: 'Amazon advertising',
+        reason: `Only ${(row.organicShare * 100).toFixed(1)}% of this ASIN’s sales came from outside advertising, against a floor of ${(findings.organicShareFloor * 100).toFixed(0)}%. If the ads pause, most of this revenue may pause with them.`,
+        suggestedAction:
+          'Treat this as a demand problem rather than an ad problem. Reviews, listing quality and ranking for its main keyword are what build sales that survive a paused campaign — verify by checking whether organic share moves at all over the next few weeks.',
+        evidence: `organic share ${(row.organicShare * 100).toFixed(1)}% · ${formatCents(row.totalSalesCents)} total sales`,
+        link,
+        relatedProductId: findings.productIdFor(row.listingId),
+        ruleVersion: findings.ruleVersion,
+        weighting: AD_WEIGHTS['low-organic-share'] ?? DEFAULT_AD_WEIGHT,
+        severeFailure: false,
+      }),
+    );
+  }
+
   return items;
 }
 

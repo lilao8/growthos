@@ -1,4 +1,5 @@
 import { ListingDetailView } from '@/components/amazon/listing-detail-view';
+import { ListingAdvertisingPanel } from '@/components/amazon/listing-advertising-panel';
 import { PageHeader } from '@/components/ui/page-header';
 import { parseDemoDataMode } from '@/services/demo-data-source';
 
@@ -23,6 +24,7 @@ export default async function ListingPage({
         description="One ASIN: its recorded facts, its audit checks with evidence, and the copy you can edit."
       />
       <ListingDetailView listingId={listingId} mode={mode} />
+      <ListingAdvertisingPanel listingId={listingId} mode={mode} />
     </>
   );
 }

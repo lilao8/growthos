@@ -4,6 +4,14 @@ import { createFailingStateRepository } from '@/repositories/memory-state-reposi
 import { buildDemoSeedState } from '@/fixtures/demo-seed';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
 import {
+  createDelayedAmazonAdsRepository,
+  createEmptyAmazonAdsRepository,
+  createFailingAmazonAdsRepository,
+  createFixtureAmazonAdsRepository,
+  createFlakyAmazonAdsRepository,
+  type AmazonAdsRepository,
+} from '@/repositories/amazon-ads-repository';
+import {
   createDelayedTrafficRepository,
   createEmptyTrafficRepository,
   createFailingTrafficRepository,
@@ -75,5 +83,29 @@ export function resolveTrafficRepository(
       return createFlakyTrafficRepository(1);
     case null:
       return createFixtureTrafficRepository();
+  }
+}
+
+/** The advertising reports follow the same seam as the storefront traffic. */
+export function resolveAmazonAdsRepository(
+  mode: DemoDataMode | null,
+): AmazonAdsRepository {
+  switch (mode) {
+    case 'empty':
+      return createEmptyAmazonAdsRepository();
+    case 'error':
+      return createFailingAmazonAdsRepository();
+    case 'slow':
+      return createDelayedAmazonAdsRepository(
+        createFixtureAmazonAdsRepository(),
+        1200,
+      );
+    case 'storage-error':
+      // Loading works; only saving fails, and reports are never written.
+      return createFixtureAmazonAdsRepository();
+    case 'flaky':
+      return createFlakyAmazonAdsRepository(1);
+    case null:
+      return createFixtureAmazonAdsRepository();
   }
 }

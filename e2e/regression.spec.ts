@@ -105,6 +105,7 @@ test('the dashboard links to every module in the project', async ({ page }) => {
     ['dashboard-goto-analytics', /\/analytics$/],
     ['dashboard-goto-funnel', /\/funnel$/],
     ['dashboard-goto-amazon', /\/amazon$/],
+    ['dashboard-goto-amazon-ads', /\/amazon\/advertising$/],
     ['dashboard-goto-recommendations', /\/recommendations$/],
   ] as const;
 
@@ -130,6 +131,7 @@ test('the demo window is identical on every module', async ({ page }) => {
     '/analytics',
     '/funnel',
     '/amazon',
+    '/amazon/advertising',
     '/recommendations',
     '/about-project',
   ]) {
@@ -176,6 +178,7 @@ test('every module renders without console errors', async ({ page }) => {
     '/analytics',
     '/funnel',
     '/amazon',
+    '/amazon/advertising',
     '/recommendations',
     '/about-project',
   ]) {
@@ -207,6 +210,7 @@ for (const width of [375, 768, 1440]) {
       '/funnel',
       '/amazon',
       '/amazon/lst_trailcell_lantern',
+      '/amazon/advertising',
       '/recommendations',
       '/about-project',
     ]) {
@@ -235,6 +239,7 @@ test('the main landmark and a single h1 exist on every module', async ({
     '/analytics',
     '/funnel',
     '/amazon',
+    '/amazon/advertising',
     '/recommendations',
     '/about-project',
   ]) {

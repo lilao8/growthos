@@ -310,3 +310,17 @@ npm run build
 - **跨来源排序把 Quick Win 排在 Strategic 之前，这对被压制的 listing 产生了一个有意思的结果**：在该 listing 内部，"主图不合规"（impact 5 / effort 2）排在"listing 被压制"（impact 5 / effort 3）之前。这不是 bug——**换主图正是解除压制的手段**，所以可执行的根因排在症状之前。详见 dispatch-10.md。
 - **`unknown` 在 Amazon 侧同样是一等值**：主图是否纯白背景是图片文件的属性，本项目从不接触图片文件；未品牌备案时 A+ 根本不可用。两者都报 Unknown 并计入覆盖率缺口，不算通过也不算失败。
 - 导航顺序是**阅读顺序而非构建顺序**：独立站链路连续，Amazon 作为独立渠道紧邻 Recommendations（汇聚点）。单元测试锁定顺序而不是 dispatch 编号。
+
+## 实施记录更新（Dispatch 11）
+
+- **`SCHEMA_VERSION` 不变（仍是 6）。** Search Term 报表与 Business Report 是**只读事实**，和 `SessionFact` 一样不进 `DemoState`——报表不是用户能编辑的东西。走独立的 `amazon-ads-repository`，浏览器存储里只放用户真正能改的记录。集成测试断言加载广告数据后 `localStorage.length === 0`。
+- **Search Term ≠ Target，模型与界面都不合并。** 投放词（你告诉 Amazon 去竞价的）和顾客搜索词（shopper 实际输入的）是两个实体。`searchTermRows` 按 **(term, target) 配对**聚合而不是按 term 聚合：同一个 query 被两个 target 匹配就是两行、两个出价，合并会把"收割"要解决的重复隐藏掉。
+- **CVR 的分母是点击，不是会话。** 函数特意叫 `clickConversionRate` 而不是复用 `conversionRate`——共用名字迟早会让人把两者放进同一列。界面上有固定的 `CVR_DENOMINATOR_NOTE`。
+- **ACOS 不换算成 ROAS 并排比较。** 数学上 `ROAS = 1/ACOS`，但归因窗口不同，且 ACOS 只覆盖广告销售、TACOS 才覆盖总销售。`ACOS_VS_ROAS_NOTE` 把这件事写在页面上而不只是注释里。
+- **fixture 的经济学必须自洽。** `ACOS = CPC ÷ (CVR × AOV)` 是一个等式，四个量不能各自独立挑选。第一版把 CPC、CVR、AOV 分别拍脑袋定，得到 **3.8% 的全站 ACOS 和 2.1% 的 unit session percentage**——没有任何真实卖家账户长这样，规则等于在不可能的数据上演示。改成从 `intendedAcos` 反推 CPC，结果落到 ACOS 23.7% / CVR 6.3% / CPC $2.49 / USP 6.6%。集成测试给这些量加了合理区间断言，防止再次漂移。
+- **反例 fixture 必须真的触发被测分支。** "2 person tent" 是用来证明"已有 exact target 的词不被收割"的样例，但第一版它的 ACOS 是 27.12%，**高于收割上限**——就算删掉 exact-target 检查它也不会被收割，测试等于白跑。调高转化倍数让它落到 13.7%，并在测试里**先断言它满足其余全部收割条件**，再断言它没被收割。
+- **`organicShare` 在归因销售超过当日总销售时返回 null。** Amazon 把点击归到点击当天而非下单当天，所以单日归因额可能超过当日总额。夹到 0 会撒谎，报负数会暗示一种数据并不具备的精度。
+- **导航需要最长前缀匹配。** `/amazon/advertising` 同时匹配 `/amazon`（前缀）和自身（精确），原来的判断会让**两个链接同时带 `aria-current="page"`**。`activeNavHref()` 取最长匹配。
+- **Recommendation 卡片现在显示 category。** 一个 source 可以覆盖多类工作——Amazon 同时产出 listing 质量和广告两类任务——只看 source 徽章分不出是哪个引擎提出的。
+- 收割与否定**一律是待验证建议**：措辞用 "may"，否定建议明确提示"先读这个词：如果它描述的是本商品但用了 listing 里没有的说法，那是 listing 的问题，否定掉会把真实缺口藏起来"。
+- **点击数不足的零转化词单独列出**（"Looked at, no verdict"），而不是静默丢弃——否则运营会奇怪为什么一个明显在烧钱的词不在列表里。

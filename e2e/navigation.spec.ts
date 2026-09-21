@@ -14,6 +14,7 @@ const ROUTES = [
   { path: '/analytics', label: 'Analytics', implemented: true },
   { path: '/funnel', label: 'Funnel', implemented: true },
   { path: '/amazon', label: 'Amazon Listings', implemented: true },
+  { path: '/amazon/advertising', label: 'Amazon Advertising', implemented: true },
   { path: '/recommendations', label: 'Recommendations', implemented: true },
 ] as const;
 

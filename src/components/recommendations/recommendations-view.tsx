@@ -39,6 +39,7 @@ import {
 } from '@/services/recommendation-service';
 import {
   resolveStateRepository,
+  resolveAmazonAdsRepository,
   resolveTrafficRepository,
   type DemoDataMode,
 } from '@/services/demo-data-source';
@@ -117,6 +118,7 @@ function RecommendationCard({
     <article
       data-testid={`rec-${item.id}`}
       data-source={item.source}
+      data-category={item.category}
       data-priority={item.priority}
       data-status={item.status}
       className={`rounded-md border border-[var(--color-line)] px-4 py-3 ${done ? 'opacity-70' : ''}`}
@@ -132,6 +134,13 @@ function RecommendationCard({
           {done && <Badge tone="neutral">Done</Badge>}
         </div>
       </div>
+
+      {/* One source can cover several kinds of work — Amazon produces both
+          listing-quality and advertising tasks — so the category says which
+          engine raised this, not just which module. */}
+      <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+        {item.category}
+      </p>
 
       <p className="mt-2 text-sm text-[var(--color-ink-muted)]">{item.reason}</p>
       <p className="mt-2 text-sm">
@@ -193,6 +202,7 @@ export function RecommendationsView({ mode }: { mode: DemoDataMode | null }) {
     () => ({
       state: resolveStateRepository(mode),
       traffic: resolveTrafficRepository(mode),
+      ads: resolveAmazonAdsRepository(mode),
     }),
     [mode],
   );
