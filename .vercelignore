@@ -1,0 +1,14 @@
+# Nothing here is needed to build or serve the app, and leaving it out keeps
+# test code and 9 MB of screenshots out of the deployed artifact.
+e2e/
+tests/
+tools/
+docs/
+playwright.config.ts
+playwright.screenshots.config.ts
+vitest.config.ts
+vitest.integration.config.ts
+test-results/
+playwright-report/
+tsconfig.tsbuildinfo
+CLAUDE.md

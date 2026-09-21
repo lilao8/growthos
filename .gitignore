@@ -16,5 +16,7 @@ blob-report/
 .env*
 !.env.example
 
+.vercel/
+
 .idea/
 .vscode/
