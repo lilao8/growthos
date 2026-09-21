@@ -4,7 +4,7 @@
 
 ![Dashboard](docs/screenshots/01-dashboard.png)
 
-> **这是一个作品集项目，不是生产系统。** 数据由固定 seed 生成，窗口结束日是常量而非今天。项目中没有任何一个数字代表真实业绩，SEO / GEO 分数是本项目自己写的规则，不是任何搜索引擎的排名算法。完整的能力边界见应用内的 About this project 页面（[截图](docs/screenshots/12-about-project.png)），以及本文的[已知限制与未来规划](#已知限制与未来规划)。
+> **这是一个作品集项目，不是生产系统。** 数据由固定 seed 生成，窗口结束日是常量而非今天。项目中没有任何一个数字代表真实业绩，SEO / GEO 分数是本项目自己写的规则，不是任何搜索引擎的排名算法。完整的能力边界见应用内的 About this project 页面（[截图](docs/screenshots/15-about-project.png)），以及本文的[已知限制与未来规划](#已知限制与未来规划)。
 
 ---
 
@@ -184,6 +184,10 @@ npm run perf
 
 ## 截图
 
+生产构建实测截图，共 17 张。用 `npm run screenshots` 重新生成——脚本会在每张截图前断言页面已进入 ready 状态，**一个坏掉的页面不会悄悄变成一张转圈的截图**。
+
+**独立站线**
+
 | | |
 |---|---|
 | [Dashboard](docs/screenshots/01-dashboard.png) | [Products](docs/screenshots/02-products.png) |
@@ -191,19 +195,33 @@ npm run perf
 | [SEO page detail](docs/screenshots/05-seo-page-detail.png) | [GEO overview](docs/screenshots/06-geo-overview.png) |
 | [GEO page detail](docs/screenshots/07-geo-page-detail.png) | [Content planner](docs/screenshots/08-content-planner.png) |
 | [Analytics](docs/screenshots/09-analytics.png) | [Funnel](docs/screenshots/10-funnel.png) |
-| [Recommendations](docs/screenshots/11-recommendations.png) | [About this project](docs/screenshots/12-about-project.png) |
-| [Dashboard @375px](docs/screenshots/13-dashboard-375px.png) | [Mobile navigation](docs/screenshots/14-mobile-navigation.png) |
+
+**亚马逊线**
+
+| | |
+|---|---|
+| [Amazon listings](docs/screenshots/11-amazon-listings.png) | [Listing detail（被压制的 ASIN，14 条检查）](docs/screenshots/12-amazon-listing-detail.png) |
+| [Amazon advertising](docs/screenshots/13-amazon-advertising.png) | |
+
+**收口与说明**
+
+| | |
+|---|---|
+| [Recommendations](docs/screenshots/14-recommendations.png) | [About this project](docs/screenshots/15-about-project.png) |
+| [Dashboard @375px](docs/screenshots/16-dashboard-375px.png) | [Mobile navigation](docs/screenshots/17-mobile-navigation.png) |
 
 ## 演示路径与讲解提纲
 
-约 5 分钟。应用内 About this project 页面有同一份路径。
+约 7 分钟。应用内 About this project 页面有同一份路径。
 
 1. **Dashboard（40s）**——先看口径表，不是先看数字。讲点：每个比率只有一个定义，所有模块共用。
 2. **Products → 一个 SKU（60s）**——改标题或 meta，保存，刷新，编辑还在。讲点：写入失败会保留输入，只有成功才显示成功；这次编辑让对应页面的已有审计变成 stale。
 3. **SEO Audit → 重新审计（50s）**——走一条失败的检查项。讲点：给的是理由和证据，不是分数；Unknown 不计入分母。
 4. **GEO Audit（40s）**——讲 readiness 三档。**主动说明**：这测的是页面结构，不是真实 AI 排名，全项目不调用 AI API。
 5. **Analytics → Funnel（60s）**——渠道表的 CAC 与 ROAS，然后漏斗。讲点：自然渠道 CAC 是 $0.00 因为没给它分摊成本，这是算术不是结论；最大流失点不等于最大问题（商品页→加购在任何店铺都会丢掉大部分人）。
-6. **Recommendations（70s）**——整个项目在这里收口。讲点：稳定 ID、只存"完成"决定、草稿商品的问题会被降权而不是隐藏、影响/工作量是估计不是收益承诺。标记一条完成，刷新，它还在。
+6. **Amazon（60s）**——跑 listing 审计，打开被压制的那个 ASIN。讲点：**被压制的 listing 不像草稿那样降权**——草稿还没发布，被压制的是曾经在卖、现在正在丢单；而"主图不合规"排在"listing 被压制"之前不是 bug，**换主图正是解除压制的手段**，可执行的根因排在症状之前。
+7. **Amazon Ads（60s）**——搜索词表的两列：顾客搜的词 vs 我们投的词。讲点：**CVR 的分母是点击，不是会话**，和独立站不可同列；**ACOS 不换算成 ROAS 并排**，归因窗口不同。看一条收割候选和一条否定候选，说明两者都是待验证建议，项目不会自己去改任何出价。
+8. **Recommendations（70s）**——整个项目在这里收口，两条线的发现汇到同一份清单。讲点：稳定 ID、只存"完成"决定、草稿商品的问题会被降权而不是隐藏、影响/工作量是估计不是收益承诺。标记一条完成，刷新，它还在。
 
 **面试可以主动展开的几个点：**
 
@@ -211,7 +229,10 @@ npm run perf
 - 为什么 `assertCents` 值得存在：它在 Dispatch 8 抓到了一个真实缺陷（CAC/AOV 是除法结果却调了要求整数分的格式化函数），把一个会静默输出错误金额的 bug 变成了硬错误。
 - 为什么漏斗建议的触发条件是"低于阈值 **或** 是最大流失"：两者回答不同问题。
 - 为什么图表不用图表库：每张图都必须配完整数据表和文本摘要，图表只是摘要的可视化。
-- 三次靠肉眼而非测试发现的缺陷：关键词规则的假失败、375px 下 452px 的横向溢出（`sr-only` 绝对定位逃出了 `overflow-x` 裁剪）、草稿商品的问题排到了任务清单第一位。
+- **两条线为什么不能相加**：Amazon 会话和独立站会话是不同的计数单位；ACOS 和 ROAS 是倒数但归因窗口不同。项目用测试保证这件事——跑完 Amazon 审计后，Dashboard 的每个指标逐字节不变。
+- **后台搜索词按字节而非字符校验**：Amazon 的 250 上限是字节，中文字 3 字节、emoji 4 字节。按字符校验会放行一个被静默截断的值，用户看到"保存成功"而内容丢了一半。
+- 靠肉眼而非测试发现的缺陷：关键词规则的假失败、375px 下 452px 的横向溢出（`sr-only` 绝对定位逃出了 `overflow-x` 裁剪）、草稿商品的问题排到了任务清单第一位。
+- **fixture 自己骗过自己的两次**：广告数据第一版 ACOS 只有 3.8%，真实账户不可能——规则等于在不可能的数据上演示；"2 person tent" 本该证明"已有 exact target 的词不被收割"，但它的 ACOS 本来就超标，删掉那条检查测试照样过。两次都是改数据而不是改断言。
 
 ## 已知限制与未来规划
 
