@@ -2,6 +2,10 @@
 
 一个面向 DTC 独立站运营的 SEO / GEO / Content / Analytics / Funnel / Recommendations 决策工作台。用虚构的北美户外品牌 **NorthTrail Outdoor** 的可复现演示数据驱动，所有页面明确标记 Demo data。
 
+**▶ 在线演示：<https://growthos-michaell1.vercel.app>**
+
+无需登录，直接可用。数据由固定 seed 生成，线上与本地逐位一致。编辑与决策保存在你自己浏览器的本地存储里，不会影响其他访问者；应用内提供 demo reset。建议从 [Dashboard](https://growthos-michaell1.vercel.app/dashboard) 进入，按下文[演示路径](#演示路径与讲解提纲)浏览。
+
 ![Dashboard](docs/screenshots/01-dashboard.png)
 
 > **这是一个作品集项目，不是生产系统。** 数据由固定 seed 生成，窗口结束日是常量而非今天。项目中没有任何一个数字代表真实业绩，SEO / GEO 分数是本项目自己写的规则，不是任何搜索引擎的排名算法。完整的能力边界见应用内的 About this project 页面（[截图](docs/screenshots/15-about-project.png)），以及本文的[已知限制与未来规划](#已知限制与未来规划)。
