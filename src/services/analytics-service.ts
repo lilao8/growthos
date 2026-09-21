@@ -1,4 +1,10 @@
-import { buildWindow, DEMO_AS_OF, type DateWindow } from '@/domain/demo-window';
+import {
+  buildWindow,
+  DEMO_AS_OF,
+  DEMO_RANGE_DAYS,
+  type DateWindow,
+  type DemoRangeDays,
+} from '@/domain/demo-window';
 import {
   analyticsTotals,
   channelRows,
@@ -27,8 +33,10 @@ import type { DemoStateRepository } from '@/repositories/types';
  * Changing the range changes one value, not six.
  */
 
-export const ANALYTICS_RANGES = [7, 30, 90] as const;
-export type AnalyticsRange = (typeof ANALYTICS_RANGES)[number];
+// Derived, not restated: DEMO_RANGE_DAYS is the project's answer to which
+// windows this demo can show, and the selector offers exactly those.
+export const ANALYTICS_RANGES = DEMO_RANGE_DAYS;
+export type AnalyticsRange = DemoRangeDays;
 export const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = 90;
 
 export function parseAnalyticsRange(value: string | null): AnalyticsRange {

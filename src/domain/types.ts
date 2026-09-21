@@ -519,21 +519,17 @@ export interface ListingAudit extends ListingAuditResult {
  * Advertising API or SP-API, and never crawls.
  */
 
-export const AD_CAMPAIGN_TYPES = ['SP', 'SB', 'SD'] as const;
-export type AdCampaignType = (typeof AD_CAMPAIGN_TYPES)[number];
+export type AdCampaignType = 'SP' | 'SB' | 'SD';
 
-export const AD_TARGETING_TYPES = ['auto', 'manual'] as const;
-export type AdTargetingType = (typeof AD_TARGETING_TYPES)[number];
+export type AdTargetingType = 'auto' | 'manual';
 
 /**
  * `auto` is not a match type a seller chooses — it is what Amazon reports for
  * targets it picked itself. Kept in the same union because the report does.
  */
-export const AD_MATCH_TYPES = ['broad', 'phrase', 'exact', 'auto'] as const;
-export type AdMatchType = (typeof AD_MATCH_TYPES)[number];
+export type AdMatchType = 'broad' | 'phrase' | 'exact' | 'auto';
 
-export const AD_CAMPAIGN_STATUSES = ['enabled', 'paused'] as const;
-export type AdCampaignStatus = (typeof AD_CAMPAIGN_STATUSES)[number];
+export type AdCampaignStatus = 'enabled' | 'paused';
 
 export interface AdCampaign {
   id: string;

@@ -11,7 +11,7 @@ import type { ContentIdea } from '@/domain/types';
  * in real use — they are not audit scores and not search volume.
  */
 
-export const DEMO_CONTENT_IDEAS: readonly ContentIdea[] = [
+const DEMO_CONTENT_IDEAS: readonly ContentIdea[] = [
   {
     id: 'idea_best-2-person-backpacking-tents',
     topic: 'Best two-person backpacking tents under $400',

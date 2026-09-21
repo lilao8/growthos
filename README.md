@@ -264,8 +264,36 @@ npm run perf
 
 ## 开发任务索引
 
-项目按 Dispatch 0–9 逐阶段构建，每阶段的实测报告在 [`docs/reports/`](docs/reports/)。
+项目按 Dispatch 逐阶段构建，每阶段都有**实测报告**（命令、真实数量、验收证据、已知问题），全部在 [`docs/reports/`](docs/reports/)。
 
 - [长期开发规则](CLAUDE.md) · [原始总 Prompt](docs/MASTER_PROMPT.md) · [架构与实施记录](docs/00-architecture.md)
-- [0 架构](docs/00-architecture.md) · [1 Dashboard](docs/01-dashboard.md) · [2 商品中心](docs/02-products.md) · [3 SEO Audit](docs/03-seo-audit.md) · [4 GEO Audit](docs/04-geo-audit.md)
-- [5 Content Planner](docs/05-content-planner.md) · [6 Analytics](docs/06-analytics.md) · [7 Conversion Funnel](docs/07-funnel.md) · [8 Recommendations](docs/08-recommendations.md) · [9 Portfolio Polish](docs/09-portfolio-polish.md)
+
+**独立站线（0–9）**
+
+| 阶段 | 范围 | 报告 |
+|---|---|---|
+| 0 | [项目架构](docs/00-architecture.md) | [报告](docs/reports/dispatch-00.md) |
+| 1 | [基础框架与 Dashboard](docs/01-dashboard.md) | [报告](docs/reports/dispatch-01.md) |
+| 2 | [商品中心](docs/02-products.md) | [报告](docs/reports/dispatch-02.md) |
+| 3 | [SEO Audit](docs/03-seo-audit.md) | [报告](docs/reports/dispatch-03.md) |
+| 4 | [GEO Audit](docs/04-geo-audit.md) | [报告](docs/reports/dispatch-04.md) |
+| 5 | [Content Planner](docs/05-content-planner.md) | [报告](docs/reports/dispatch-05.md) |
+| 6 | [Analytics](docs/06-analytics.md) | [报告](docs/reports/dispatch-06.md) |
+| 7 | [Conversion Funnel](docs/07-funnel.md) | [报告](docs/reports/dispatch-07.md) |
+| 8 | [统一 Recommendations](docs/08-recommendations.md) | [报告](docs/reports/dispatch-08.md) |
+| 9 | [Portfolio Polish](docs/09-portfolio-polish.md) | [报告](docs/reports/dispatch-09.md) |
+
+**亚马逊线（10–11）**
+
+| 阶段 | 范围 | 报告 |
+|---|---|---|
+| 10 | [Listing Quality](docs/10-amazon-listing.md) | [报告](docs/reports/dispatch-10.md) |
+| 11 | [Search Terms & Ad Efficiency](docs/11-amazon-advertising.md) | [报告](docs/reports/dispatch-11.md) |
+
+**收尾**
+
+| | 范围 | 报告 |
+|---|---|---|
+| 12 | 跨浏览器 E2E 与无障碍审计 | [报告](docs/reports/dispatch-12.md) |
+
+> 报告是**过程记录**，写的是当时实测到的数字。数据集在 Dispatch 6、8、11 调整过，所以早期报告里的某些数值与当前不同——这是刻意保留的，回改会把"当时确实测到这个数"变成事后修饰。当前数值以最新报告和应用本身为准。

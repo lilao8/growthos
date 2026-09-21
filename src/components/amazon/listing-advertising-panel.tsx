@@ -70,6 +70,7 @@ export function ListingAdvertisingPanel({
     }),
     [mode],
   );
+  const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<ListingAdvertisingState | null>(null);
 
   useEffect(() => {
@@ -80,7 +81,7 @@ export function ListingAdvertisingPanel({
     return () => {
       cancelled = true;
     };
-  }, [deps, listingId]);
+  }, [deps, listingId, attempt]);
 
   if (state === null) {
     return (
@@ -103,6 +104,17 @@ export function ListingAdvertisingPanel({
           <p role="alert" className="text-sm" data-testid="listing-ads-error">
             {state.message} The listing audit above is unaffected.
           </p>
+          <button
+            type="button"
+            onClick={() => {
+              setState(null);
+              setAttempt((value) => value + 1);
+            }}
+            data-testid="listing-ads-retry"
+            className="mt-3 rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          >
+            Retry
+          </button>
         </CardBody>
       </Card>
     );

@@ -29,7 +29,7 @@ const bulletList = z.preprocess((value) => {
   message: `Amazon shows at most ${DEFAULT_AMAZON_CONFIG.bulletsExpected} bullets`,
 }));
 
-export const listingEditSchema = z.object({
+const listingEditSchema = z.object({
   title: z
     .string()
     .trim()

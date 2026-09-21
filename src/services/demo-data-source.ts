@@ -32,7 +32,7 @@ import {
  * to it.
  */
 
-export const DEMO_DATA_MODES = [
+const DEMO_DATA_MODES = [
   'empty',
   'error',
   'slow',

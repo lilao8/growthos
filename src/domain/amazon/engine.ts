@@ -94,7 +94,7 @@ export function runListingAudit({
 // Reading stored listing audits back
 // ---------------------------------------------------------------------------
 
-export function findStoredListingAudit(
+function findStoredListingAudit(
   results: readonly ListingAuditResult[],
   listingId: string,
 ): ListingAuditResult | null {

@@ -213,12 +213,12 @@ export function AboutView() {
         />
         <CardBody className="px-0 py-0">
           <TableWrapper>
-            <Table caption="Each module, the question it answers and the dispatch that built it">
+            <Table caption="Each module, the sales line it reports on, and the question it answers">
               <THead>
                 <TR>
                   <TH>Module</TH>
+                  <TH>Reports on</TH>
                   <TH>The question it answers</TH>
-                  <TH>Built in</TH>
                 </TR>
               </THead>
               <TBody>
@@ -233,8 +233,8 @@ export function AboutView() {
                         {item.label}
                       </Link>
                     </TH>
+                    <TD>{item.channel}</TD>
                     <TD>{item.question}</TD>
-                    <TD>{item.dispatch}</TD>
                   </TR>
                 ))}
               </TBody>

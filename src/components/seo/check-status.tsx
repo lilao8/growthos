@@ -44,7 +44,3 @@ export function SeverityText({
   }
   return <span className="capitalize">{severity}</span>;
 }
-
-export function statusLabel(status: CheckStatus): string {
-  return STATUS_LABEL[status];
-}

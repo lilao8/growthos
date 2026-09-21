@@ -13,7 +13,7 @@ import type {
  * cannot claim to be current after the page it graded has changed underneath it.
  */
 
-export function findStoredAudit(
+function findStoredAudit(
   results: readonly StoredAuditResult[],
   pageId: string,
   kind: AuditKind,
@@ -24,7 +24,7 @@ export function findStoredAudit(
   );
 }
 
-export function withStaleness(
+function withStaleness(
   stored: StoredAuditResult,
   snapshot: PageSnapshot,
   primaryKeyword: string,

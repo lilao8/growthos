@@ -6,19 +6,19 @@ import { expect, test } from '@playwright/test';
  */
 
 const ROUTES = [
-  { path: '/dashboard', label: 'Dashboard', implemented: true },
-  { path: '/products', label: 'Products', implemented: true },
-  { path: '/seo', label: 'SEO Audit', implemented: true },
-  { path: '/geo', label: 'GEO Audit', implemented: true },
-  { path: '/content', label: 'Content', implemented: true },
-  { path: '/analytics', label: 'Analytics', implemented: true },
-  { path: '/funnel', label: 'Funnel', implemented: true },
-  { path: '/amazon', label: 'Amazon Listings', implemented: true },
-  { path: '/amazon/advertising', label: 'Amazon Advertising', implemented: true },
-  { path: '/recommendations', label: 'Recommendations', implemented: true },
+  { path: '/dashboard', label: 'Dashboard' },
+  { path: '/products', label: 'Products' },
+  { path: '/seo', label: 'SEO Audit' },
+  { path: '/geo', label: 'GEO Audit' },
+  { path: '/content', label: 'Content' },
+  { path: '/analytics', label: 'Analytics' },
+  { path: '/funnel', label: 'Funnel' },
+  { path: '/amazon', label: 'Amazon Listings' },
+  { path: '/amazon/advertising', label: 'Amazon Advertising' },
+  { path: '/recommendations', label: 'Recommendations' },
 ] as const;
 
-test('every route is reachable and pending modules say so', async ({ page }) => {
+test('every route is reachable and renders its own heading', async ({ page }) => {
   for (const route of ROUTES) {
     const response = await page.goto(route.path);
     expect(response?.status(), `${route.path} should return 200`).toBe(200);
@@ -26,11 +26,6 @@ test('every route is reachable and pending modules say so', async ({ page }) => 
       page.getByRole('heading', { name: route.label, level: 1 }),
     ).toBeVisible();
 
-    if (route.implemented) {
-      await expect(page.getByTestId('not-implemented')).toHaveCount(0);
-    } else {
-      await expect(page.getByTestId('not-implemented')).toBeVisible();
-    }
   }
 });
 

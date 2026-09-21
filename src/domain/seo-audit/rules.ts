@@ -59,7 +59,7 @@ function normalizeText(value: string): string {
 }
 
 /** Last path segment of the page URL, which is the slug an operator controls. */
-export function slugFromUrl(url: string): string | null {
+function slugFromUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
     const segments = parsed.pathname.split('/').filter((part) => part !== '');

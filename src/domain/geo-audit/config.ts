@@ -172,7 +172,7 @@ export const GEO_RULE_META: Record<GeoRuleId, GeoRuleMeta> = {
  * A readable band for the score. This describes how ready the *content* is,
  * not how likely an AI system is to cite it — nothing here can measure that.
  */
-export const READINESS_BANDS = [
+const READINESS_BANDS = [
   { min: 80, label: 'Strong', note: 'Structured, factual and attributable.' },
   { min: 55, label: 'Moderate', note: 'Usable, with clear gaps to close.' },
   { min: 30, label: 'Weak', note: 'Little that a machine could lift and attribute.' },

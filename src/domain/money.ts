@@ -5,10 +5,10 @@ import type { Cents } from './types';
  * drifts. Formatting to a currency string happens only at the display edge.
  */
 
-export const DEMO_CURRENCY = 'USD';
+const DEMO_CURRENCY = 'USD';
 export const DEMO_LOCALE = 'en-US';
 
-export function isCents(value: number): boolean {
+function isCents(value: number): boolean {
   return Number.isSafeInteger(value);
 }
 

@@ -25,7 +25,7 @@ function fnv1a(input: string): string {
  * Only the fields an audit actually reads take part, so an unrelated change
  * (a new capture date, for instance) does not invalidate a still-valid result.
  */
-export function snapshotFingerprint(snapshot: PageSnapshot): string {
+function snapshotFingerprint(snapshot: PageSnapshot): string {
   const material = JSON.stringify([
     snapshot.url,
     snapshot.metaTitle,

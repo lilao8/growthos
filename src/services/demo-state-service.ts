@@ -20,7 +20,7 @@ export interface DemoStatusView {
   loadError: string | null;
 }
 
-export function createDefaultStateRepository(): DemoStateRepository {
+function createDefaultStateRepository(): DemoStateRepository {
   return createMemoryStateRepository(buildDemoSeedState());
 }
 

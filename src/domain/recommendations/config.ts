@@ -1,3 +1,4 @@
+import { PRIORITIES } from '../types';
 import type {
   Priority,
   RecommendationQuadrant,
@@ -59,7 +60,14 @@ export function quadrantFor(impact: number, effort: number): RecommendationQuadr
   return 'Defer';
 }
 
-export const PRIORITY_ORDER: Priority[] = ['Critical', 'High', 'Medium', 'Low'];
+/**
+ * Sort order for priorities.
+ *
+ * Derived from PRIORITIES rather than restated: two literal arrays with the
+ * same contents drift the moment someone adds a level to one of them, and the
+ * failure would be a silently wrong sort rather than a type error.
+ */
+export const PRIORITY_ORDER: readonly Priority[] = PRIORITIES;
 
 export const SOURCE_LABELS: Record<RecommendationSource, string> = {
   seo: 'SEO',

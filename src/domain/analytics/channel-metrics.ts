@@ -123,7 +123,7 @@ interface WindowedData {
 }
 
 /** Every filter in the module goes through here, so one window governs all. */
-export function applyWindow(input: AnalyticsInput): WindowedData {
+function applyWindow(input: AnalyticsInput): WindowedData {
   const sessions = input.sessions.filter((session) =>
     isWithinWindow(session.date, input.window),
   );

@@ -12,9 +12,9 @@ import { cloneState, decodeState, encodeState } from './serialization';
  *   caller renders seed data rather than an empty screen.
  */
 
-export const DEFAULT_STORAGE_NAMESPACE = 'growthos.demo';
+const DEFAULT_STORAGE_NAMESPACE = 'growthos.demo';
 
-export function resolveNamespace(): string {
+function resolveNamespace(): string {
   const configured = process.env.NEXT_PUBLIC_GROWTHOS_STORAGE_NAMESPACE;
   return configured && configured.length > 0
     ? configured
@@ -32,7 +32,7 @@ export interface StorageLike {
   removeItem(key: string): void;
 }
 
-export function getBrowserStorage(): StorageLike | null {
+function getBrowserStorage(): StorageLike | null {
   if (typeof globalThis.localStorage === 'undefined') return null;
   try {
     return globalThis.localStorage;

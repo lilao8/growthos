@@ -26,11 +26,11 @@ import { isIsoDate } from './demo-window';
  * loudly, not spread through the domain as half-typed objects.
  */
 
-export const isoDateSchema = z
+const isoDateSchema = z
   .string()
   .refine(isIsoDate, { message: 'Expected a valid YYYY-MM-DD UTC date' });
 
-export const centsSchema = z
+const centsSchema = z
   .number()
   .int({ message: 'Money must be an integer number of cents' })
   .nonnegative();
@@ -55,13 +55,13 @@ export const productSchema = z.object({
   productDescription: z.string(),
 });
 
-export const snapshotImageSchema = z.object({
+const snapshotImageSchema = z.object({
   src: z.string().min(1),
   alt: z.string().nullable(),
   decorative: z.boolean(),
 });
 
-export const snapshotHeadingSchema = z.object({
+const snapshotHeadingSchema = z.object({
   level: z.union([
     z.literal(1),
     z.literal(2),
@@ -153,7 +153,7 @@ export type ParsedSessionFact = z.infer<typeof sessionFactSchema>;
 // Audit results (Dispatch 3 / 4)
 // ---------------------------------------------------------------------------
 
-export const auditCheckSchema = z.object({
+const auditCheckSchema = z.object({
   ruleId: z.string().min(1),
   status: z.enum(CHECK_STATUSES),
   severity: z.enum(SEVERITIES),

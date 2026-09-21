@@ -20,7 +20,7 @@ const META_TITLE_HARD_MAX = 120;
 const META_DESCRIPTION_HARD_MAX = 320;
 const KEYWORD_HARD_MAX = 80;
 
-export const productSeoEditSchema = z.object({
+const productSeoEditSchema = z.object({
   primaryKeyword: z
     .string()
     .trim()

@@ -7,7 +7,13 @@ import type { IsoDate } from './types';
  */
 export const DEMO_AS_OF: IsoDate = '2026-08-31';
 
-/** Selectable ranges. Each is inclusive of DEMO_AS_OF. */
+/**
+ * The windows this demo can show. Each is inclusive of DEMO_AS_OF.
+ *
+ * The window module owns this list because it owns what a window means; the
+ * Analytics range selector derives from it rather than restating the same
+ * three numbers, which would drift the moment one of them changed.
+ */
 export const DEMO_RANGE_DAYS = [7, 30, 90] as const;
 export type DemoRangeDays = (typeof DEMO_RANGE_DAYS)[number];
 
@@ -28,7 +34,7 @@ export function isIsoDate(value: string): boolean {
   return toIsoDate(new Date(parsed)) === value;
 }
 
-export function toIsoDate(date: Date): IsoDate {
+function toIsoDate(date: Date): IsoDate {
   const iso = date.toISOString();
   return iso.slice(0, 10);
 }

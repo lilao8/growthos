@@ -36,7 +36,7 @@ const keywordList = z.preprocess((value) => {
   return value;
 }, z.array(z.string().min(1)));
 
-export const contentIdeaFormSchema = z.object({
+const contentIdeaFormSchema = z.object({
   topic: z
     .string()
     .trim()

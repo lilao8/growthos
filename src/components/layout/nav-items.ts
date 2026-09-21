@@ -11,9 +11,12 @@ export interface NavItem {
   label: string;
   /** Short description shown on placeholder pages. */
   purpose: string;
-  /** false renders a "not implemented yet" page and a sidebar hint. */
-  implemented: boolean;
-  dispatch: string;
+  /**
+   * Which sales line the module reports on. The two share this catalogue and
+   * nothing else, so saying which is which is the single most useful thing to
+   * put next to a module name.
+   */
+  channel: 'Storefront' | 'Amazon' | 'Both';
   /** The operator's question this module answers, for cross-module signposting. */
   question: string;
 }
@@ -23,8 +26,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     href: '/dashboard',
     label: 'Dashboard',
     purpose: 'Headline traffic, revenue and conversion metrics for the demo window.',
-    implemented: true,
-    dispatch: 'Dispatch 1',
+    channel: 'Both',
     question:
       'Is the business healthy this window, and where should I look first?',
   },
@@ -33,8 +35,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Products',
     purpose:
       'Catalogue with search, filters and editable SEO metadata for each SKU.',
-    implemented: true,
-    dispatch: 'Dispatch 2',
+    channel: 'Both',
     question:
       'Which SKUs exist, and is each one\'s on-page metadata fit to publish?',
   },
@@ -43,8 +44,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'SEO Audit',
     purpose:
       'Rule-based page audit covering metadata, headings, canonical, links and indexability.',
-    implemented: true,
-    dispatch: 'Dispatch 3',
+    channel: 'Storefront',
     question:
       'Is this page technically fit for classic search?',
   },
@@ -53,8 +53,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'GEO Audit',
     purpose:
       'Internal heuristic for how readable a page is to generative search systems.',
-    implemented: true,
-    dispatch: 'Dispatch 4',
+    channel: 'Storefront',
     question:
       'Can a generative engine extract a trustworthy answer from this page?',
   },
@@ -63,8 +62,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Content',
     purpose:
       'Content plan driven by keyword, search intent, funnel stage and target product.',
-    implemented: true,
-    dispatch: 'Dispatch 5',
+    channel: 'Storefront',
     question:
       'What should we write next, and why that rather than something else?',
   },
@@ -73,8 +71,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Analytics',
     purpose:
       'Channel performance: sessions, users, revenue, orders, CAC and ROAS.',
-    implemented: true,
-    dispatch: 'Dispatch 6',
+    channel: 'Storefront',
     question:
       'Where does traffic come from, and what does each channel cost and return?',
   },
@@ -83,8 +80,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Funnel',
     purpose:
       'Session-level conversion funnel with stage drop-off and the largest loss point.',
-    implemented: true,
-    dispatch: 'Dispatch 7',
+    channel: 'Storefront',
     question:
       'Where in the journey are sessions lost?',
   },
@@ -93,8 +89,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Amazon',
     purpose:
       'Marketplace listing quality: title, bullets, images, backend terms, variations and buy box.',
-    implemented: true,
-    dispatch: 'Dispatch 10',
+    channel: 'Amazon',
     question:
       'Are our Amazon listings fit to sell, and which one is worst?',
   },
@@ -103,8 +98,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Amazon Ads',
     purpose:
       'Search term performance, campaign efficiency, and which terms to harvest or negate.',
-    implemented: true,
-    dispatch: 'Dispatch 11',
+    channel: 'Amazon',
     question:
       'Which search terms are worth bidding on, and which are burning money?',
   },
@@ -113,8 +107,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Recommendations',
     purpose:
       'Prioritised actions aggregated from every rule engine, with evidence.',
-    implemented: true,
-    dispatch: 'Dispatch 8',
+    channel: 'Both',
     question:
       'Given everything above, what should I do on Monday morning?',
   },
@@ -131,8 +124,7 @@ export const SECONDARY_NAV_ITEMS: readonly NavItem[] = [
     label: 'About this project',
     purpose:
       'Why the project exists, how the modules fit together, and what the model cannot do.',
-    implemented: true,
-    dispatch: 'Dispatch 9',
+    channel: 'Both',
     question: 'What am I looking at, and how far should I trust it?',
   },
 ];

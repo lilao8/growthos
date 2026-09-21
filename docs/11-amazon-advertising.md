@@ -1,6 +1,7 @@
-# Dispatch 11：Amazon Search Terms & Advertising Efficiency（方案，待确认）
+# Dispatch 11：Amazon Search Terms & Advertising Efficiency
 
-> 本文件是范围方案，不是执行授权。需在 Dispatch 10 完成并经用户确认后才开始。
+> **已实现并通过全部门禁。** 实测结果见 [dispatch-11.md](reports/dispatch-11.md)。
+> 下文是当初的范围方案，保留原样作为过程记录——实现与它的差异都写在报告里。
 
 ## 目标
 

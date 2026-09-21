@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   activeNavHref,
@@ -34,13 +36,16 @@ describe('navigation items', () => {
     ]);
   });
 
-  it('records which dispatch built each module', () => {
-    for (const item of NAV_ITEMS) {
-      expect(item.dispatch, item.href).toMatch(/^Dispatch \d+$/);
-    }
-    expect(findNavItem('/recommendations')?.dispatch).toBe('Dispatch 8');
-    expect(findNavItem('/amazon')?.dispatch).toBe('Dispatch 10');
-    expect(findNavItem('/amazon/advertising')?.dispatch).toBe('Dispatch 11');
+  it('says which sales line each module reports on', () => {
+    // Build-stage numbering used to sit here and was rendered on the About
+    // page. It meant nothing to a reader; which channel a module covers is
+    // the thing they actually need next to its name.
+    expect(findNavItem('/seo')?.channel).toBe('Storefront');
+    expect(findNavItem('/funnel')?.channel).toBe('Storefront');
+    expect(findNavItem('/amazon')?.channel).toBe('Amazon');
+    expect(findNavItem('/amazon/advertising')?.channel).toBe('Amazon');
+    expect(findNavItem('/dashboard')?.channel).toBe('Both');
+    expect(findNavItem('/recommendations')?.channel).toBe('Both');
   });
 
   it('marks only the most specific entry as current', () => {
@@ -69,8 +74,15 @@ describe('navigation items', () => {
     }
   });
 
-  it('marks every module as implemented now that the MVP is complete', () => {
-    expect(ALL.every((item) => item.implemented)).toBe(true);
+  it('every listed route has a page behind it', () => {
+    // Replaces an `implemented` flag that was true for every entry and could
+    // therefore never fail. This checks the thing the flag was standing in
+    // for: that the route resolves to a real file on disk.
+    for (const item of ALL) {
+      const segments = item.href.replace(/^\//, '').split('/');
+      const direct = path.join('src', 'app', ...segments, 'page.tsx');
+      expect(existsSync(direct), `${item.href} -> ${direct}`).toBe(true);
+    }
   });
 
   it('keeps About out of the analysis module list', () => {
