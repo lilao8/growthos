@@ -9,6 +9,7 @@ import {
   FUNNEL_STAGES,
   FULFILMENT_TYPES,
   FUNNEL_STAGES_CONTENT,
+  IGNORE_REASONS,
   INDEXABILITY_STATES,
   LISTING_STATUSES,
   PRODUCT_CATEGORIES,
@@ -214,6 +215,9 @@ export const recommendationStatusSchema = z.object({
   id: z.string().min(1),
   status: z.enum(RECOMMENDATION_STATUSES),
   updatedAt: z.string().min(1),
+  reason: z.enum(IGNORE_REASONS).nullable(),
+  note: z.string(),
+  evidenceAtDecision: z.string().nullable(),
 });
 
 // ---------------------------------------------------------------------------

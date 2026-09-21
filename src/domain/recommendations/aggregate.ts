@@ -95,6 +95,7 @@ function build(args: BuildArgs): Recommendation {
     link: args.link,
     quadrant: quadrantFor(impact, effort),
     active: true,
+    ignore: null,
   };
 }
 
@@ -712,16 +713,31 @@ export function mergeWithStatuses(
     // A rule firing twice for the same entity is one task, not two.
     if (seen.has(item.id)) continue;
     seen.add(item.id);
+    const record = statusById.get(item.id);
+    const status = record?.status ?? 'Open';
     active.push({
       ...item,
-      status: statusById.get(item.id)?.status ?? 'Open',
+      status,
       active: true,
+      ignore:
+        record !== undefined && status === 'Ignored' && record.reason !== null
+          ? {
+              reason: record.reason,
+              note: record.note,
+              decidedAt: record.updatedAt,
+              // The evidence is compared rather than trusted, the same way an
+              // audit's staleness is derived rather than stored.
+              needsReview: record.evidenceAtDecision !== item.evidence,
+            }
+          : null,
     });
   }
 
   const historical: Recommendation[] = [];
   for (const record of statuses) {
     if (seen.has(record.id)) continue;
+    // An ignored finding that stopped firing needs no record: the thing that
+    // was set aside is gone, so there is no standing decision to honour.
     if (record.status !== 'Done') continue;
     historical.push({
       id: record.id,
@@ -743,6 +759,7 @@ export function mergeWithStatuses(
       link: '/recommendations',
       quadrant: 'Low Priority',
       active: false,
+      ignore: null,
     });
   }
 

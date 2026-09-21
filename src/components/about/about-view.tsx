@@ -116,6 +116,10 @@ const LIMITATIONS = [
     body: 'A brand buying market share runs a deliberately high ACOS; one funding itself from cashflow runs a low one. This project picks a figure so the rules have something to compare against and says so on screen. Harvest and negation candidates are suggestions to test — nothing here changes a bid, a budget or a negative keyword list.',
   },
   {
+    heading: 'An ignored finding is set aside, not deleted',
+    body: 'Ignoring a finding needs a reason from a fixed list, because an ignore nobody can explain later has to be raised again — which defeats the point. Ignored findings stay in the list, counted and filterable, and the evidence at the time of the decision is kept: if that evidence changes, the ignore is flagged as worth another look. Nothing re-checks it otherwise, and the page says so.',
+  },
+  {
     heading: 'Accessibility is checked, not certified',
     body: 'Every route is scanned with axe-core against WCAG 2.1 A and AA on three browser engines, and the accessibility tree is asserted directly: one main landmark and one h1 per page, named navigation regions, captioned tables, charts that are never the only route to a number, and keyboard operation throughout. What has not happened is a person using this with VoiceOver or NVDA. Automated rules catch roughly a third of real barriers, so this project claims those specific properties hold — not that the experience is good.',
   },

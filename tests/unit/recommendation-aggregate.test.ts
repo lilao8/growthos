@@ -460,7 +460,14 @@ describe('merging with stored decisions', () => {
     if (target === undefined) throw new Error('expected a task');
 
     const merged = mergeWithStatuses(generated, [
-      { id: target.id, status: 'Done', updatedAt: '2026-08-31T00:00:00.000Z' },
+      {
+        id: target.id,
+        status: 'Done',
+        updatedAt: '2026-08-31T00:00:00.000Z',
+        reason: null,
+        note: '',
+        evidenceAtDecision: null,
+      },
     ]);
 
     expect(merged.active.find((item) => item.id === target.id)?.status).toBe(
@@ -477,7 +484,7 @@ describe('merging with stored decisions', () => {
   it('keeps a completed task as history once its finding disappears', () => {
     const merged = mergeWithStatuses(
       [],
-      [{ id: 'rec_seo_gone', status: 'Done', updatedAt: '2026-08-31' }],
+      [{ id: 'rec_seo_gone', status: 'Done', updatedAt: '2026-08-31', reason: null, note: '', evidenceAtDecision: null }],
     );
 
     expect(merged.active).toHaveLength(0);
@@ -489,7 +496,7 @@ describe('merging with stored decisions', () => {
   it('forgets an open decision whose finding disappeared, rather than inventing history', () => {
     const merged = mergeWithStatuses(
       [],
-      [{ id: 'rec_seo_gone', status: 'Open', updatedAt: '2026-08-31' }],
+      [{ id: 'rec_seo_gone', status: 'Open', updatedAt: '2026-08-31', reason: null, note: '', evidenceAtDecision: null }],
     );
     expect(merged.historical).toHaveLength(0);
   });
@@ -505,7 +512,14 @@ describe('merging with stored decisions', () => {
       ]),
     ]);
     const merged = mergeWithStatuses(regenerated, [
-      { id: target.id, status: 'Done', updatedAt: '2026-08-31' },
+      {
+        id: target.id,
+        status: 'Done',
+        updatedAt: '2026-08-31',
+        reason: null,
+        note: '',
+        evidenceAtDecision: null,
+      },
     ]);
 
     const item = merged.active.find((candidate) => candidate.id === target.id);
@@ -523,6 +537,7 @@ describe('ordering and counting', () => {
       sourceEntityId: 'e',
       title: 't',
       category: 'c',
+      ignore: null,
       priority: 'Medium',
       impact: 3,
       effort: 3,

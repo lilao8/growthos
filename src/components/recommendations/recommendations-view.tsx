@@ -26,6 +26,9 @@ import {
   RECOMMENDATION_SOURCES,
   RECOMMENDATION_STATUSES,
   type Priority,
+  IGNORE_REASON_LABELS,
+  IGNORE_REASONS,
+  type IgnoreReason,
   type Recommendation,
   type RecommendationQuadrant,
   type RecommendationSource,
@@ -107,13 +110,21 @@ function FilterGroup<T extends string>({
 function RecommendationCard({
   item,
   onToggleDone,
+  onIgnore,
+  onReopen,
   busy,
 }: {
   item: Recommendation;
   onToggleDone: (item: Recommendation) => void;
+  onIgnore: (item: Recommendation, reason: IgnoreReason, note: string) => void;
+  onReopen: (item: Recommendation) => void;
   busy: boolean;
 }) {
   const done = item.status === 'Done';
+  const ignored = item.status === 'Ignored';
+  const [picking, setPicking] = useState(false);
+  const [reason, setReason] = useState<IgnoreReason>('not-applicable');
+  const [note, setNote] = useState('');
   return (
     <article
       data-testid={`rec-${item.id}`}
@@ -121,7 +132,7 @@ function RecommendationCard({
       data-category={item.category}
       data-priority={item.priority}
       data-status={item.status}
-      className={`rounded-md border border-[var(--color-line)] px-4 py-3 ${done ? 'opacity-70' : ''}`}
+      className={`rounded-md border border-[var(--color-line)] px-4 py-3 ${done || ignored ? 'opacity-70' : ''}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h3 className="text-sm font-semibold">{item.title}</h3>
@@ -132,6 +143,10 @@ function RecommendationCard({
           <Badge tone="muted">{SOURCE_LABELS[item.source]}</Badge>
           <Badge tone="muted">{item.quadrant}</Badge>
           {done && <Badge tone="neutral">Done</Badge>}
+          {ignored && <Badge tone="neutral">Ignored</Badge>}
+          {item.ignore?.needsReview === true && (
+            <Badge tone="accent">Worth another look</Badge>
+          )}
         </div>
       </div>
 
@@ -154,6 +169,32 @@ function RecommendationCard({
         >
           Evidence: {item.evidence}
         </p>
+      )}
+
+      {item.ignore !== null && (
+        <div
+          className="mt-3 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm"
+          data-testid={`rec-ignore-${item.id}`}
+        >
+          <p>
+            <span className="font-medium">Ignored: </span>
+            {IGNORE_REASON_LABELS[item.ignore.reason]}
+            {item.ignore.note !== '' && ` — ${item.ignore.note}`}
+          </p>
+          <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+            Decided {item.ignore.decidedAt.slice(0, 10)}. Nothing re-checks this
+            automatically.
+          </p>
+          {item.ignore.needsReview && (
+            <p
+              className="mt-1 text-xs"
+              data-testid={`rec-ignore-review-${item.id}`}
+            >
+              The evidence has changed since that decision, so the reason may no
+              longer hold.
+            </p>
+          )}
+        </div>
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[var(--color-ink-muted)]">
@@ -183,16 +224,109 @@ function RecommendationCard({
             Open the product
           </Link>
         )}
-        <button
-          type="button"
-          onClick={() => onToggleDone(item)}
-          disabled={busy}
-          data-testid={`rec-toggle-${item.id}`}
-          className="rounded-md border border-[var(--color-line-strong)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
-        >
-          {done ? 'Mark as not done' : 'Mark as done'}
-        </button>
+        {!ignored && (
+          <button
+            type="button"
+            onClick={() => onToggleDone(item)}
+            disabled={busy}
+            data-testid={`rec-toggle-${item.id}`}
+            className="rounded-md border border-[var(--color-line-strong)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
+          >
+            {done ? 'Mark as not done' : 'Mark as done'}
+          </button>
+        )}
+
+        {ignored ? (
+          <button
+            type="button"
+            onClick={() => onReopen(item)}
+            disabled={busy}
+            data-testid={`rec-reopen-${item.id}`}
+            className="rounded-md border border-[var(--color-line-strong)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
+          >
+            Put back on the list
+          </button>
+        ) : (
+          !done && (
+            <button
+              type="button"
+              onClick={() => setPicking((open) => !open)}
+              aria-expanded={picking}
+              disabled={busy}
+              data-testid={`rec-ignore-start-${item.id}`}
+              className="rounded-md border border-[var(--color-line-strong)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
+            >
+              Ignore
+            </button>
+          )
+        )}
       </div>
+
+      {picking && !ignored && (
+        <div
+          className="mt-3 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-muted)] px-3 py-3"
+          data-testid={`rec-ignore-form-${item.id}`}
+        >
+          {/* A reason is required, not optional: an ignore nobody can explain
+              later has to be re-raised, which defeats the point of it. */}
+          <label
+            htmlFor={`ignore-reason-${item.id}`}
+            className="block text-sm font-medium"
+          >
+            Why is this being set aside?
+          </label>
+          <select
+            id={`ignore-reason-${item.id}`}
+            value={reason}
+            onChange={(event) => setReason(event.target.value as IgnoreReason)}
+            data-testid={`rec-ignore-reason-${item.id}`}
+            className="mt-1 w-full rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          >
+            {IGNORE_REASONS.map((value) => (
+              <option key={value} value={value}>
+                {IGNORE_REASON_LABELS[value]}
+              </option>
+            ))}
+          </select>
+
+          <label
+            htmlFor={`ignore-note-${item.id}`}
+            className="mt-3 block text-sm font-medium"
+          >
+            Anything worth adding? (optional)
+          </label>
+          <input
+            id={`ignore-note-${item.id}`}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            data-testid={`rec-ignore-note-${item.id}`}
+            className="mt-1 w-full rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          />
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onIgnore(item, reason, note);
+                setPicking(false);
+              }}
+              disabled={busy}
+              data-testid={`rec-ignore-confirm-${item.id}`}
+              className="rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
+            >
+              Ignore this finding
+            </button>
+            <button
+              type="button"
+              onClick={() => setPicking(false)}
+              data-testid={`rec-ignore-cancel-${item.id}`}
+              className="rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </article>
   );
 }
@@ -254,6 +388,43 @@ export function RecommendationsView({ mode }: { mode: DemoDataMode | null }) {
     [deps],
   );
 
+  const handleIgnore = useCallback(
+    async (item: Recommendation, reason: IgnoreReason, note: string) => {
+      setBusyId(item.id);
+      setMessage('');
+      const result = await setRecommendationStatus(deps, item.id, 'Ignored', {
+        reason,
+        note,
+      });
+      setBusyId(null);
+      if (result.status === 'error') {
+        setMessage(`${result.message} Nothing was changed.`);
+        return;
+      }
+      setMessage(
+        'Set aside with a reason. It stays on the list under Ignored, and is flagged if its evidence changes.',
+      );
+      setAttempt((value) => value + 1);
+    },
+    [deps],
+  );
+
+  const handleReopen = useCallback(
+    async (item: Recommendation) => {
+      setBusyId(item.id);
+      setMessage('');
+      const result = await setRecommendationStatus(deps, item.id, 'Open');
+      setBusyId(null);
+      if (result.status === 'error') {
+        setMessage(`${result.message} Nothing was changed.`);
+        return;
+      }
+      setMessage('Back on the list.');
+      setAttempt((value) => value + 1);
+    },
+    [deps],
+  );
+
   const clearFilters = (): void => {
     setPriorities([]);
     setSources([]);
@@ -279,7 +450,7 @@ export function RecommendationsView({ mode }: { mode: DemoDataMode | null }) {
 
   return (
     <div className="flex flex-col gap-6" data-testid="recommendations-ready">
-      <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
           label="Open tasks"
           value={formatInteger(view.tally.open)}
@@ -297,6 +468,16 @@ export function RecommendationsView({ mode }: { mode: DemoDataMode | null }) {
           value={formatInteger(view.tally.byQuadrant['Quick Win'])}
           definition={`Impact ${QUICK_WIN_IMPACT_MIN}+ with effort ${QUICK_WIN_EFFORT_MAX} or less. An estimate, not a promise.`}
           testId="rec-quick-wins"
+        />
+        <MetricCard
+          label="Ignored"
+          value={formatInteger(view.tally.ignored)}
+          definition={
+            view.tally.ignoredNeedingReview > 0
+              ? `Set aside with a reason. ${view.tally.ignoredNeedingReview} of them have changed since and are worth another look.`
+              : 'Set aside with a reason. Still listed, never silently dropped.'
+          }
+          testId="rec-ignored"
         />
         <MetricCard
           label="Done"
@@ -388,6 +569,10 @@ export function RecommendationsView({ mode }: { mode: DemoDataMode | null }) {
                 key={item.id}
                 item={item}
                 onToggleDone={(value) => void handleToggle(value)}
+                onIgnore={(value, reason, note) =>
+                  void handleIgnore(value, reason, note)
+                }
+                onReopen={(value) => void handleReopen(value)}
                 busy={busyId === item.id}
               />
             ))}

@@ -259,3 +259,152 @@ test('no page-level horizontal overflow at 375px', async ({ page }) => {
   );
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+// ---------------------------------------------------------------------------
+// Ignoring a finding
+// ---------------------------------------------------------------------------
+
+async function firstCardId(page: Page): Promise<string> {
+  const card = page.locator('[data-testid^="rec-"][data-source]').first();
+  await expect(card).toBeVisible();
+  return ((await card.getAttribute('data-testid')) ?? '').replace(/^rec-/, '');
+}
+
+test('ignoring a finding requires choosing a reason first', async ({ page }) => {
+  await page.goto('/recommendations');
+  const id = await firstCardId(page);
+
+  // There is no way to ignore without going through the reason picker: the
+  // button opens a form rather than acting immediately.
+  await page.getByTestId(`rec-ignore-start-${id}`).click();
+  await expect(page.getByTestId(`rec-ignore-form-${id}`)).toBeVisible();
+  await expect(page.getByTestId(`rec-ignore-reason-${id}`)).toBeVisible();
+  await expect(page.getByTestId(`rec-${id}`)).toHaveAttribute('data-status', 'Open');
+});
+
+test('cancelling the reason picker changes nothing', async ({ page }) => {
+  await page.goto('/recommendations');
+  const id = await firstCardId(page);
+
+  await page.getByTestId(`rec-ignore-start-${id}`).click();
+  await page.getByTestId(`rec-ignore-cancel-${id}`).click();
+  await expect(page.getByTestId(`rec-ignore-form-${id}`)).toHaveCount(0);
+  await expect(page.getByTestId(`rec-${id}`)).toHaveAttribute('data-status', 'Open');
+});
+
+test('an ignored finding stays listed, with its reason, across a reload', async ({
+  page,
+}) => {
+  await page.goto('/recommendations');
+  const id = await firstCardId(page);
+  const openBefore = Number(
+    (await page.getByTestId('rec-open-value').innerText()).replace(/,/g, ''),
+  );
+
+  await page.getByTestId(`rec-ignore-start-${id}`).click();
+  await page
+    .getByTestId(`rec-ignore-reason-${id}`)
+    .selectOption('rule-disputed');
+  await page.getByTestId(`rec-ignore-note-${id}`).fill('The rule misreads this page.');
+  await page.getByTestId(`rec-ignore-confirm-${id}`).click();
+
+  await expect(page.getByTestId('rec-message')).toContainText(/Set aside/i);
+  await expect(page.getByTestId('rec-ignored-value')).toHaveText('1');
+
+  await page.reload();
+  // Still on the list — ignoring narrows the view, it does not delete.
+  const card = page.getByTestId(`rec-${id}`);
+  await expect(card).toHaveAttribute('data-status', 'Ignored');
+  await expect(page.getByTestId(`rec-ignore-${id}`)).toContainText(
+    'The rule is wrong in this case',
+  );
+  await expect(page.getByTestId(`rec-ignore-${id}`)).toContainText(
+    'The rule misreads this page.',
+  );
+
+  const openAfter = Number(
+    (await page.getByTestId('rec-open-value').innerText()).replace(/,/g, ''),
+  );
+  expect(openAfter).toBe(openBefore - 1);
+});
+
+test('an ignored finding says nothing re-checks it automatically', async ({
+  page,
+}) => {
+  await page.goto('/recommendations');
+  const id = await firstCardId(page);
+
+  await page.getByTestId(`rec-ignore-start-${id}`).click();
+  await page.getByTestId(`rec-ignore-confirm-${id}`).click();
+  await expect(page.getByTestId(`rec-ignore-${id}`)).toContainText(
+    /Nothing re-checks this automatically/i,
+  );
+});
+
+test('an ignored finding can be put back on the list', async ({ page }) => {
+  await page.goto('/recommendations');
+  const id = await firstCardId(page);
+
+  await page.getByTestId(`rec-ignore-start-${id}`).click();
+  await page.getByTestId(`rec-ignore-confirm-${id}`).click();
+  await expect(page.getByTestId('rec-ignored-value')).toHaveText('1');
+
+  await page.getByTestId(`rec-reopen-${id}`).click();
+  await expect(page.getByTestId('rec-message')).toContainText(/Back on the list/i);
+  await page.reload();
+  await expect(page.getByTestId(`rec-${id}`)).toHaveAttribute('data-status', 'Open');
+  await expect(page.getByTestId('rec-ignored-value')).toHaveText('0');
+});
+
+test('ignored findings can be filtered to', async ({ page }) => {
+  await page.goto('/recommendations');
+  const id = await firstCardId(page);
+
+  await page.getByTestId(`rec-ignore-start-${id}`).click();
+  await page.getByTestId(`rec-ignore-confirm-${id}`).click();
+
+  await page.getByTestId('rec-filter-status-ignored').click();
+  await expect(page.locator('[data-testid^="rec-"][data-source]')).toHaveCount(1);
+  await expect(page.getByTestId(`rec-${id}`)).toBeVisible();
+});
+
+test('the ignore flow is operable by keyboard alone', async ({ page }) => {
+  await page.goto('/recommendations');
+  const id = await firstCardId(page);
+
+  const start = page.getByTestId(`rec-ignore-start-${id}`);
+  await start.focus();
+  await expect(start).toHaveAttribute('aria-expanded', 'false');
+  await start.press('Enter');
+  await expect(start).toHaveAttribute('aria-expanded', 'true');
+
+  const select = page.getByTestId(`rec-ignore-reason-${id}`);
+  await select.focus();
+  await expect(select).toBeFocused();
+  await select.selectOption('wont-fix');
+
+  const confirm = page.getByTestId(`rec-ignore-confirm-${id}`);
+  await confirm.focus();
+  await confirm.press('Enter');
+  await expect(page.getByTestId(`rec-${id}`)).toHaveAttribute(
+    'data-status',
+    'Ignored',
+  );
+});
+
+test('a done finding offers no ignore button, and vice versa', async ({
+  page,
+}) => {
+  await page.goto('/recommendations');
+  const id = await firstCardId(page);
+
+  // Done and Ignored are alternatives, not a combination.
+  await page.getByTestId(`rec-toggle-${id}`).click();
+  await expect(page.getByTestId(`rec-${id}`)).toHaveAttribute('data-status', 'Done');
+  await expect(page.getByTestId(`rec-ignore-start-${id}`)).toHaveCount(0);
+
+  await page.getByTestId(`rec-toggle-${id}`).click();
+  await page.getByTestId(`rec-ignore-start-${id}`).click();
+  await page.getByTestId(`rec-ignore-confirm-${id}`).click();
+  await expect(page.getByTestId(`rec-toggle-${id}`)).toHaveCount(0);
+});

@@ -335,8 +335,35 @@ export type RecommendationSource = (typeof RECOMMENDATION_SOURCES)[number];
 export const PRIORITIES = ['Critical', 'High', 'Medium', 'Low'] as const;
 export type Priority = (typeof PRIORITIES)[number];
 
-export const RECOMMENDATION_STATUSES = ['Open', 'Done'] as const;
+export const RECOMMENDATION_STATUSES = ['Open', 'Done', 'Ignored'] as const;
 export type RecommendationStatus = (typeof RECOMMENDATION_STATUSES)[number];
+
+/**
+ * Why a finding was set aside.
+ *
+ * A reason is required rather than optional. An ignore with no reason is worse
+ * than no ignore at all: six months later nobody knows whether the finding was
+ * wrong, deliberate, or simply inconvenient, so the only safe move is to raise
+ * it again — which is exactly what ignoring was supposed to prevent.
+ *
+ * `rule-disputed` earns its place separately from the others. This project's
+ * whole stance is that its rules can be argued with, and a operator saying
+ * "the rule is wrong here" is feedback on the rule, not on the page.
+ */
+export const IGNORE_REASONS = [
+  'not-applicable',
+  'deliberate',
+  'rule-disputed',
+  'wont-fix',
+] as const;
+export type IgnoreReason = (typeof IGNORE_REASONS)[number];
+
+export const IGNORE_REASON_LABELS: Record<IgnoreReason, string> = {
+  'not-applicable': 'Does not apply to this page',
+  deliberate: 'The current state is deliberate',
+  'rule-disputed': 'The rule is wrong in this case',
+  'wont-fix': 'Acknowledged, not worth doing',
+};
 
 /** Impact vs effort, the shape an operator actually plans against. */
 export const RECOMMENDATION_QUADRANTS = [
@@ -359,6 +386,19 @@ export interface RecommendationStatusRecord {
   id: string;
   status: RecommendationStatus;
   updatedAt: string;
+  /** Set when the status is Ignored; null for a completion. */
+  reason: IgnoreReason | null;
+  /** Free text the operator added alongside the reason. Empty when none. */
+  note: string;
+  /**
+   * The finding's evidence when the decision was taken.
+   *
+   * Stored so an ignore can be flagged for review when the evidence changes:
+   * "the images here are decorative" stops being true the day someone adds a
+   * real one. The task itself is still never persisted — this is one string,
+   * compared on read, exactly as an audit's input fingerprint is.
+   */
+  evidenceAtDecision: string | null;
 }
 
 export interface Recommendation {
@@ -387,6 +427,20 @@ export interface Recommendation {
    * for it survives. Kept for history; never shown as something to do.
    */
   active: boolean;
+  /** Set only when the status is Ignored. */
+  ignore: IgnoreDecision | null;
+}
+
+export interface IgnoreDecision {
+  reason: IgnoreReason;
+  note: string;
+  decidedAt: string;
+  /**
+   * True when the evidence has changed since the decision was taken, so the
+   * reason may no longer hold. An ignore is a standing decision, and nothing
+   * re-checks it automatically — this is the one thing that can be checked.
+   */
+  needsReview: boolean;
 }
 
 // ---------------------------------------------------------------------------

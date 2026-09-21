@@ -56,16 +56,35 @@ export function filterRecommendations(
 }
 
 /**
- * Open before done — a finished task is a record, not work. Then priority, then
- * the Quick Win corner, then effort ascending so the cheapest of equals comes
- * first. The id breaks any remaining tie, which keeps the order stable across
- * re-runs.
+ * Open work first, then ignored findings, then completed ones.
+ *
+ * Ignored sits between the two on purpose: a completed task is finished, but
+ * an ignored one is a standing decision someone may want to revisit, so it
+ * stays closer to the work than to the archive. Then priority, the Quick Win
+ * corner, and effort ascending so the cheapest of equals comes first. The id
+ * breaks any remaining tie, keeping the order stable across re-runs.
  */
+const STATUS_ORDER: Record<RecommendationStatus, number> = {
+  Open: 0,
+  Ignored: 1,
+  Done: 2,
+};
+
 export function sortRecommendations(
   items: readonly Recommendation[],
 ): Recommendation[] {
   return [...items].sort((a, b) => {
-    if (a.status !== b.status) return a.status === 'Open' ? -1 : 1;
+    const byStatus = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+    if (byStatus !== 0) return byStatus;
+
+    // Within the ignored group, anything whose evidence has moved on since the
+    // decision comes first — that is the one worth a second look.
+    if (a.status === 'Ignored' && b.status === 'Ignored') {
+      const review = (item: Recommendation): number =>
+        item.ignore?.needsReview === true ? 0 : 1;
+      const byReview = review(a) - review(b);
+      if (byReview !== 0) return byReview;
+    }
 
     const byPriority =
       PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority);
@@ -86,6 +105,9 @@ export interface RecommendationTally {
   total: number;
   open: number;
   done: number;
+  ignored: number;
+  /** Ignored findings whose evidence has changed since the decision. */
+  ignoredNeedingReview: number;
   byPriority: Record<Priority, number>;
   byQuadrant: Record<RecommendationQuadrant, number>;
 }
@@ -108,12 +130,25 @@ export function tallyRecommendations(
 
   let open = 0;
   let done = 0;
+  let ignored = 0;
+  let ignoredNeedingReview = 0;
   for (const item of items) {
     byPriority[item.priority] += 1;
     byQuadrant[item.quadrant] += 1;
     if (item.status === 'Done') done += 1;
-    else open += 1;
+    else if (item.status === 'Ignored') {
+      ignored += 1;
+      if (item.ignore?.needsReview === true) ignoredNeedingReview += 1;
+    } else open += 1;
   }
 
-  return { total: items.length, open, done, byPriority, byQuadrant };
+  return {
+    total: items.length,
+    open,
+    done,
+    ignored,
+    ignoredNeedingReview,
+    byPriority,
+    byQuadrant,
+  };
 }

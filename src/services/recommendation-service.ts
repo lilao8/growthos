@@ -31,9 +31,12 @@ import { DEMO_WINDOW, type DateWindow } from '@/domain/demo-window';
 import { computeProductMetrics } from '@/domain/product-metrics';
 import { trafficBands, type TrafficBand } from '@/domain/recommendations/config';
 import {
+  IGNORE_REASONS,
   RECOMMENDATION_STATUSES,
+  type IgnoreReason,
   type Recommendation,
   type RecommendationStatus,
+  type RecommendationStatusRecord,
 } from '@/domain/types';
 import type { DemoState, DemoStateRepository } from '@/repositories/types';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
@@ -297,15 +300,53 @@ export async function loadRecommendations(
  * Writes only the decision. The task itself is never persisted, so it cannot
  * drift away from what the engines currently report.
  */
+export interface StatusChange {
+  /** Required when setting Ignored; rejected otherwise. */
+  reason?: IgnoreReason;
+  note?: string;
+}
+
+/**
+ * The finding's current evidence, so an ignore can be reviewed later.
+ *
+ * Read through the same load path the list uses, so what is stored is exactly
+ * what the operator was looking at when they decided.
+ */
+async function evidenceFor(
+  deps: RecommendationDeps,
+  id: string,
+): Promise<string | null> {
+  const view = await loadRecommendations(deps);
+  if (view.status === 'error') return null;
+  return view.view.allActive.find((item) => item.id === id)?.evidence ?? null;
+}
+
 export async function setRecommendationStatus(
   deps: RecommendationDeps,
   id: string,
   next: string,
+  change: StatusChange = {},
 ): Promise<SetStatusResult> {
   if (!(RECOMMENDATION_STATUSES as readonly string[]).includes(next)) {
     return { status: 'error', message: 'Unknown status.' };
   }
   const status = next as RecommendationStatus;
+
+  // An ignore with no reason is the failure mode this status exists to avoid:
+  // six months on, nobody can tell whether the finding was wrong, deliberate
+  // or merely inconvenient, so the only safe move is to raise it again.
+  if (status === 'Ignored') {
+    if (
+      change.reason === undefined ||
+      !(IGNORE_REASONS as readonly string[]).includes(change.reason)
+    ) {
+      return {
+        status: 'error',
+        message: 'Ignoring a finding needs a reason.',
+      };
+    }
+  }
+
   const now = deps.now ?? (() => new Date().toISOString());
 
   let state: DemoState;
@@ -321,12 +362,30 @@ export async function setRecommendationStatus(
   const others = state.recommendationStatuses.filter(
     (record) => record.id !== id,
   );
-  // Undoing a completion removes the record rather than storing "Open": the
-  // absence of a decision is exactly what Open means.
-  const recommendationStatuses =
-    status === 'Done'
-      ? [...others, { id, status, updatedAt: now() }]
-      : others;
+
+  let recommendationStatuses: RecommendationStatusRecord[];
+  if (status === 'Open') {
+    // Reopening removes the record rather than storing "Open": the absence of
+    // a decision is exactly what Open means.
+    recommendationStatuses = others;
+  } else {
+    // The evidence is captured so the decision can be flagged for review when
+    // the finding changes underneath it. Only this one string is stored; the
+    // task itself is still regenerated every load.
+    const evidenceAtDecision =
+      status === 'Ignored' ? await evidenceFor(deps, id) : null;
+    recommendationStatuses = [
+      ...others,
+      {
+        id,
+        status,
+        updatedAt: now(),
+        reason: status === 'Ignored' ? (change.reason ?? null) : null,
+        note: change.note?.trim() ?? '',
+        evidenceAtDecision,
+      },
+    ];
+  }
 
   try {
     await deps.state.save({ ...state, recommendationStatuses });

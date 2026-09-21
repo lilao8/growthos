@@ -28,7 +28,7 @@ import {
  */
 
 /** Bumped whenever the persisted shape changes; older payloads are discarded. */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 /**
  * Everything the demo persists.
