@@ -5,7 +5,7 @@ import {
   EMPTY_TALLY,
   tallyChecks,
   type CheckTally,
-} from '@/domain/seo-audit/engine';
+} from '@/domain/audit-scoring';
 import { runGeoAudit } from '@/domain/geo-audit/engine';
 import { GEO_RULE_VERSION, readinessBand } from '@/domain/geo-audit/config';
 import { DEMO_BRAND } from '@/fixtures/demo-catalogue';

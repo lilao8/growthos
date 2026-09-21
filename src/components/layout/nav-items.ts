@@ -89,6 +89,16 @@ export const NAV_ITEMS: readonly NavItem[] = [
       'Where in the journey are sessions lost?',
   },
   {
+    href: '/amazon',
+    label: 'Amazon',
+    purpose:
+      'Marketplace listing quality: title, bullets, images, backend terms, variations and buy box.',
+    implemented: true,
+    dispatch: 'Dispatch 10',
+    question:
+      'Are our Amazon listings fit to sell, and which one is worst?',
+  },
+  {
     href: '/recommendations',
     label: 'Recommendations',
     purpose:

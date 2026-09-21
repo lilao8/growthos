@@ -1,4 +1,5 @@
 import { SEO_RULE_META, type SeoRuleId } from '../seo-audit/config';
+import { AMAZON_RULE_META, type AmazonRuleId } from '../amazon/config';
 import { GEO_RULE_META, type GeoRuleId } from '../geo-audit/config';
 import { STAGE_LABELS } from '../funnel/funnel-metrics';
 import type { FunnelRecommendation } from '../funnel/recommendations';
@@ -9,10 +10,12 @@ import { formatCents } from '../money';
 import { formatMoneyMetric } from '../format';
 import { recommendationId } from '../stable-id';
 import {
+  AMAZON_WEIGHTS,
   ANALYTICS_THRESHOLDS,
   ANALYTICS_WEIGHTS,
   CONTENT_THRESHOLDS,
   CONTENT_WEIGHT,
+  DEFAULT_AMAZON_WEIGHT,
   DEFAULT_FUNNEL_WEIGHT,
   DEFAULT_GEO_WEIGHT,
   DEFAULT_SEO_WEIGHT,
@@ -27,6 +30,8 @@ import {
 import type {
   AuditResult,
   ContentIdea,
+  ListingAudit,
+  ListingStatus,
   Product,
   ProductStatus,
   Recommendation,
@@ -194,6 +199,94 @@ export function geoRecommendations(
           ruleVersion: page.audit.ruleVersion,
           weighting: adjusted.weighting,
           severeFailure: check.points === 0 && adjusted.note === '',
+        }),
+      );
+    }
+  }
+  return items;
+}
+
+// ---------------------------------------------------------------------------
+// Amazon listings
+// ---------------------------------------------------------------------------
+
+export interface AuditedListing {
+  listingId: string;
+  asin: string;
+  productId: string | null;
+  productTitle: string;
+  listingStatus: ListingStatus;
+  audit: ListingAudit;
+}
+
+/**
+ * Listing status adjusts impact in the opposite direction to product status,
+ * and the difference is the whole point.
+ *
+ * A storefront draft is not published yet, so a finding on it cannot affect
+ * anything until someone publishes — it is demoted. A *suppressed* listing is
+ * the reverse: it was live, Amazon took it down, and it is losing sales right
+ * now. Demoting it the way a draft is demoted would bury the single most
+ * urgent thing in the catalogue, so suppression is never demoted.
+ *
+ * `inactive` is the genuine analogue of a draft: deliberately not selling.
+ */
+function adjustForListingStatus(
+  weighting: Weighting,
+  status: ListingStatus,
+): { weighting: Weighting; note: string } {
+  if (status === 'suppressed') {
+    return {
+      weighting,
+      note: ' This listing is suppressed, so it is losing sales now — this is not something to schedule for later.',
+    };
+  }
+  if (status === 'inactive') {
+    const impact = Math.max(
+      1,
+      weighting.impact - UNPUBLISHED_IMPACT_PENALTY,
+    ) as Weighting['impact'];
+    return {
+      weighting: { ...weighting, impact },
+      note: ' This listing is inactive, so the finding is real but cannot affect anything until it is selling again.',
+    };
+  }
+  return { weighting, note: '' };
+}
+
+export function amazonRecommendations(
+  listings: readonly AuditedListing[],
+): Recommendation[] {
+  const items: Recommendation[] = [];
+  for (const entry of listings) {
+    for (const check of entry.audit.checks) {
+      if (check.status !== 'error' && check.status !== 'warning') continue;
+
+      const meta = AMAZON_RULE_META[check.ruleId as AmazonRuleId];
+      const adjusted = adjustForListingStatus(
+        AMAZON_WEIGHTS[check.ruleId] ?? DEFAULT_AMAZON_WEIGHT,
+        entry.listingStatus,
+      );
+      items.push(
+        build({
+          source: 'amazon',
+          ruleId: check.ruleId,
+          sourceEntityId: entry.listingId,
+          title: `${meta?.title ?? check.ruleId} — ${entry.productTitle}`,
+          category: 'Amazon listing',
+          reason: `${check.message} ${check.explanation}${adjusted.note}`,
+          suggestedAction: check.recommendation,
+          evidence:
+            check.evidence === null
+              ? `ASIN ${entry.asin}`
+              : `${check.evidence} (ASIN ${entry.asin})`,
+          link: `/amazon/${entry.listingId}`,
+          relatedProductId: entry.productId,
+          ruleVersion: entry.audit.ruleVersion,
+          weighting: adjusted.weighting,
+          // An inactive listing's failure is not urgent; a suppressed one's is.
+          severeFailure:
+            check.status === 'error' && entry.listingStatus !== 'inactive',
         }),
       );
     }

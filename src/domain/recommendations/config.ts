@@ -67,6 +67,7 @@ export const SOURCE_LABELS: Record<RecommendationSource, string> = {
   content: 'Content',
   analytics: 'Analytics',
   funnel: 'Funnel',
+  amazon: 'Amazon',
 };
 
 // ---------------------------------------------------------------------------
@@ -322,3 +323,99 @@ export function priorityFrom(impact: number, severeFailure: boolean): Priority {
   if (impact >= 3) return severeFailure ? 'High' : 'Medium';
   return severeFailure ? 'Medium' : 'Low';
 }
+
+// ---------------------------------------------------------------------------
+// Amazon listings (Dispatch 10)
+// ---------------------------------------------------------------------------
+
+export const AMAZON_WEIGHTS: Record<string, Weighting> = {
+  'listing-status': {
+    impact: 5,
+    effort: 3,
+    rationale:
+      'A suppressed listing sells nothing at all, so this outranks every content improvement on the same ASIN. The effort is unknown until the suppression reason is read, so it is scored as moderate.',
+  },
+  'main-image-compliance': {
+    impact: 5,
+    effort: 2,
+    rationale:
+      'A non-compliant main image is a live suppression risk, and replacing one image is a contained job.',
+  },
+  'title-length': {
+    impact: 4,
+    effort: 1,
+    rationale:
+      'The title is the listing’s headline in search results, and editing it is one field.',
+  },
+  'title-structure': {
+    impact: 4,
+    effort: 1,
+    rationale:
+      'Promotional wording in a title risks a policy strike and buys nothing; removing it is a single edit.',
+  },
+  'bullets-count': {
+    impact: 4,
+    effort: 2,
+    rationale:
+      'Empty bullets are free selling space left unused. Writing them takes an hour, not a project.',
+  },
+  'bullets-length': {
+    impact: 2,
+    effort: 2,
+    rationale:
+      'Length affects how much of a bullet a mobile shopper sees, but the information is at least present.',
+  },
+  'image-count': {
+    impact: 4,
+    effort: 4,
+    rationale:
+      'Images do most of the selling on a marketplace, but new photography is a real production cost.',
+  },
+  'backend-search-terms': {
+    impact: 4,
+    effort: 1,
+    rationale:
+      'Backend terms decide which searches the listing can appear in at all, and the fix is one field.',
+  },
+  'browse-node': {
+    impact: 4,
+    effort: 1,
+    rationale:
+      'The browse node gates category filters and best-seller eligibility; assigning it is a single change.',
+  },
+  'variation-relationship': {
+    impact: 4,
+    effort: 4,
+    rationale:
+      'Merging standalone listings into a family consolidates reviews and ranking, but rebuilding a family is fiddly and briefly disruptive.',
+  },
+  'aplus-content': {
+    impact: 3,
+    effort: 3,
+    rationale:
+      'A+ modules lift conversion on a registered brand, and building them is a design job rather than a text edit.',
+  },
+  'buy-box': {
+    impact: 5,
+    effort: 4,
+    rationale:
+      'Without the buy box the traffic converts for someone else. The causes — price, stock, account health — are mostly not a copy fix.',
+  },
+  'review-health': {
+    impact: 4,
+    effort: 5,
+    rationale:
+      'Ratings drive conversion, but moving one is slow and usually needs a product or expectation change rather than an edit.',
+  },
+  'video-present': {
+    impact: 2,
+    effort: 4,
+    rationale: 'Optional, and producing video is a real cost.',
+  },
+};
+
+export const DEFAULT_AMAZON_WEIGHT: Weighting = {
+  impact: 3,
+  effort: 3,
+  rationale: 'No specific weighting for this rule; treated as a middling fix.',
+};

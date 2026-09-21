@@ -15,6 +15,7 @@ import { formatDateRange } from '@/domain/format';
 import { SEO_RULE_VERSION } from '@/domain/seo-audit/config';
 import { GEO_RULE_VERSION } from '@/domain/geo-audit/config';
 import { RECOMMENDATION_RULE_VERSION } from '@/domain/recommendations/config';
+import { AMAZON_RULE_VERSION } from '@/domain/amazon/config';
 import { DEMO_BRAND, DEMO_MARKET } from '@/fixtures/demo-seed';
 
 /**
@@ -58,6 +59,12 @@ const DEMO_PATH = [
     seconds: 60,
   },
   {
+    step: 'Amazon',
+    href: '/amazon' as const,
+    what: 'Run the listing audit. Open the suppressed ASIN and show why its non-compliant main image outranks every copy improvement on it. Say plainly that Amazon numbers are never added to the storefront’s.',
+    seconds: 60,
+  },
+  {
     step: 'Recommendations',
     href: '/recommendations' as const,
     what: 'The whole project lands here: one prioritised list with evidence and a deep link back to each finding. Mark one done, reload, show it stuck.',
@@ -72,7 +79,7 @@ const LIMITATIONS = [
   },
   {
     heading: 'The scores are this project’s rules, not anyone’s algorithm',
-    body: `SEO (${SEO_RULE_VERSION}) and GEO (${GEO_RULE_VERSION}) are rule sets written for this project: each check, weight and rounding step is in the repository and can be argued with. They are not Google’s ranking algorithm, and a high score is not a ranking promise.`,
+    body: `SEO (${SEO_RULE_VERSION}) and GEO (${GEO_RULE_VERSION}) are rule sets written for this project: each check, weight and rounding step is in the repository and can be argued with. They are not Google’s ranking algorithm, and a high score is not a ranking promise. The Amazon listing rules (${AMAZON_RULE_VERSION}) work the same way and are not Amazon’s published requirements — real category rules vary by browse node.`,
   },
   {
     heading: 'GEO does not measure AI behaviour',
@@ -95,8 +102,12 @@ const LIMITATIONS = [
     body: 'Organic Search shows a CAC of $0.00 because no spend is attributed to it. That is arithmetic, not a finding — content, SEO and brand labour are real costs this demo does not carry.',
   },
   {
+    heading: 'The two channels are never added together',
+    body: 'The storefront and Amazon share this catalogue, but an Amazon session and a storefront session are counted differently and mean different things. Nothing in this project adds them, and ACOS is never silently converted into ROAS for a side-by-side comparison — the attribution windows do not match. Two honest numbers side by side beat one misleading total.',
+  },
+  {
     heading: 'It is a workbench, not a store',
-    body: 'There is no storefront, no checkout, no login, no multi-tenancy and no background job. Nothing connects to Shopify, Amazon, GA4 or an ad platform, and no page is ever crawled.',
+    body: 'There is no storefront, no checkout, no login, no multi-tenancy and no background job. Nothing connects to Shopify, Amazon, GA4 or an ad platform — in particular this project never calls SP-API, which would need a real seller account — and no page is ever crawled.',
   },
 ];
 
@@ -222,10 +233,12 @@ export function AboutView() {
         <CardHeader title="The chain, end to end" />
         <CardBody className="flex max-w-3xl flex-col gap-3 text-sm">
           <p data-testid="about-chain">
-            SEO, GEO and Content decide what exists and how findable it is →
-            Analytics says which channels brought sessions and what they cost →
-            the Funnel says where those sessions were lost → Recommendations
-            turns all of it into one ordered list of things to do.
+            On the storefront: SEO, GEO and Content decide what exists and how
+            findable it is → Analytics says which channels brought sessions and
+            what they cost → the Funnel says where those sessions were lost. On
+            Amazon, a separate chain: listing quality decides whether an ASIN is
+            fit to sell at all. Both ends feed Recommendations, which turns
+            everything into one ordered list of things to do.
           </p>
           <p className="text-[var(--color-ink-muted)]">
             The direction matters. Recommendations recalculates nothing: it

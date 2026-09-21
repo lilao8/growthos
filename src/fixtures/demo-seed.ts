@@ -5,6 +5,7 @@ import {
   buildCatalogueSnapshots,
 } from './demo-catalogue';
 import { buildDemoContentIdeas } from './demo-content';
+import { buildDemoAmazonListings } from './demo-amazon';
 
 /**
  * The seed state: the records a user can edit, before any of their edits.
@@ -36,6 +37,10 @@ export function buildDemoSeedState(): DemoState {
     contentIdeas: buildDemoContentIdeas(),
     // Nobody has marked anything done in a fresh demo.
     recommendationStatuses: [],
+    amazonListings: buildDemoAmazonListings(),
+    // As with page audits, a listing score must be earned by running the
+    // audit — never shipped as seed data.
+    listingAudits: [],
   };
 
   // The fixture is parsed like any other boundary input: a bad fixture should

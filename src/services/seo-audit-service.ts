@@ -3,10 +3,10 @@ import {
   addTallies,
   averageScore,
   EMPTY_TALLY,
-  runSeoAudit,
   tallyChecks,
   type CheckTally,
-} from '@/domain/seo-audit/engine';
+} from '@/domain/audit-scoring';
+import { runSeoAudit } from '@/domain/seo-audit/engine';
 import { SEO_RULE_VERSION } from '@/domain/seo-audit/config';
 import type { AuditCheck, AuditResult, PageSnapshot, Product } from '@/domain/types';
 import type { DemoState, DemoStateRepository } from '@/repositories/types';

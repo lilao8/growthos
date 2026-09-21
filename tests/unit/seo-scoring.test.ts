@@ -5,7 +5,7 @@ import {
   EMPTY_TALLY,
   scoreChecks,
   tallyChecks,
-} from '@/domain/seo-audit/engine';
+} from '@/domain/audit-scoring';
 import type { AuditCheck, CheckStatus } from '@/domain/types';
 
 function check(status: CheckStatus, ruleId = `rule-${status}`): AuditCheck {

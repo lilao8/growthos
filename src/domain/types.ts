@@ -328,6 +328,7 @@ export const RECOMMENDATION_SOURCES = [
   'content',
   'analytics',
   'funnel',
+  'amazon',
 ] as const;
 export type RecommendationSource = (typeof RECOMMENDATION_SOURCES)[number];
 
@@ -386,4 +387,115 @@ export interface Recommendation {
    * for it survives. Kept for history; never shown as something to do.
    */
   active: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Amazon listings (Dispatch 10)
+// ---------------------------------------------------------------------------
+
+/**
+ * The Amazon side of the catalogue.
+ *
+ * A listing points at an existing Product: the demo brand sells the same SKUs
+ * on its own storefront and on Amazon, which is what a real multi-channel
+ * seller does. Sharing the product is the *only* thing the two channels share —
+ * their metrics are never added together, because an Amazon session and a
+ * storefront session are not the same unit.
+ *
+ * Every field here is demo data shaped like what a seller would export from
+ * Seller Central. Nothing is fetched: this project does not call SP-API and
+ * does not crawl Amazon.
+ */
+
+/** MVP is the US marketplace only. Stored explicitly so it is never implied. */
+export const AMAZON_MARKETPLACES = ['ATVPDKIKX0DER'] as const;
+export type AmazonMarketplace = (typeof AMAZON_MARKETPLACES)[number];
+
+export const FULFILMENT_TYPES = ['FBA', 'FBM'] as const;
+export type FulfilmentType = (typeof FULFILMENT_TYPES)[number];
+
+/**
+ * `suppressed` means Amazon has hidden the listing from search and the buy box,
+ * usually for a missing required attribute or an image violation. It is the
+ * most urgent state a listing can be in — the opposite of a storefront draft,
+ * which is simply not published yet.
+ */
+export const LISTING_STATUSES = ['active', 'suppressed', 'inactive'] as const;
+export type ListingStatus = (typeof LISTING_STATUSES)[number];
+
+/**
+ * Tri-state for facts this demo cannot honestly assert.
+ *
+ * Whether a main image is on a pure white background is a property of an image
+ * file, which this project never sees. Recording `unknown` and reporting it as
+ * a coverage gap is truthful; guessing `true` would be inventing a verdict.
+ */
+export const TRI_STATES = ['yes', 'no', 'unknown'] as const;
+export type TriState = (typeof TRI_STATES)[number];
+
+export interface AmazonListing {
+  id: string;
+  /** The Product this listing sells. One listing per product in the MVP. */
+  productId: string;
+  asin: string;
+  marketplace: AmazonMarketplace;
+  title: string;
+  /** Amazon's five bullet points. Fewer than five is a real, common gap. */
+  bullets: string[];
+  /** A+ module names when brand-registered, empty when not used. */
+  aPlusModules: string[];
+  /**
+   * Backend search terms. Amazon limits this by BYTES, not characters, which
+   * is why the rule measures bytes — a listing full of multi-byte characters
+   * overflows far sooner than its character count suggests.
+   */
+  backendSearchTerms: string;
+  imageCount: number;
+  mainImageWhiteBackground: TriState;
+  hasVideo: boolean;
+  /** Browse node id, or null when none is assigned. */
+  browseNode: string | null;
+  brandRegistered: boolean;
+  /** Parent ASIN when this is a child in a variation family. */
+  variationParentAsin: string | null;
+  /** Sibling ASINs this listing should belong with, from the product family. */
+  expectedVariationSiblings: string[];
+  reviewCount: number;
+  /** 0–5, or null when there are no reviews at all. */
+  averageRating: number | null;
+  /** 0–1 share of page views where this seller held the buy box. */
+  buyBoxPercentage: number | null;
+  fulfilment: FulfilmentType;
+  status: ListingStatus;
+}
+
+/** Listing fields a user may edit through the listing form (Dispatch 10). */
+export type AmazonListingEdit = Pick<
+  AmazonListing,
+  'title' | 'bullets' | 'backendSearchTerms'
+>;
+
+/**
+ * A stored listing audit.
+ *
+ * Deliberately NOT a `StoredAuditResult`: that record is keyed by `pageId` and
+ * fingerprinted from a `PageSnapshot`, neither of which exists for a listing.
+ * Forcing a listing into it would mean inventing a fake page id, so the two
+ * stay separate records that happen to share the `AuditCheck` shape.
+ */
+export interface ListingAuditResult {
+  id: string;
+  listingId: string;
+  ruleVersion: string;
+  checks: AuditCheck[];
+  /** null when there is nothing evaluable — the UI must show N/A, never 0. */
+  score: number | null;
+  coverage: number;
+  auditedAt: string;
+  inputFingerprint: string;
+}
+
+/** A stored listing audit plus staleness computed against the live listing. */
+export interface ListingAudit extends ListingAuditResult {
+  stale: boolean;
 }

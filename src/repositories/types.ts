@@ -1,13 +1,17 @@
 import { z } from 'zod';
 import type {
+  AmazonListing,
   ContentIdea,
+  ListingAuditResult,
   PageSnapshot,
   Product,
   RecommendationStatusRecord,
   StoredAuditResult,
 } from '@/domain/types';
 import {
+  amazonListingSchema,
   contentIdeaSchema,
+  listingAuditResultSchema,
   pageSnapshotSchema,
   productSchema,
   recommendationStatusSchema,
@@ -24,7 +28,7 @@ import {
  */
 
 /** Bumped whenever the persisted shape changes; older payloads are discarded. */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /**
  * Everything the demo persists.
@@ -42,6 +46,13 @@ export interface DemoState {
   contentIdeas: ContentIdea[];
   /** Only the Done/Open decision survives; the task itself is re-derived. */
   recommendationStatuses: RecommendationStatusRecord[];
+  amazonListings: AmazonListing[];
+  /**
+   * Kept separate from `auditResults`: a listing audit is keyed by listing,
+   * not by page, and is fingerprinted from listing fields rather than a page
+   * snapshot. Sharing the array would mean inventing a fake page id.
+   */
+  listingAudits: ListingAuditResult[];
 }
 
 export const demoStateSchema = z.object({
@@ -51,6 +62,8 @@ export const demoStateSchema = z.object({
   auditResults: z.array(storedAuditResultSchema),
   contentIdeas: z.array(contentIdeaSchema),
   recommendationStatuses: z.array(recommendationStatusSchema),
+  amazonListings: z.array(amazonListingSchema),
+  listingAudits: z.array(listingAuditResultSchema),
 });
 
 export type PersistedDemoState = z.infer<typeof demoStateSchema>;

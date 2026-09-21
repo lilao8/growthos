@@ -298,3 +298,15 @@ npm run build
 - **详情路由必须进溢出巡检。** 只扫列表页看不到这个 bug：长字符串都在详情页。`e2e/regression.spec.ts` 在 375/768/1440 三档逐一检查 13 条路由，含 `/products/[id]`、`/seo/[pageId]`、`/geo/[pageId]`、`/content/[id]`。
 - **截图与性能测量在门禁之外**（`tools/screenshots/`，独立 config 与独立存储命名空间 `growthos.screenshots`）。截图会写入仓库，绝不能混进质量门禁；性能脚本只打印浏览器自报的导航计时与传输字节，**不对毫秒数设断言**——开发机上的时间阈值只会得到不稳定且无信息量的门禁。
 - 全模块实现后删除了无引用的 `ModulePlaceholder`；`NavItem.implemented` 保留，仍驱动侧边栏的 "Soon" 标记。
+
+## 实施记录更新（Dispatch 10）
+
+- **SCHEMA_VERSION 5 → 6**：`DemoState` 增加 `amazonListings` 与 `listingAudits`。
+- **两个渠道共享商品，绝不合并指标。** `AmazonListing.productId` 指向已有 `Product`（真实多渠道卖家就是如此），但 Amazon 的会话与独立站的会话是不同的计数单位，**项目中任何地方都不相加**。集成测试与 E2E 各有一条断言：跑完 listing 审计、改完 listing 之后，Dashboard 的全部指标**逐字节不变**。这条不是风格问题——一个把两套口径加起来的作品集比没有这个模块更糟。
+- **`ListingAuditResult` 与 `StoredAuditResult` 分开存。** 后者以 `pageId` 为键、由 `PageSnapshot` 生成指纹，listing 两样都没有。塞进同一个数组就得伪造一个 pageId。两者只共用 `AuditCheck` 的形状。
+- **抽出 `src/domain/audit-scoring.ts`。** 状态加权计分（pass 1 / warning 0.5 / error 0，unknown 同时排除出分子分母）原本在 `seo-audit/engine.ts`，GEO 服务已经跨模块 import 它的 tally 工具。第三个引擎需要同一套算术时，**CLAUDE.md 明令"不要复制评分公式"**，所以移到中立模块而不是复制。GEO 仍用自己的 0/5/10 分档，那是不同的公式。
+- **后台搜索词按 UTF-8 字节而非字符校验。** Amazon 的上限是 250 字节：一个中文字 3 字节、emoji 4 字节，按字符校验会放行一个被 Amazon 静默截断的值——保存成功提示照出，内容丢一半。`byteLength()` 用 `TextEncoder`，规则与表单校验共用。
+- **`suppressed` 与商品 `draft` 的降权方向相反。** 草稿没发布，问题影响不了任何东西 → 降权 2 分。**被压制的 listing 曾经在卖、现在正在丢单 → 绝不降权**。搞反会把目录里最紧急的东西压到列表底部。`adjustForListingStatus` 与 `adjustForStatus` 是两个函数，各有测试锁定。
+- **跨来源排序把 Quick Win 排在 Strategic 之前，这对被压制的 listing 产生了一个有意思的结果**：在该 listing 内部，"主图不合规"（impact 5 / effort 2）排在"listing 被压制"（impact 5 / effort 3）之前。这不是 bug——**换主图正是解除压制的手段**，所以可执行的根因排在症状之前。详见 dispatch-10.md。
+- **`unknown` 在 Amazon 侧同样是一等值**：主图是否纯白背景是图片文件的属性，本项目从不接触图片文件；未品牌备案时 A+ 根本不可用。两者都报 Unknown 并计入覆盖率缺口，不算通过也不算失败。
+- 导航顺序是**阅读顺序而非构建顺序**：独立站链路连续，Amazon 作为独立渠道紧邻 Recommendations（汇聚点）。单元测试锁定顺序而不是 dispatch 编号。

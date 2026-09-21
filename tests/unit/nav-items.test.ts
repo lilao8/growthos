@@ -15,17 +15,29 @@ import {
 const ALL = [...NAV_ITEMS, ...SECONDARY_NAV_ITEMS];
 
 describe('navigation items', () => {
-  it('covers every module dispatch from 1 to 8', () => {
-    expect(NAV_ITEMS.map((item) => item.dispatch)).toEqual([
-      'Dispatch 1',
-      'Dispatch 2',
-      'Dispatch 3',
-      'Dispatch 4',
-      'Dispatch 5',
-      'Dispatch 6',
-      'Dispatch 7',
-      'Dispatch 8',
+  it('lists the modules in the order an operator works through them', () => {
+    // Order is the reading order, not the build order: the storefront chain
+    // stays contiguous, Amazon sits as its own channel, and Recommendations is
+    // last because it is where every other module converges.
+    expect(NAV_ITEMS.map((item) => item.href)).toEqual([
+      '/dashboard',
+      '/products',
+      '/seo',
+      '/geo',
+      '/content',
+      '/analytics',
+      '/funnel',
+      '/amazon',
+      '/recommendations',
     ]);
+  });
+
+  it('records which dispatch built each module', () => {
+    for (const item of NAV_ITEMS) {
+      expect(item.dispatch, item.href).toMatch(/^Dispatch \d+$/);
+    }
+    expect(findNavItem('/recommendations')?.dispatch).toBe('Dispatch 8');
+    expect(findNavItem('/amazon')?.dispatch).toBe('Dispatch 10');
   });
 
   it('has no duplicate routes or labels', () => {

@@ -3,13 +3,16 @@ import { analyticsTotals, channelRows } from '@/domain/analytics/channel-metrics
 import { scoreForIdea } from '@/domain/content/opportunity';
 import { buildFunnel } from '@/domain/funnel/funnel-metrics';
 import { funnelRecommendations as funnelAdvice } from '@/domain/funnel/recommendations';
+import { readListingAudit } from '@/domain/amazon/engine';
 import {
+  amazonRecommendations,
   analyticsRecommendations,
   contentRecommendations,
   funnelRecommendations as funnelTasks,
   geoRecommendations,
   mergeWithStatuses,
   seoRecommendations,
+  type AuditedListing,
   type AuditedPage,
   type ScoredContentIdea,
 } from '@/domain/recommendations/aggregate';
@@ -96,6 +99,30 @@ function auditedPages(state: DemoState, kind: 'seo' | 'geo'): AuditedPage[] {
   return pages;
 }
 
+/**
+ * Listings that have been audited. Unaudited ones contribute nothing, exactly
+ * as unaudited pages do: a task needs a finding behind it.
+ */
+function auditedListings(state: DemoState): AuditedListing[] {
+  const entries: AuditedListing[] = [];
+  for (const listing of state.amazonListings) {
+    const product =
+      state.products.find((candidate) => candidate.id === listing.productId) ??
+      null;
+    const audit = readListingAudit(state.listingAudits, listing, product);
+    if (audit === null) continue;
+    entries.push({
+      listingId: listing.id,
+      asin: listing.asin,
+      productId: product?.id ?? null,
+      productTitle: product?.title ?? listing.asin,
+      listingStatus: listing.status,
+      audit,
+    });
+  }
+  return entries;
+}
+
 export async function loadRecommendations(
   deps: RecommendationDeps,
   query: RecommendationQuery = EMPTY_RECOMMENDATION_QUERY,
@@ -150,6 +177,7 @@ export async function loadRecommendations(
         largestDropOff: funnelReport.largestDropOff,
       }),
     ),
+    ...amazonRecommendations(auditedListings(state)),
   ];
 
   const merged = mergeWithStatuses(generated, state.recommendationStatuses);
@@ -157,7 +185,14 @@ export async function loadRecommendations(
   const items = sortRecommendations(filterRecommendations(allActive, query));
 
   const produced = new Set(allActive.map((item) => item.source));
-  const quietSources = (['seo', 'geo', 'content', 'analytics', 'funnel'] as const)
+  const quietSources = ([
+    'seo',
+    'geo',
+    'content',
+    'analytics',
+    'funnel',
+    'amazon',
+  ] as const)
     .filter((source) => !produced.has(source))
     .map((source) => source);
 

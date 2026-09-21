@@ -1,18 +1,22 @@
 import { z } from 'zod';
 import {
+  AMAZON_MARKETPLACES,
   AUDIT_KINDS,
   CHANNELS,
   CHECK_STATUSES,
   CONTENT_STATUSES,
   CONTENT_TYPES,
   FUNNEL_STAGES,
+  FULFILMENT_TYPES,
   FUNNEL_STAGES_CONTENT,
   INDEXABILITY_STATES,
+  LISTING_STATUSES,
   PRODUCT_CATEGORIES,
   PRODUCT_STATUSES,
   RECOMMENDATION_STATUSES,
   SEARCH_INTENTS,
   SEVERITIES,
+  TRI_STATES,
 } from './types';
 import { isIsoDate } from './demo-window';
 
@@ -210,4 +214,45 @@ export const recommendationStatusSchema = z.object({
   id: z.string().min(1),
   status: z.enum(RECOMMENDATION_STATUSES),
   updatedAt: z.string().min(1),
+});
+
+// ---------------------------------------------------------------------------
+// Amazon listings (Dispatch 10)
+// ---------------------------------------------------------------------------
+
+export const amazonListingSchema = z.object({
+  id: z.string().min(1),
+  productId: z.string().min(1),
+  // Ten characters, letters and digits, as Amazon issues them.
+  asin: z.string().regex(/^[A-Z0-9]{10}$/, {
+    message: 'ASIN must be 10 uppercase letters or digits',
+  }),
+  marketplace: z.enum(AMAZON_MARKETPLACES),
+  title: z.string(),
+  bullets: z.array(z.string()),
+  aPlusModules: z.array(z.string()),
+  backendSearchTerms: z.string(),
+  imageCount: z.number().int().nonnegative(),
+  mainImageWhiteBackground: z.enum(TRI_STATES),
+  hasVideo: z.boolean(),
+  browseNode: z.string().nullable(),
+  brandRegistered: z.boolean(),
+  variationParentAsin: z.string().nullable(),
+  expectedVariationSiblings: z.array(z.string()),
+  reviewCount: z.number().int().nonnegative(),
+  averageRating: z.number().min(0).max(5).nullable(),
+  buyBoxPercentage: z.number().min(0).max(1).nullable(),
+  fulfilment: z.enum(FULFILMENT_TYPES),
+  status: z.enum(LISTING_STATUSES),
+});
+
+export const listingAuditResultSchema = z.object({
+  id: z.string().min(1),
+  listingId: z.string().min(1),
+  ruleVersion: z.string().min(1),
+  checks: z.array(auditCheckSchema).min(1),
+  score: z.number().int().min(0).max(100).nullable(),
+  coverage: z.number().min(0).max(1),
+  auditedAt: z.string().min(1),
+  inputFingerprint: z.string().min(1),
 });
