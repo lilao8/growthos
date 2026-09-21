@@ -92,7 +92,7 @@ function FilterGroup<T extends string>({
               className={`rounded-md border px-2.5 py-1 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${
                 pressed
                   ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
-                  : 'border-[var(--color-line)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]'
+                  : 'border-[var(--color-line-strong)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]'
               }`}
             >
               {labels?.[option] ?? option}
@@ -188,7 +188,7 @@ function RecommendationCard({
           onClick={() => onToggleDone(item)}
           disabled={busy}
           data-testid={`rec-toggle-${item.id}`}
-          className="rounded-md border border-[var(--color-line)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
+          className="rounded-md border border-[var(--color-line-strong)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
         >
           {done ? 'Mark as not done' : 'Mark as done'}
         </button>
@@ -316,7 +316,7 @@ export function RecommendationsView({ mode }: { mode: DemoDataMode | null }) {
             onClick={clearFilters}
             disabled={!view.queryActive}
             data-testid="rec-clear-filters"
-            className="rounded-md border border-[var(--color-line)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-50"
+            className="rounded-md border border-[var(--color-line-strong)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-50"
           >
             Clear filters
           </button>

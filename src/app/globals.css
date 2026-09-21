@@ -6,6 +6,19 @@
   --color-ink: #12161c;
   --color-ink-muted: #5a6472;
   --color-line: #dfe3e9;
+  /*
+   * Borders that identify an interactive control — buttons, inputs, textareas,
+   * selects — rather than merely separating content.
+   *
+   * WCAG 1.4.11 (Non-text Contrast) wants 3:1 for the visual boundary of a UI
+   * component. `--color-line` is 1.29:1 against white: fine for a decorative
+   * card edge or a table rule, not enough to tell someone where a text field
+   * begins. This is 3.63:1 on white and 3.38:1 on the muted page background.
+   *
+   * axe does not catch this — its contrast rule covers text only — so it was
+   * found by computing the ratios directly from these tokens.
+   */
+  --color-line-strong: #7d8798;
   --color-accent: #1f5fd6;
 }
 

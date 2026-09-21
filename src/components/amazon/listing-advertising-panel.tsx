@@ -37,17 +37,21 @@ function Figure({
   testId: string;
 }) {
   return (
+    // A <dl> item may contain only <dt>/<dd> pairs, so the value lives in the
+    // <dd> rather than beside it.
     <div className="flex justify-between gap-6 border-b border-[var(--color-line)] py-2 last:border-b-0">
-      <div className="min-w-0">
-        <dt className="text-sm text-[var(--color-ink-muted)]">{label}</dt>
-        <dd className="mt-0.5 text-xs text-[var(--color-ink-muted)]">{note}</dd>
-      </div>
-      <span
-        className="shrink-0 text-sm font-medium tabular-nums"
-        data-testid={testId}
-      >
-        {value}
-      </span>
+      <dt className="min-w-0 text-sm text-[var(--color-ink-muted)]">{label}</dt>
+      <dd className="min-w-0 text-right">
+        <span
+          className="block text-sm font-medium tabular-nums"
+          data-testid={testId}
+        >
+          {value}
+        </span>
+        <span className="mt-0.5 block text-xs text-[var(--color-ink-muted)]">
+          {note}
+        </span>
+      </dd>
     </div>
   );
 }

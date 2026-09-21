@@ -137,7 +137,7 @@ export function DemoReset({ mode }: { mode: DemoDataMode | null }) {
               type="button"
               onClick={() => window.location.reload()}
               data-testid="reset-reload"
-              className="mt-3 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              className="mt-3 rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
             >
               Reload the workbench
             </button>
@@ -173,7 +173,7 @@ export function DemoReset({ mode }: { mode: DemoDataMode | null }) {
                     setPhase({ kind: 'confirming', preview: phase.preview })
                   }
                   data-testid="reset-start"
-                  className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                  className="rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
                 >
                   Reset demo data
                 </button>
@@ -210,7 +210,7 @@ export function DemoReset({ mode }: { mode: DemoDataMode | null }) {
                     }
                     disabled={phase.kind === 'working'}
                     data-testid="reset-cancel"
-                    className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
+                    className="rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
                   >
                     Keep my data
                   </button>

@@ -261,7 +261,6 @@ function AdvertisingLoader({
                 label: point.date,
                 value: point.spendCents,
               }))}
-              ariaId="ad-spend-summary"
             />
             <p
               id="ad-spend-summary"
@@ -288,7 +287,6 @@ function AdvertisingLoader({
                 label: row.campaign.name,
                 value: row.spendCents,
               }))}
-              ariaId="ad-campaign-summary"
             />
             <p
               id="ad-campaign-summary"

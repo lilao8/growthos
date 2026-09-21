@@ -71,7 +71,7 @@ export function FunnelView({ mode }: { mode: DemoDataMode | null }) {
           className={`rounded-md border px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${
             range === option
               ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
-              : 'border-[var(--color-line)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]'
+              : 'border-[var(--color-line-strong)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]'
           }`}
         >
           {option} days

@@ -116,6 +116,10 @@ const LIMITATIONS = [
     body: 'A brand buying market share runs a deliberately high ACOS; one funding itself from cashflow runs a low one. This project picks a figure so the rules have something to compare against and says so on screen. Harvest and negation candidates are suggestions to test — nothing here changes a bid, a budget or a negative keyword list.',
   },
   {
+    heading: 'Accessibility is checked, not certified',
+    body: 'Every route is scanned with axe-core against WCAG 2.1 A and AA on three browser engines, and the accessibility tree is asserted directly: one main landmark and one h1 per page, named navigation regions, captioned tables, charts that are never the only route to a number, and keyboard operation throughout. What has not happened is a person using this with VoiceOver or NVDA. Automated rules catch roughly a third of real barriers, so this project claims those specific properties hold — not that the experience is good.',
+  },
+  {
     heading: 'It is a workbench, not a store',
     body: 'There is no storefront, no checkout, no login, no multi-tenancy and no background job. Nothing connects to Shopify, Amazon, GA4 or an ad platform — in particular this project never calls SP-API, which would need a real seller account — and no page is ever crawled.',
   },

@@ -96,7 +96,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to main content
       </a>
 
-      <aside className="hidden border-r border-[var(--color-line)] bg-[var(--color-surface)] lg:block">
+      {/* A <div>, not an <aside>: this column is navigation, and the two <nav>
+          elements inside already provide the landmarks. Wrapping them in a
+          `complementary` landmark would nest navigation inside "supporting
+          content", which is not what it is. */}
+      <div className="hidden border-r border-[var(--color-line)] bg-[var(--color-surface)] lg:block">
         <div className="sticky top-0 flex h-screen flex-col gap-6 px-4 py-5">
           <div>
             <p className="text-base font-semibold tracking-tight">GrowthOS</p>
@@ -115,7 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             search engine&apos;s ranking algorithm.
           </p>
         </div>
-      </aside>
+      </div>
 
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-30 border-b border-[var(--color-line)] bg-[var(--color-surface)]">
@@ -127,7 +131,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 aria-expanded={menuOpen}
                 aria-controls={menuId}
                 data-testid="menu-toggle"
-                className="rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] lg:hidden"
+                className="rounded-md border border-[var(--color-line-strong)] px-2.5 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] lg:hidden"
               >
                 Menu
               </button>

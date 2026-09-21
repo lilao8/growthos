@@ -324,3 +324,16 @@ npm run build
 - **Recommendation 卡片现在显示 category。** 一个 source 可以覆盖多类工作——Amazon 同时产出 listing 质量和广告两类任务——只看 source 徽章分不出是哪个引擎提出的。
 - 收割与否定**一律是待验证建议**：措辞用 "may"，否定建议明确提示"先读这个词：如果它描述的是本商品但用了 listing 里没有的说法，那是 listing 的问题，否定掉会把真实缺口藏起来"。
 - **点击数不足的零转化词单独列出**（"Looked at, no verdict"），而不是静默丢弃——否则运营会奇怪为什么一个明显在烧钱的词不在列表里。
+
+## 实施记录更新（跨浏览器与无障碍收尾）
+
+- **E2E 从 1 个引擎扩到 3 个**（Chromium / Firefox / WebKit）。迭代时可用 `E2E_BROWSER=firefox` 只跑一个。首轮 615 条里 **614 通过**——核心逻辑本来就是跨引擎的,但暴露出的那一条很值得记。
+- **Safari 默认不用 Tab 聚焦链接。** 原来的断言"Tab 第一下落在 skip link 上"在 WebKit 下失败。这不是应用的缺陷,是 Safari 的 "Press Tab to highlight each item on a webpage" 默认关闭,**应用无法设置这个偏好**。改法不是跳过测试,而是把断言拆成两半:所有引擎都断言 skip link 是文档里第一个可聚焦元素、且激活后跳到 main;只在 Tab 能到达链接的引擎上额外断言 Tab 路径。VoiceOver 仍然能到达它,所以 skip link 在 Safari 下依然有用——不成立的只是"光按 Tab 就能到"。
+- **引入 axe-core（WCAG 2.1 A/AA）**,覆盖 16 条路由 + 审计后状态 + 移动端菜单 + 错误/空状态。首轮抓到 5 类真实缺陷:
+  - **`BarChart` 把 `role="img"` 放在 `<ul>` 上**,直接摧毁了列表语义,`<li>` 不再属于任何列表。条形图的标签本来就是文本,应该保持为真实列表——**不该给它 `role="img"`**。
+  - **`TrendChart` 的 `role="img"` 没有可访问名称**,屏幕阅读器只会念一句"图像"。文件头的注释写着"drawing is aria-hidden",但代码里从来没有 `aria-hidden`——**注释描述的是一段没写过的代码**。按注释里那份契约(图下方永远有完整数据表+文字摘要)改成真正的 `aria-hidden`。
+  - **`MetricCard` 在 `<dl>` 项里把 `<p>` 放在 `<dt>/<dd>` 旁边**,破坏了定义列表结构。说明文字应该在 `<dd>` 内部。同样的问题在 SEO/GEO health 卡片和 listing 广告面板里各有一份。
+  - **横向滚动容器不可聚焦**:宽表格的右侧列对纯键盘用户等于不存在。`TableWrapper` 加 `tabIndex={0}`,代价是每张宽表多一个 Tab 停留点——这个交换是划算的。
+- **对比度由公式直接算,axe 抓不到这一条**(axe 的对比度规则只覆盖文本)。`--color-line` 对白底只有 **1.29:1**,而同一个 token 也用在**按钮和输入框的边框**上,那里 WCAG 1.4.11 要求 3:1。新增 `--color-line-strong`(#7d8798,白底 3.63:1、灰底 3.38:1)只用于交互控件;装饰性分隔线仍用 `--color-line`,那里 1.4.11 不适用。
+- **无障碍树里发现 `main` 内部还有一个 `banner`**:`PageHeader` 用了 `<header>`,在 `<main>` 内被 Chromium 暴露成第二个 banner 地标。axe 没报——它的 duplicate-banner 规则只统计顶层 banner。`<h1>` 已经标识了页面,`<header>` 在这里什么也没买到,改成 `<div>`。同理侧边栏的 `<aside>` 改成 `<div>`:那一列是导航,里面的两个 `<nav>` 已经提供了地标,再套一层 `complementary` 等于说"导航是补充内容"。
+- **客户端渲染竞态又犯了一次。** 新写的表格计数测试只等 `<h1>` 可见——但 `<h1>` 是服务端渲染的,在数据到达前就可见了。Chromium 下侥幸通过,WebKit 下计到 0 张表。统一改成等各路由的 ready 哨兵(`dashboard-ready` / `analytics-ready` / …)。**这和 Dispatch 5 的那次是同一类错误。**

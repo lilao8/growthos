@@ -10,7 +10,16 @@ export function TableWrapper({ children }: { children: ReactNode }) {
   // label, for instance — would otherwise be positioned against the root and
   // escape this container's clipping, pushing the whole page sideways on a
   // narrow screen. Making this the containing block keeps the scroll local.
-  return <div className="relative w-full overflow-x-auto">{children}</div>;
+  //
+  // `tabIndex={0}` matters too: a region that scrolls horizontally and cannot
+  // take focus is unreachable by keyboard, so the right-hand columns of a wide
+  // table simply do not exist for anyone not using a mouse. The cost is one
+  // extra tab stop per wide table, which is the right trade.
+  return (
+    <div className="relative w-full overflow-x-auto" tabIndex={0}>
+      {children}
+    </div>
+  );
 }
 
 export function Table({

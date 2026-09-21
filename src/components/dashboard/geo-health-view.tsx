@@ -42,13 +42,18 @@ function HealthStat({
       <dt className="text-xs font-medium tracking-wide text-[var(--color-ink-muted)] uppercase">
         {label}
       </dt>
-      <dd
-        className="mt-2 text-2xl font-semibold tabular-nums"
-        data-testid={`${testId}-value`}
-      >
-        {value}
+      {/* Note inside the <dd>: a <dl> item takes only <dt>/<dd> pairs. */}
+      <dd>
+        <span
+          className="mt-2 block text-2xl font-semibold tabular-nums"
+          data-testid={`${testId}-value`}
+        >
+          {value}
+        </span>
+        <span className="mt-1 block text-xs text-[var(--color-ink-muted)]">
+          {note}
+        </span>
       </dd>
-      <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{note}</p>
     </div>
   );
 }

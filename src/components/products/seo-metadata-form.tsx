@@ -67,7 +67,7 @@ function Field({
     'aria-describedby': error === undefined ? hintId : `${hintId} ${errorId}`,
     'aria-invalid': error !== undefined,
     className:
-      'mt-2 w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] aria-[invalid=true]:border-[var(--color-ink)]',
+      'mt-2 w-full rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] aria-[invalid=true]:border-[var(--color-ink)]',
     onChange: (
       event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     ) => onChange(event.target.value),

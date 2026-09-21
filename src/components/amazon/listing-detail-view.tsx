@@ -318,7 +318,7 @@ export function ListingDetailView({
                 rows={3}
                 data-testid="listing-field-title"
                 aria-describedby="listing-title-help"
-                className="mt-1 w-full rounded-md border border-[var(--color-line)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                className="mt-1 w-full rounded-md border border-[var(--color-line-strong)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
               />
               <p
                 id="listing-title-help"
@@ -353,7 +353,7 @@ export function ListingDetailView({
                 rows={7}
                 data-testid="listing-field-bullets"
                 aria-describedby="listing-bullets-help"
-                className="mt-1 w-full rounded-md border border-[var(--color-line)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                className="mt-1 w-full rounded-md border border-[var(--color-line-strong)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
               />
               <p
                 id="listing-bullets-help"
@@ -387,7 +387,7 @@ export function ListingDetailView({
                 rows={3}
                 data-testid="listing-field-terms"
                 aria-describedby="listing-terms-help"
-                className="mt-1 w-full rounded-md border border-[var(--color-line)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                className="mt-1 w-full rounded-md border border-[var(--color-line-strong)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
               />
               <p
                 id="listing-terms-help"

@@ -23,13 +23,20 @@ export function MetricCard({
       <dt className="text-xs font-medium tracking-wide text-[var(--color-ink-muted)] uppercase">
         {label}
       </dt>
-      <dd
-        className="mt-2 text-2xl font-semibold tabular-nums"
-        data-testid={`${testId}-value`}
-      >
-        {value}
+      {/* The definition lives inside the <dd>, not beside it: a <dl> item may
+          contain only <dt>/<dd> pairs, and a stray <p> breaks the list
+          structure a screen reader walks. */}
+      <dd data-testid={`${testId}-value-group`}>
+        <span
+          className="mt-2 block text-2xl font-semibold tabular-nums"
+          data-testid={`${testId}-value`}
+        >
+          {value}
+        </span>
+        <span className="mt-2 block text-xs text-[var(--color-ink-muted)]">
+          {definition}
+        </span>
       </dd>
-      <p className="mt-2 text-xs text-[var(--color-ink-muted)]">{definition}</p>
     </div>
   );
 }

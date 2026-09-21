@@ -13,12 +13,28 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: 'on-first-retry',
   },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+  // Three engines, because "it works" meant "it works in Chromium" for the
+  // first eleven dispatches. Firefox and WebKit differ in focus behaviour,
+  // form controls and layout rounding often enough that claiming
+  // cross-browser support without running them would be a guess.
+  //
+  // Run one engine with E2E_BROWSER=firefox while iterating; the default is
+  // all three.
+  projects: (process.env.E2E_BROWSER
+    ? [process.env.E2E_BROWSER]
+    : ['chromium', 'firefox', 'webkit']
+  ).map((name) => ({
+    name,
+    use: {
+      ...devices[
+        name === 'firefox'
+          ? 'Desktop Firefox'
+          : name === 'webkit'
+            ? 'Desktop Safari'
+            : 'Desktop Chrome'
+      ],
     },
-  ],
+  })),
   webServer: {
     // E2E runs against a production build, not the dev server: dev-only HMR
     // traffic would otherwise show up as console errors, and the build is what

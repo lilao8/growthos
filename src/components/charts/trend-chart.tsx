@@ -5,9 +5,15 @@
  * two shapes are all the project needs, and a dependency of that size would be
  * mostly unused code.
  *
- * Accessibility contract: the drawing is `aria-hidden`, and every chart is
- * accompanied by a real table carrying the same numbers plus a one-line text
- * summary. Nothing is available only as a picture.
+ * Accessibility contract: nothing is available only as a picture. Every chart
+ * sits beside a real table carrying the same numbers and a one-line text
+ * summary, so the drawing itself carries no information a reader would miss.
+ *
+ * The line chart is therefore `aria-hidden`: an unlabelled `role="img"` is
+ * announced as bare "image", which is worse than silence. The bar chart is a
+ * real list of labelled rows — its labels are text, so it stays readable and
+ * must NOT be given `role="img"`, which would strip the list semantics from
+ * its items.
  */
 
 export interface TrendSeriesPoint {
@@ -19,13 +25,7 @@ const WIDTH = 720;
 const HEIGHT = 180;
 const PADDING = 4;
 
-export function TrendChart({
-  points,
-  ariaId,
-}: {
-  points: readonly TrendSeriesPoint[];
-  ariaId: string;
-}) {
+export function TrendChart({ points }: { points: readonly TrendSeriesPoint[] }) {
   if (points.length === 0) return null;
 
   const values = points.map((point) => point.value);
@@ -46,8 +46,7 @@ export function TrendChart({
     <svg
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       preserveAspectRatio="none"
-      role="img"
-      aria-describedby={ariaId}
+      aria-hidden="true"
       className="h-44 w-full"
       data-testid="trend-chart"
     >
@@ -69,29 +68,23 @@ export interface BarDatum {
 }
 
 /** Horizontal bars, used for channel share. Labels live in the table below. */
-export function BarChart({
-  data,
-  ariaId,
-}: {
-  data: readonly BarDatum[];
-  ariaId: string;
-}) {
+export function BarChart({ data }: { data: readonly BarDatum[] }) {
   if (data.length === 0) return null;
   const max = Math.max(...data.map((datum) => datum.value), 1);
 
   return (
-    <ul
-      className="flex flex-col gap-2"
-      role="img"
-      aria-describedby={ariaId}
-      data-testid="bar-chart"
-    >
+    <ul className="flex flex-col gap-2" data-testid="bar-chart">
       {data.map((datum) => (
         <li key={datum.label} className="flex items-center gap-3 text-xs">
           <span className="w-28 shrink-0 truncate text-[var(--color-ink-muted)]">
             {datum.label}
           </span>
-          <span className="h-3 min-w-0 flex-1 rounded-sm bg-[var(--color-surface-muted)]">
+          {/* The bar itself is decoration: the label is text and the exact
+              figure is in the table below. */}
+          <span
+            aria-hidden="true"
+            className="h-3 min-w-0 flex-1 rounded-sm bg-[var(--color-surface-muted)]"
+          >
             <span
               className="block h-3 rounded-sm bg-[var(--color-accent)]"
               style={{ width: `${Math.max(1, (datum.value / max) * 100)}%` }}

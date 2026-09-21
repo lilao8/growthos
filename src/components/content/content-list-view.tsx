@@ -97,7 +97,7 @@ function FilterGroup<T extends string>({
               className={`rounded-md border px-2.5 py-1 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${
                 pressed
                   ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
-                  : 'border-[var(--color-line)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]'
+                  : 'border-[var(--color-line-strong)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]'
               }`}
             >
               {option}
@@ -202,7 +202,7 @@ export function ContentListView({ mode }: { mode: DemoDataMode | null }) {
               }}
               disabled={!filtersActive}
               data-testid="content-clear-filters"
-              className="rounded-md border border-[var(--color-line)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-50"
+              className="rounded-md border border-[var(--color-line-strong)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-50"
             >
               Clear filters
             </button>
@@ -232,7 +232,7 @@ export function ContentListView({ mode }: { mode: DemoDataMode | null }) {
               onChange={(event) => setSearch(event.target.value)}
               placeholder="e.g. sleeping bag, r value, warranty"
               data-testid="content-search"
-              className="mt-2 w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              className="mt-2 w-full rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
             />
           </div>
 
@@ -398,7 +398,7 @@ export function ContentListView({ mode }: { mode: DemoDataMode | null }) {
                             void handleStatusChange(row.idea.id, event.target.value)
                           }
                           data-testid={`status-select-${row.idea.id}`}
-                          className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-1 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                          className="rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-2 py-1 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
                         >
                           {CONTENT_STATUSES.map((value) => (
                             <option key={value} value={value}>

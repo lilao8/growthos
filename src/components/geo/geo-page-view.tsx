@@ -99,7 +99,7 @@ export function GeoPageView({
             </p>
             <Link
               href="/geo"
-              className="mt-4 inline-block rounded-md border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              className="mt-4 inline-block rounded-md border border-[var(--color-line-strong)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
             >
               Back to GEO overview
             </Link>

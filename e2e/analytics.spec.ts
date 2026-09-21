@@ -159,11 +159,17 @@ test('every chart has a text summary and a data table', async ({ page }) => {
   await expect(page.getByTestId('low-volume-TikTok')).toBeVisible();
   await expect(page.getByTestId('low-volume-Organic Search')).toHaveCount(0);
 
-  // The chart points at its summary, so a screen reader gets the numbers.
+  // The line drawing is hidden from assistive technology rather than exposed
+  // as an unlabelled image: the summary above and the table below carry every
+  // number it shows, so announcing a nameless "image" would add noise, not
+  // information.
   await expect(page.getByTestId('trend-chart')).toHaveAttribute(
-    'aria-describedby',
-    'trend-summary',
+    'aria-hidden',
+    'true',
   );
+  // The bar chart is the opposite case: its labels are real text, so it stays
+  // a real list and must not be collapsed into an image.
+  await expect(page.getByTestId('bar-chart')).toHaveRole('list');
 });
 
 test('AI referral sources sum to the channel total and state the undercount', async ({

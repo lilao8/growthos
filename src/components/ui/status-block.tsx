@@ -74,7 +74,7 @@ export function ErrorBlock({
         onClick={onRetry}
         disabled={retrying}
         data-testid="retry-button"
-        className="mt-4 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
+        className="mt-4 rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
       >
         {retrying ? 'Retrying…' : 'Retry'}
       </button>

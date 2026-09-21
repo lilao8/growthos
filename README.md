@@ -164,6 +164,8 @@ npm run build
 
 - `test` 是 Vitest 单元测试（纯 domain 函数），`test:integration` 跑 service + repository 与真实 localStorage 的往返。
 - `test:e2e` 用 Playwright，**跑的是生产构建**（`npm run build && next start`，端口 3100）而不是 dev server——dev 的 HMR 流量会污染 console 断言，而且构建产物才是真正要发布的东西。E2E 使用独立存储命名空间 `growthos.e2e`。
+- E2E **跑三个引擎**（Chromium / Firefox / WebKit）。迭代时可只跑一个：`E2E_BROWSER=firefox npm run test:e2e`。
+- 其中 `e2e/accessibility.spec.ts` 用 **axe-core** 按 WCAG 2.1 A/AA 扫描全部 16 条路由，并直接断言无障碍树的结构。**这不是屏幕阅读器测试**——见下方已知限制。
 - 端口冲突可用 `E2E_PORT` 覆盖。
 
 重新生成截图（会写入 `docs/screenshots/`，不属于门禁）：
@@ -247,7 +249,8 @@ npm run perf
 - 影响分按规则类别取常量，不随页面流量加权（未发布商品会降权）。
 - 任务只有 Open / Done，没有"忽略/不适用"。
 - 没有商城、结账、登录、多租户、后台任务，不连任何外部 API，不爬取任何网站。
-- E2E 只在 Chromium 上跑过；未做屏幕阅读器实测。
+- **未做真人屏幕阅读器（VoiceOver / NVDA）实测。** 自动化规则约覆盖真实障碍的三分之一。
+- 没有深色模式，对比度只在浅色主题下验证过；未验证 200% 缩放。
 
 **未来规划**（均未实现）：
 
@@ -257,7 +260,7 @@ npm run perf
 - 退款与毛利建模，让 CAC / ROAS 对得上真实盈亏。
 - 接入真实数据源适配器（GA4 / Shopify / Search Console），保持现有服务合同不变。
 - 用 Prisma + PostgreSQL 替换浏览器存储适配器。
-- Firefox / WebKit E2E 与屏幕阅读器实测。
+- 真人屏幕阅读器（VoiceOver / NVDA）实测；深色模式与 200% 缩放验证。
 
 ## 开发任务索引
 

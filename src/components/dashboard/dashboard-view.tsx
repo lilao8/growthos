@@ -240,7 +240,6 @@ function DashboardLoader({
                 label: point.date,
                 value: point.sessions,
               }))}
-              ariaId="dashboard-trend-summary"
             />
             <p
               id="dashboard-trend-summary"
@@ -266,7 +265,6 @@ function DashboardLoader({
                 label: row.channel,
                 value: row.sessions,
               }))}
-              ariaId="dashboard-channel-summary"
             />
             <p
               id="dashboard-channel-summary"
@@ -386,7 +384,7 @@ function DashboardLoader({
                   <Link
                     href={item.href}
                     data-testid={`dashboard-goto-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                    className="block h-full rounded-md border border-[var(--color-line)] px-4 py-3 hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                    className="block h-full rounded-md border border-[var(--color-line-strong)] px-4 py-3 hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
                   >
                     <span className="text-sm font-medium underline underline-offset-2">
                       {item.label}

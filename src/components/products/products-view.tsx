@@ -98,7 +98,7 @@ function FilterGroup<T extends string>({
               className={`rounded-md border px-2.5 py-1 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${
                 pressed
                   ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
-                  : 'border-[var(--color-line)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]'
+                  : 'border-[var(--color-line-strong)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]'
               }`}
             >
               {option}
@@ -152,6 +152,12 @@ export function ProductsView({ mode }: { mode: DemoDataMode | null }) {
 
   const filtersActive = isQueryActive(query);
 
+  // The note card below sits outside the ready guard, so this is derived
+  // once here rather than reaching into a narrowed state further down.
+  const anyAudited =
+    state?.status === 'ready' &&
+    state.rows.some((row) => row.seoScore !== null || row.geoScore !== null);
+
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -164,7 +170,7 @@ export function ProductsView({ mode }: { mode: DemoDataMode | null }) {
             onClick={clearFilters}
             disabled={!filtersActive}
             data-testid="clear-filters"
-            className="rounded-md border border-[var(--color-line)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-50"
+            className="rounded-md border border-[var(--color-line-strong)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-50"
           >
             Clear filters
           </button>
@@ -184,7 +190,7 @@ export function ProductsView({ mode }: { mode: DemoDataMode | null }) {
               onChange={(event) => setSearch(event.target.value)}
               placeholder="e.g. ridgeline, NT-TENT, sleeping bag"
               data-testid="product-search"
-              className="mt-2 w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              className="mt-2 w-full rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
             />
           </div>
 
@@ -334,9 +340,25 @@ export function ProductsView({ mode }: { mode: DemoDataMode | null }) {
         <CardBody>
           <ul className="flex list-disc flex-col gap-2 pl-5 text-sm text-[var(--color-ink-muted)]">
             <li>
-              <strong>SEO and GEO</strong> read &ldquo;{NOT_AUDITED}&rdquo;
-              because no audit has run yet. The engines arrive in Dispatch 3 and
-              4; a number here before then would be invented.
+              {/* Conditional, because the unconditional version contradicted
+                  the table the moment an audit had been run — and it named
+                  internal build stages, which mean nothing to a reader. */}
+              <strong>SEO and GEO</strong>{' '}
+              {anyAudited ? (
+                <>
+                  come from the SEO and GEO audit engines. A score is only shown
+                  once that page has actually been audited; &ldquo;
+                  {NOT_AUDITED}&rdquo; means no audit has run for it, and
+                  &ldquo;(stale)&rdquo; means the page changed after its last
+                  one.
+                </>
+              ) : (
+                <>
+                  read &ldquo;{NOT_AUDITED}&rdquo; because no audit has run yet.
+                  Run one from the SEO or GEO module; a number here before then
+                  would be invented.
+                </>
+              )}
             </li>
             <li>
               <strong>Conversion rate</strong> is sessions that purchased this
