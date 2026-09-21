@@ -28,6 +28,8 @@ import {
   type RecommendationTally,
 } from '@/domain/recommendations/sorting';
 import { DEMO_WINDOW, type DateWindow } from '@/domain/demo-window';
+import { computeProductMetrics } from '@/domain/product-metrics';
+import { trafficBands, type TrafficBand } from '@/domain/recommendations/config';
 import {
   RECOMMENDATION_STATUSES,
   type Recommendation,
@@ -80,7 +82,12 @@ function messageFrom(cause: unknown, fallback: string): string {
   return cause instanceof Error ? cause.message : fallback;
 }
 
-function auditedPages(state: DemoState, kind: 'seo' | 'geo'): AuditedPage[] {
+function auditedPages(
+  state: DemoState,
+  kind: 'seo' | 'geo',
+  bands: ReadonlyMap<string, TrafficBand>,
+  viewSessions: ReadonlyMap<string, number>,
+): AuditedPage[] {
   const pages: AuditedPage[] = [];
   for (const snapshot of state.pageSnapshots) {
     const product =
@@ -98,6 +105,11 @@ function auditedPages(state: DemoState, kind: 'seo' | 'geo'): AuditedPage[] {
       pageId: snapshot.id,
       productId: product?.id ?? null,
       productTitle: product?.title ?? snapshot.url,
+      // A page with no product behind it has no traffic record to band, which
+      // is 'unknown' rather than 'quiet'.
+      trafficBand:
+        product === null ? 'unknown' : (bands.get(product.id) ?? 'unknown'),
+      viewSessions: product === null ? null : (viewSessions.get(product.id) ?? null),
       productStatus: product?.status ?? null,
       audit,
     });
@@ -161,6 +173,29 @@ export async function loadRecommendations(
 
   const funnelReport = buildFunnel({ sessions: traffic.sessions, window });
 
+  // Product-level traffic, so a finding on a busy page outranks the same
+  // finding on one nobody visits. Computed from the same session facts every
+  // other module reads — no separate count.
+  const productMetrics = computeProductMetrics(
+    traffic.sessions,
+    traffic.orders,
+    traffic.orderItems,
+    window,
+  );
+  const viewSessions = new Map(
+    [...productMetrics.values()].map((metrics) => [
+      metrics.productId,
+      metrics.viewSessions,
+    ]),
+  );
+  // Every catalogue product is banded, not only those with sessions: a product
+  // absent from the traffic data has zero views, which is a real finding, not
+  // a gap.
+  for (const product of state.products) {
+    if (!viewSessions.has(product.id)) viewSessions.set(product.id, 0);
+  }
+  const bands = trafficBands(viewSessions);
+
   const scoredIdeas: ScoredContentIdea[] = state.contentIdeas.map((idea) => ({
     idea,
     opportunity: scoreForIdea(idea),
@@ -211,8 +246,8 @@ export async function loadRecommendations(
   }
 
   const generated = [
-    ...seoRecommendations(auditedPages(state, 'seo')),
-    ...geoRecommendations(auditedPages(state, 'geo')),
+    ...seoRecommendations(auditedPages(state, 'seo', bands, viewSessions)),
+    ...geoRecommendations(auditedPages(state, 'geo', bands, viewSessions)),
     ...contentRecommendations(scoredIdeas),
     ...analyticsRecommendations({
       channels: channelRows(analyticsInput),

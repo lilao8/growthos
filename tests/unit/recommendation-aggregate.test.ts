@@ -13,6 +13,7 @@ import {
   CONTENT_THRESHOLDS,
   quadrantFor,
   priorityFrom,
+  type TrafficBand,
 } from '@/domain/recommendations/config';
 import { recommendationId, stableHash } from '@/domain/stable-id';
 import {
@@ -62,12 +63,18 @@ function page(
   checks: AuditCheck[],
   kind: 'seo' | 'geo' = 'seo',
   productStatus: ProductStatus | null = 'active',
+  // `typical` by default so existing cases keep testing the rule weighting
+  // itself rather than the traffic adjustment on top of it.
+  trafficBand: TrafficBand = 'typical',
+  viewSessions: number | null = 120,
 ): AuditedPage {
   return {
     pageId: 'snap_a',
     productId: 'prd_a',
     productTitle: 'Ridgeline 2P Tent',
     productStatus,
+    trafficBand,
+    viewSessions,
     audit: audit(checks, kind),
   };
 }
@@ -617,6 +624,8 @@ describe('findings on unpublished products', () => {
         productId: null,
         productTitle: 'https://example.com/guide',
         productStatus: null,
+        trafficBand: 'unknown',
+        viewSessions: null,
         audit: audit([check()]),
       },
     ]);

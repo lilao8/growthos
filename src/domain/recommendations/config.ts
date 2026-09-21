@@ -468,3 +468,81 @@ export const DEFAULT_AD_WEIGHT: Weighting = {
   effort: 2,
   rationale: 'No specific weighting for this rule; treated as a cheap fix with moderate upside.',
 };
+
+// ---------------------------------------------------------------------------
+// Traffic weighting
+// ---------------------------------------------------------------------------
+
+/**
+ * How busy a page is, relative to the rest of the catalogue.
+ *
+ * Relative rather than absolute on purpose: an absolute threshold ("busy means
+ * 500 sessions") would need retuning for every dataset and would say nothing
+ * about whether a page is busy *for this shop*. Terciles are self-calibrating
+ * and can be stated honestly on screen — "top third of the catalogue", not
+ * "high traffic".
+ *
+ * `unknown` exists because a product with no traffic record is not the same as
+ * a product with no traffic, and guessing between them would be inventing a
+ * verdict.
+ */
+export const TRAFFIC_BANDS = ['high', 'typical', 'low', 'none', 'unknown'] as const;
+export type TrafficBand = (typeof TRAFFIC_BANDS)[number];
+
+/** Terciles need at least this many products with a traffic record to mean anything. */
+export const TRAFFIC_BAND_MINIMUM_PRODUCTS = 6;
+
+/**
+ * Bands every product by session volume.
+ *
+ * Products with a record but zero sessions are banded `none` rather than
+ * `low`: "nobody looked at this page" and "fewer people looked at this page
+ * than most" are different statements and deserve different wording.
+ */
+export function trafficBands(
+  viewSessionsByProduct: ReadonlyMap<string, number>,
+): Map<string, TrafficBand> {
+  const bands = new Map<string, TrafficBand>();
+  const withTraffic = [...viewSessionsByProduct.entries()].filter(
+    ([, sessions]) => sessions > 0,
+  );
+
+  for (const [productId, sessions] of viewSessionsByProduct) {
+    if (sessions === 0) bands.set(productId, 'none');
+  }
+
+  // Too few pages to split into thirds: saying "top third of six" is a claim
+  // the data cannot support, so nothing is adjusted.
+  if (withTraffic.length < TRAFFIC_BAND_MINIMUM_PRODUCTS) {
+    for (const [productId] of withTraffic) bands.set(productId, 'typical');
+    return bands;
+  }
+
+  const sorted = [...withTraffic].sort((a, b) => b[1] - a[1]);
+  const cut = Math.floor(sorted.length / 3);
+
+  sorted.forEach(([productId], index) => {
+    if (index < cut) bands.set(productId, 'high');
+    else if (index >= sorted.length - cut) bands.set(productId, 'low');
+    else bands.set(productId, 'typical');
+  });
+
+  return bands;
+}
+
+/**
+ * How much a band moves impact.
+ *
+ * Deliberately ±1 rather than a multiplier. Traffic decides which of two
+ * comparable findings to do first; it does not decide whether a finding is
+ * serious. A missing page title is a serious defect on a quiet page too, and
+ * scaling impact by traffic would let a busy page's cosmetic warning outrank
+ * another page's outright failure.
+ */
+export const TRAFFIC_IMPACT_ADJUSTMENT: Record<TrafficBand, number> = {
+  high: 1,
+  typical: 0,
+  low: -1,
+  none: -1,
+  unknown: 0,
+};

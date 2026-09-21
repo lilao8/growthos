@@ -101,7 +101,7 @@ const LIMITATIONS = [
   },
   {
     heading: 'Impact and effort are estimates',
-    body: `Recommendation priorities (${RECOMMENDATION_RULE_VERSION}) come from per-rule 1–5 estimates with written reasons. They order the work; they are not forecasts, and no figure in this project should be quoted as expected revenue.`,
+    body: `Recommendation priorities (${RECOMMENDATION_RULE_VERSION}) come from per-rule 1–5 estimates with written reasons, nudged one step up or down by how busy the page is relative to the rest of the catalogue. One step, not a multiplier: traffic decides which of two comparable findings to do first, it does not decide whether a finding is serious. They order the work; they are not forecasts, and no figure in this project should be quoted as expected revenue.`,
   },
   {
     heading: 'Organic acquisition looks free because its cost is not modelled',

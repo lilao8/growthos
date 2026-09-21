@@ -132,6 +132,8 @@ describe('amazonRecommendations', () => {
       productId: 'prd_1',
       productTitle: 'Test Item',
       productStatus: 'active',
+      trafficBand: 'typical',
+      viewSessions: 100,
       audit: {
         id: 'audit_seo_lst_1',
         pageId: 'lst_1',

@@ -21,6 +21,8 @@ import {
   CONTENT_THRESHOLDS,
   CONTENT_WEIGHT,
   DEFAULT_AD_WEIGHT,
+  TRAFFIC_IMPACT_ADJUSTMENT,
+  type TrafficBand,
   DEFAULT_AMAZON_WEIGHT,
   DEFAULT_FUNNEL_WEIGHT,
   DEFAULT_GEO_WEIGHT,
@@ -107,6 +109,10 @@ export interface AuditedPage {
   /** null when the page has no product behind it. */
   productStatus: ProductStatus | null;
   audit: AuditResult;
+  /** Where this page sits in the catalogue by session volume. */
+  trafficBand: TrafficBand;
+  /** Sessions that viewed it, for the evidence line. null when unrecorded. */
+  viewSessions: number | null;
 }
 
 /**
@@ -117,20 +123,65 @@ export interface AuditedPage {
  */
 const UNPUBLISHED_IMPACT_PENALTY = 2;
 
-function adjustForStatus(
+function clampImpact(value: number): Weighting['impact'] {
+  return Math.min(5, Math.max(1, value)) as Weighting['impact'];
+}
+
+/**
+ * Applies the two page-level adjustments: publication status, then traffic.
+ *
+ * The order matters, and so does the exclusion. An unpublished product has no
+ * traffic *because* it is unpublished, so banding it as quiet and penalising
+ * it again would charge it twice for one fact. Status wins and traffic is
+ * skipped; the note says which reason applied.
+ */
+interface PageAdjustment {
+  weighting: Weighting;
+  note: string;
+  /**
+   * True only when the page cannot be reached at all, which is what makes an
+   * outright failure on it non-urgent.
+   *
+   * Deliberately explicit rather than inferred from `note === ''`: the traffic
+   * adjustment also writes a note, including when it *raises* impact, and
+   * keying severity off the note's presence would quietly strip severity from
+   * every finding on a busy page.
+   */
+  unreachable: boolean;
+}
+
+function adjustForPage(
   weighting: Weighting,
   status: ProductStatus | null,
-): { weighting: Weighting; note: string } {
-  if (status === null || status === 'active') {
-    return { weighting, note: '' };
+  band: TrafficBand,
+  viewSessions: number | null,
+): PageAdjustment {
+  if (status !== null && status !== 'active') {
+    return {
+      weighting: {
+        ...weighting,
+        impact: clampImpact(weighting.impact - UNPUBLISHED_IMPACT_PENALTY),
+      },
+      note: ` This product is ${status}, so the finding is real but cannot affect anything until it is published.`,
+      unreachable: true,
+    };
   }
-  const impact = Math.max(
-    1,
-    weighting.impact - UNPUBLISHED_IMPACT_PENALTY,
-  ) as Weighting['impact'];
+
+  const shift = TRAFFIC_IMPACT_ADJUSTMENT[band];
+  if (shift === 0) return { weighting, note: '', unreachable: false };
+
+  const sessions = viewSessions ?? 0;
+  const note =
+    band === 'high'
+      ? ` This page is in the busiest third of the catalogue (${sessions} sessions viewed it), so the same fix reaches more people here than elsewhere.`
+      : band === 'none'
+        ? ' No session viewed this page in the window, so fixing it changes nothing until something sends traffic to it.'
+        : ` This page is in the quietest third of the catalogue (${sessions} sessions viewed it), so the same fix is worth less here than elsewhere.`;
+
   return {
-    weighting: { ...weighting, impact },
-    note: ` This product is ${status}, so the finding is real but cannot affect anything until it is published.`,
+    weighting: { ...weighting, impact: clampImpact(weighting.impact + shift) },
+    note,
+    unreachable: false,
   };
 }
 
@@ -145,9 +196,11 @@ export function seoRecommendations(
       if (check.status !== 'error' && check.status !== 'warning') continue;
 
       const meta = SEO_RULE_META[check.ruleId as SeoRuleId];
-      const adjusted = adjustForStatus(
+      const adjusted = adjustForPage(
         SEO_WEIGHTS[check.ruleId] ?? DEFAULT_SEO_WEIGHT,
         page.productStatus,
+        page.trafficBand,
+        page.viewSessions,
       );
       items.push(
         build({
@@ -163,7 +216,7 @@ export function seoRecommendations(
           relatedProductId: page.productId,
           ruleVersion: page.audit.ruleVersion,
           weighting: adjusted.weighting,
-          severeFailure: check.status === 'error' && adjusted.note === '',
+          severeFailure: check.status === 'error' && !adjusted.unreachable,
         }),
       );
     }
@@ -186,9 +239,11 @@ export function geoRecommendations(
       if (check.points === null || check.points >= 10) continue;
 
       const meta = GEO_RULE_META[check.ruleId as GeoRuleId];
-      const adjusted = adjustForStatus(
+      const adjusted = adjustForPage(
         GEO_WEIGHTS[check.ruleId] ?? DEFAULT_GEO_WEIGHT,
         page.productStatus,
+        page.trafficBand,
+        page.viewSessions,
       );
       items.push(
         build({
@@ -204,7 +259,7 @@ export function geoRecommendations(
           relatedProductId: page.productId,
           ruleVersion: page.audit.ruleVersion,
           weighting: adjusted.weighting,
-          severeFailure: check.points === 0 && adjusted.note === '',
+          severeFailure: check.points === 0 && !adjusted.unreachable,
         }),
       );
     }
