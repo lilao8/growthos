@@ -14,6 +14,8 @@ export interface NavItem {
   /** false renders a "not implemented yet" page and a sidebar hint. */
   implemented: boolean;
   dispatch: string;
+  /** The operator's question this module answers, for cross-module signposting. */
+  question: string;
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
@@ -23,6 +25,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
     purpose: 'Headline traffic, revenue and conversion metrics for the demo window.',
     implemented: true,
     dispatch: 'Dispatch 1',
+    question:
+      'Is the business healthy this window, and where should I look first?',
   },
   {
     href: '/products',
@@ -31,6 +35,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
       'Catalogue with search, filters and editable SEO metadata for each SKU.',
     implemented: true,
     dispatch: 'Dispatch 2',
+    question:
+      'Which SKUs exist, and is each one\'s on-page metadata fit to publish?',
   },
   {
     href: '/seo',
@@ -39,6 +45,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
       'Rule-based page audit covering metadata, headings, canonical, links and indexability.',
     implemented: true,
     dispatch: 'Dispatch 3',
+    question:
+      'Is this page technically fit for classic search?',
   },
   {
     href: '/geo',
@@ -47,6 +55,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
       'Internal heuristic for how readable a page is to generative search systems.',
     implemented: true,
     dispatch: 'Dispatch 4',
+    question:
+      'Can a generative engine extract a trustworthy answer from this page?',
   },
   {
     href: '/content',
@@ -55,6 +65,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
       'Content plan driven by keyword, search intent, funnel stage and target product.',
     implemented: true,
     dispatch: 'Dispatch 5',
+    question:
+      'What should we write next, and why that rather than something else?',
   },
   {
     href: '/analytics',
@@ -63,6 +75,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
       'Channel performance: sessions, users, revenue, orders, CAC and ROAS.',
     implemented: true,
     dispatch: 'Dispatch 6',
+    question:
+      'Where does traffic come from, and what does each channel cost and return?',
   },
   {
     href: '/funnel',
@@ -71,6 +85,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
       'Session-level conversion funnel with stage drop-off and the largest loss point.',
     implemented: true,
     dispatch: 'Dispatch 7',
+    question:
+      'Where in the journey are sessions lost?',
   },
   {
     href: '/recommendations',
@@ -79,9 +95,30 @@ export const NAV_ITEMS: readonly NavItem[] = [
       'Prioritised actions aggregated from every rule engine, with evidence.',
     implemented: true,
     dispatch: 'Dispatch 8',
+    question:
+      'Given everything above, what should I do on Monday morning?',
+  },
+];
+
+/**
+ * Routes that are not analysis modules. Kept separate so the module list stays
+ * the list of things that read data, and so cross-module signposting on the
+ * dashboard does not offer "About" as somewhere to continue an analysis.
+ */
+export const SECONDARY_NAV_ITEMS: readonly NavItem[] = [
+  {
+    href: '/about-project',
+    label: 'About this project',
+    purpose:
+      'Why the project exists, how the modules fit together, and what the model cannot do.',
+    implemented: true,
+    dispatch: 'Dispatch 9',
+    question: 'What am I looking at, and how far should I trust it?',
   },
 ];
 
 export function findNavItem(href: string): NavItem | undefined {
-  return NAV_ITEMS.find((item) => item.href === href);
+  return [...NAV_ITEMS, ...SECONDARY_NAV_ITEMS].find(
+    (item) => item.href === href,
+  );
 }

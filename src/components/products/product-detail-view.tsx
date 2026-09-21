@@ -43,9 +43,17 @@ function DetailRow({
   testId?: string;
 }) {
   return (
+    // `min-w-0` plus `break-words` on the value: a canonical URL has no space
+    // to break at, so without this it sets the row's minimum width and pushes
+    // the whole page sideways on a narrow screen.
     <div className="flex justify-between gap-6 border-b border-[var(--color-line)] py-2 last:border-b-0">
-      <dt className="text-sm text-[var(--color-ink-muted)]">{label}</dt>
-      <dd className="text-sm font-medium tabular-nums" data-testid={testId}>
+      <dt className="shrink-0 text-sm text-[var(--color-ink-muted)]">
+        {label}
+      </dt>
+      <dd
+        className="min-w-0 text-right text-sm font-medium break-words tabular-nums"
+        data-testid={testId}
+      >
         {value}
       </dd>
     </div>

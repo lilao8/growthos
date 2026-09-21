@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BarChart, TrendChart } from '@/components/charts/trend-chart';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { NAV_ITEMS } from '@/components/layout/nav-items';
 import { MetricCard } from '@/components/ui/metric-card';
 import {
   EmptyBlock,
@@ -370,7 +371,47 @@ function DashboardLoader({
       </Card>
 
       <Card>
-        <CardHeader title="Scope and limitations" />
+        <CardHeader
+          title="Where to go next"
+          description="Every module in the project, and the question each one answers."
+        />
+        <CardBody>
+          <ul
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+            data-testid="dashboard-module-links"
+          >
+            {NAV_ITEMS.filter((item) => item.href !== '/dashboard').map(
+              (item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    data-testid={`dashboard-goto-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                    className="block h-full rounded-md border border-[var(--color-line)] px-4 py-3 hover:bg-[var(--color-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                  >
+                    <span className="text-sm font-medium underline underline-offset-2">
+                      {item.label}
+                    </span>
+                    <span className="mt-1 block text-xs text-[var(--color-ink-muted)]">
+                      {item.question}
+                    </span>
+                  </Link>
+                </li>
+              ),
+            )}
+          </ul>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader title="Scope and limitations">
+          <Link
+            href="/about-project"
+            className="text-sm underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+            data-testid="dashboard-about-link"
+          >
+            About this project
+          </Link>
+        </CardHeader>
         <CardBody>
           <ul className="flex list-disc flex-col gap-2 pl-5 text-sm text-[var(--color-ink-muted)]">
             <li>

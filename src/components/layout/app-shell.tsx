@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { NAV_ITEMS } from './nav-items';
+import { NAV_ITEMS, SECONDARY_NAV_ITEMS, type NavItem } from './nav-items';
 import { DEMO_WINDOW } from '@/domain/demo-window';
 import { formatDateRange } from '@/domain/format';
 import { DEMO_BRAND } from '@/fixtures/demo-seed';
@@ -16,12 +16,18 @@ import { DEMO_BRAND } from '@/fixtures/demo-seed';
  * through aria-expanded, and closes on Escape or on navigation.
  */
 
-function NavList({ onNavigate }: { onNavigate?: () => void }) {
+function NavList({
+  items = NAV_ITEMS,
+  onNavigate,
+}: {
+  items?: readonly NavItem[];
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
 
   return (
     <ul className="flex flex-col gap-1">
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const active =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
@@ -94,6 +100,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <nav aria-label="Main" className="flex-1">
             <NavList />
           </nav>
+          <nav aria-label="About" className="border-t border-[var(--color-line)] pt-3">
+            <NavList items={SECONDARY_NAV_ITEMS} />
+          </nav>
           <p className="text-[11px] leading-relaxed text-[var(--color-ink-muted)]">
             Demo data only. SEO and GEO scores are internal heuristics, not any
             search engine&apos;s ranking algorithm.
@@ -144,6 +153,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               className="border-t border-[var(--color-line)] px-4 py-3 lg:hidden"
             >
               <NavList onNavigate={() => setMenuOpen(false)} />
+              <div className="mt-2 border-t border-[var(--color-line)] pt-2">
+                <NavList
+                  items={SECONDARY_NAV_ITEMS}
+                  onNavigate={() => setMenuOpen(false)}
+                />
+              </div>
             </nav>
           )}
         </header>

@@ -285,3 +285,16 @@ npm run build
 - **CAC / AOV 是除法结果，可能带小数分**，生成说明文字须用会取整的 `formatMoneyMetric`，不可用要求整数分的 `formatCents`（`assertCents` 会直接抛错）。
 - **没有产出的来源要被点名**，不能留空白——"某模块没有报告问题"与"该模块已确认无问题"不是一回事。
 - domain 层的 `link` 是纯字符串（domain 不应知道 Next 的路由类型），在 UI 边界处转成 `Route`。
+
+## 实施记录更新（Dispatch 9）
+
+- **Demo reset 是全项目唯一清除存储的入口**（`/about-project` 底部）。此前存储合同要求"提供明确的 demo reset；只有用户触发 reset 才清空"，但 `reset()` 只存在于 repository 层，界面上无法触达——这是从 Dispatch 0 起就存在的合同缺口。
+  - 两步确认，且确认文案**逐项列出将要丢弃的内容**（改过的商品、增改的选题、已存审计、已完成建议），而不是问一句"确定吗"。
+  - `previewDemoReset` 对照 seed 计数，不是对照零：演示自带选题，丢掉它们与丢掉用户自己写的不是一回事。
+  - **corrupted 状态单独处理**：读不出来的存储同样返回 seed，但此时 reset 是修复而非损失，不能标为 alreadyClean。
+  - 集成测试同时锁定反面：加载、损坏数据、保存失败都**不得**清空存储。
+- **导航是跨模块指引的唯一来源。** `NavItem` 增加 `question`（该模块回答的运营问题），Dashboard 的 "Where to go next" 与 About 页的模块表都从 `NAV_ITEMS` 生成，路由不可能悄悄失联。`SECONDARY_NAV_ITEMS` 与模块列表分开，避免把 About 当成"可以继续分析的下一步"。
+- **长不可断字符串会撑破窄屏。** 商品详情页的 canonical URL 在 375px 下把页面推宽 81px。`DetailRow` 的值需要 `min-w-0` + `break-words`，标签需要 `shrink-0`。这是继 Dispatch 5 的 `sr-only` 溢出之后第二个同类问题——**任何可能承载 URL 或 slug 的容器都要能断行**。
+- **详情路由必须进溢出巡检。** 只扫列表页看不到这个 bug：长字符串都在详情页。`e2e/regression.spec.ts` 在 375/768/1440 三档逐一检查 13 条路由，含 `/products/[id]`、`/seo/[pageId]`、`/geo/[pageId]`、`/content/[id]`。
+- **截图与性能测量在门禁之外**（`tools/screenshots/`，独立 config 与独立存储命名空间 `growthos.screenshots`）。截图会写入仓库，绝不能混进质量门禁；性能脚本只打印浏览器自报的导航计时与传输字节，**不对毫秒数设断言**——开发机上的时间阈值只会得到不稳定且无信息量的门禁。
+- 全模块实现后删除了无引用的 `ModulePlaceholder`；`NavItem.implemented` 保留，仍驱动侧边栏的 "Soon" 标记。
