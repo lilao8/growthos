@@ -77,7 +77,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Recommendations',
     purpose:
       'Prioritised actions aggregated from every rule engine, with evidence.',
-    implemented: false,
+    implemented: true,
     dispatch: 'Dispatch 8',
   },
 ];

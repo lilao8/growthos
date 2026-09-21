@@ -273,3 +273,15 @@ npm run build
 - 建议一律是**待验证假设**，措辞用 "may" 并配"如何验证"，绝不写成已证实的原因。单元测试断言此措辞。
 - 阈值与最小样本量在 `DEFAULT_FUNNEL_CONFIG` 中可配；每条建议显示所依据的会话数，样本不足时标低置信。阈值是项目自定的粗略预期，无外部基准。
 - Dashboard 的 Add-to-cart / Checkout Rate 与 Conversion Alerts 由同一份漏斗计算得出，与漏斗页面同源。
+
+## 实施记录更新（Dispatch 8）
+
+- **SCHEMA_VERSION 4 → 5**：`DemoState` 增加 `recommendationStatuses`。
+- **只持久化决定，不持久化任务。** 存储中只有 `{ id, status, updatedAt }`；任务本身每次由各引擎重新生成，因此不可能与引擎当前的判断脱节。撤销完成时删除记录而非写入 "Open"——没有决定本身就是 Open 的含义。
+- **稳定标识** `rec_<source>_<fnv1a(source, ruleId, sourceEntityId)>`（`src/domain/stable-id.ts`）。同页同规则恒为同一 id；不同页的同一规则是不同任务；跨来源的同名 ruleId 不会相撞。证据变化而标识不变时，展示新证据并保留既有完成状态。
+- **本模块不重算任何分数。** SEO/GEO 取各自审计引擎的输出，漏斗取漏斗引擎的分析，Analytics 取 `channel-metrics` 的渠道行。它只决定"什么值得当作任务、大概值多少、去哪里做"。
+- **Impact / Effort 是 1–5 的估计，不是收益承诺**，按规则类别写死在 `src/domain/recommendations/config.ts` 并附理由；四象限由 `impact ≥ 4 && effort ≤ 2 = Quick Win` 等规则映射。界面必须写明这一限定。
+- **未发布商品降权**（`UNPUBLISHED_IMPACT_PENALTY = 2`，下限 1）：draft/archived 商品的页面级发现影响分减 2，并在理由中说明"问题真实存在但发布前不影响任何指标"。**降权而不隐藏**。没有这条规则时，列表首位会是一个未上线草稿的 meta 缺失——技术上正确，作为建议却是错的。
+- **CAC / AOV 是除法结果，可能带小数分**，生成说明文字须用会取整的 `formatMoneyMetric`，不可用要求整数分的 `formatCents`（`assertCents` 会直接抛错）。
+- **没有产出的来源要被点名**，不能留空白——"某模块没有报告问题"与"该模块已确认无问题"不是一回事。
+- domain 层的 `link` 是纯字符串（domain 不应知道 Next 的路由类型），在 UI 边界处转成 `Route`。

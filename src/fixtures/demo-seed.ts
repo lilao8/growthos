@@ -34,6 +34,8 @@ export function buildDemoSeedState(): DemoState {
     // explicit audit, never shipped as seed data.
     auditResults: [],
     contentIdeas: buildDemoContentIdeas(),
+    // Nobody has marked anything done in a fresh demo.
+    recommendationStatuses: [],
   };
 
   // The fixture is parsed like any other boundary input: a bad fixture should

@@ -3,12 +3,14 @@ import type {
   ContentIdea,
   PageSnapshot,
   Product,
+  RecommendationStatusRecord,
   StoredAuditResult,
 } from '@/domain/types';
 import {
   contentIdeaSchema,
   pageSnapshotSchema,
   productSchema,
+  recommendationStatusSchema,
   storedAuditResultSchema,
 } from '@/domain/schemas';
 
@@ -22,7 +24,7 @@ import {
  */
 
 /** Bumped whenever the persisted shape changes; older payloads are discarded. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /**
  * Everything the demo persists.
@@ -38,6 +40,8 @@ export interface DemoState {
   pageSnapshots: PageSnapshot[];
   auditResults: StoredAuditResult[];
   contentIdeas: ContentIdea[];
+  /** Only the Done/Open decision survives; the task itself is re-derived. */
+  recommendationStatuses: RecommendationStatusRecord[];
 }
 
 export const demoStateSchema = z.object({
@@ -46,6 +50,7 @@ export const demoStateSchema = z.object({
   pageSnapshots: z.array(pageSnapshotSchema),
   auditResults: z.array(storedAuditResultSchema),
   contentIdeas: z.array(contentIdeaSchema),
+  recommendationStatuses: z.array(recommendationStatusSchema),
 });
 
 export type PersistedDemoState = z.infer<typeof demoStateSchema>;

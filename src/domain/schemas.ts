@@ -10,6 +10,7 @@ import {
   INDEXABILITY_STATES,
   PRODUCT_CATEGORIES,
   PRODUCT_STATUSES,
+  RECOMMENDATION_STATUSES,
   SEARCH_INTENTS,
   SEVERITIES,
 } from './types';
@@ -195,4 +196,18 @@ export const contentIdeaSchema = z.object({
   seoOpportunity: opportunityScoreSchema,
   geoOpportunity: opportunityScoreSchema,
   productRelevance: opportunityScoreSchema,
+});
+
+// ---------------------------------------------------------------------------
+// Recommendation status (Dispatch 8)
+// ---------------------------------------------------------------------------
+
+/**
+ * Only the human decision is persisted. The recommendation itself is rebuilt
+ * from the rule engines on every load, so it can never be stale.
+ */
+export const recommendationStatusSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(RECOMMENDATION_STATUSES),
+  updatedAt: z.string().min(1),
 });

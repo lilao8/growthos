@@ -13,7 +13,7 @@ const ROUTES = [
   { path: '/content', label: 'Content', implemented: true },
   { path: '/analytics', label: 'Analytics', implemented: true },
   { path: '/funnel', label: 'Funnel', implemented: true },
-  { path: '/recommendations', label: 'Recommendations', implemented: false },
+  { path: '/recommendations', label: 'Recommendations', implemented: true },
 ] as const;
 
 test('every route is reachable and pending modules say so', async ({ page }) => {

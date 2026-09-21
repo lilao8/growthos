@@ -337,6 +337,29 @@ export type Priority = (typeof PRIORITIES)[number];
 export const RECOMMENDATION_STATUSES = ['Open', 'Done'] as const;
 export type RecommendationStatus = (typeof RECOMMENDATION_STATUSES)[number];
 
+/** Impact vs effort, the shape an operator actually plans against. */
+export const RECOMMENDATION_QUADRANTS = [
+  'Quick Win',
+  'Strategic',
+  'Low Priority',
+  'Defer',
+] as const;
+export type RecommendationQuadrant = (typeof RECOMMENDATION_QUADRANTS)[number];
+
+/**
+ * The only part of a recommendation that is persisted.
+ *
+ * Everything else is re-derived from the rule engines on every load, so a
+ * recommendation cannot go stale. What must survive is the human decision:
+ * that someone marked this task done.
+ */
+export interface RecommendationStatusRecord {
+  /** The stable id from ruleId + sourceEntityId. */
+  id: string;
+  status: RecommendationStatus;
+  updatedAt: string;
+}
+
 export interface Recommendation {
   /** Stable: derived from ruleId + sourceEntityId so re-runs do not duplicate. */
   id: string;
@@ -355,4 +378,12 @@ export interface Recommendation {
   status: RecommendationStatus;
   evidence: string | null;
   ruleVersion: string;
+  /** Where to go to act on this — a product, a page audit, a chart. */
+  link: string;
+  quadrant: RecommendationQuadrant;
+  /**
+   * False when the underlying problem is no longer present but a status record
+   * for it survives. Kept for history; never shown as something to do.
+   */
+  active: boolean;
 }

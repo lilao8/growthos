@@ -1,0 +1,324 @@
+import type {
+  Priority,
+  RecommendationQuadrant,
+  RecommendationSource,
+} from '../types';
+
+/**
+ * Recommendation configuration.
+ *
+ * Everything judgemental lives here: how much each kind of fix is worth, how
+ * much work it is, what counts as a problem worth raising, and how those turn
+ * into a priority. Spreading these across the aggregators would make the
+ * ranking impossible to argue with.
+ *
+ * Impact and effort are 1–5 **estimates**, not measurements. They say how this
+ * project rates a class of fix, not what any particular fix will return. A
+ * Quick Win is a guess that something is cheap and worth doing, never a promise
+ * of revenue.
+ */
+
+export const RECOMMENDATION_RULE_VERSION = 'recommendations-1.0.0';
+
+/** 1 = barely moves anything, 5 = changes the outcome of the channel or page. */
+export type Score = 1 | 2 | 3 | 4 | 5;
+
+export interface Weighting {
+  impact: Score;
+  effort: Score;
+  /** Why these two numbers, in one line an operator can disagree with. */
+  rationale: string;
+}
+
+export const IMPACT_SCALE: Record<Score, string> = {
+  1: 'Marginal — unlikely to change any number on its own.',
+  2: 'Small — a modest improvement to one page or one channel.',
+  3: 'Moderate — a visible improvement to one area.',
+  4: 'Large — likely to move a headline metric.',
+  5: 'Decisive — the thing currently holding the area back.',
+};
+
+export const EFFORT_SCALE: Record<Score, string> = {
+  1: 'Minutes — an edit in this tool.',
+  2: 'An hour or two — writing or a small template change.',
+  3: 'A day — content work, or a change across several pages.',
+  4: 'Several days — development, or a coordinated content push.',
+  5: 'Weeks — a project with dependencies outside the team.',
+};
+
+/** High impact and low effort is the corner worth clearing first. */
+export const QUICK_WIN_IMPACT_MIN: Score = 4;
+export const QUICK_WIN_EFFORT_MAX: Score = 2;
+
+export function quadrantFor(impact: number, effort: number): RecommendationQuadrant {
+  const highImpact = impact >= QUICK_WIN_IMPACT_MIN;
+  const lowEffort = effort <= QUICK_WIN_EFFORT_MAX;
+  if (highImpact && lowEffort) return 'Quick Win';
+  if (highImpact) return 'Strategic';
+  if (lowEffort) return 'Low Priority';
+  return 'Defer';
+}
+
+export const PRIORITY_ORDER: Priority[] = ['Critical', 'High', 'Medium', 'Low'];
+
+export const SOURCE_LABELS: Record<RecommendationSource, string> = {
+  seo: 'SEO',
+  geo: 'GEO',
+  content: 'Content',
+  analytics: 'Analytics',
+  funnel: 'Funnel',
+};
+
+// ---------------------------------------------------------------------------
+// SEO
+// ---------------------------------------------------------------------------
+
+/**
+ * Weightings per SEO rule. A missing title is both important and a two-minute
+ * fix; rewriting a page around a keyword is neither.
+ */
+export const SEO_WEIGHTS: Record<string, Weighting> = {
+  'meta-title-present': {
+    impact: 5,
+    effort: 1,
+    rationale: 'The page has no headline in search results, and the fix is one field.',
+  },
+  'meta-title-length': {
+    impact: 2,
+    effort: 1,
+    rationale: 'Truncation costs some clicks; editing the field takes a minute.',
+  },
+  'meta-description-present': {
+    impact: 4,
+    effort: 1,
+    rationale: 'The result snippet is being written by an algorithm instead of by you.',
+  },
+  'meta-description-length': {
+    impact: 2,
+    effort: 1,
+    rationale: 'Wasted or truncated space in the snippet; a quick edit.',
+  },
+  h1: {
+    impact: 4,
+    effort: 2,
+    rationale: 'Nothing on the page states its subject; needs a template or content change.',
+  },
+  'url-slug': {
+    impact: 2,
+    effort: 4,
+    rationale: 'Low upside, and changing a URL means redirects and lost history.',
+  },
+  canonical: {
+    impact: 4,
+    effort: 2,
+    rationale: 'Ranking signals may be pointed at the wrong page; a template fix.',
+  },
+  'image-alt': {
+    impact: 3,
+    effort: 2,
+    rationale: 'Accessibility and image search both suffer; writing alt text is quick.',
+  },
+  'internal-links': {
+    impact: 3,
+    effort: 2,
+    rationale: 'An orphaned page is hard to reach; adding links is content work.',
+  },
+  'structured-data': {
+    impact: 3,
+    effort: 3,
+    rationale: 'Machine-readable price and stock, but it needs a template change.',
+  },
+  indexability: {
+    impact: 5,
+    effort: 1,
+    rationale: 'A noindex page cannot rank at all. Confirm whether that is intended.',
+  },
+  'keyword-usage': {
+    impact: 3,
+    effort: 3,
+    rationale: 'Either the copy or the target needs rethinking — not a field edit.',
+  },
+};
+
+export const DEFAULT_SEO_WEIGHT: Weighting = {
+  impact: 3,
+  effort: 3,
+  rationale: 'No specific weighting for this rule; treated as a middling fix.',
+};
+
+// ---------------------------------------------------------------------------
+// GEO
+// ---------------------------------------------------------------------------
+
+export const GEO_WEIGHTS: Record<string, Weighting> = {
+  'topic-clarity': {
+    impact: 4,
+    effort: 2,
+    rationale: 'Without a clear subject nothing else about the page can be used.',
+  },
+  'direct-answer': {
+    impact: 5,
+    effort: 2,
+    rationale: 'The single most quotable unit on the page, and one sentence to write.',
+  },
+  'faq-coverage': {
+    impact: 4,
+    effort: 3,
+    rationale: 'Maps onto how people ask; needs real questions and real answers.',
+  },
+  'heading-structure': {
+    impact: 3,
+    effort: 2,
+    rationale: 'Lets a machine segment the page; usually a template change.',
+  },
+  'factual-density': {
+    impact: 5,
+    effort: 3,
+    rationale: 'Concrete facts are what gets quoted; someone has to measure them.',
+  },
+  'entity-clarity': {
+    impact: 3,
+    effort: 1,
+    rationale: 'Attribution needs a named brand; usually a title and markup edit.',
+  },
+  'structured-product-facts': {
+    impact: 4,
+    effort: 3,
+    rationale: 'Removes the need to infer price and stock from prose.',
+  },
+  'source-evidence': {
+    impact: 4,
+    effort: 4,
+    rationale: 'A checkable claim is worth citing, but the testing has to happen first.',
+  },
+  'original-information': {
+    impact: 5,
+    effort: 5,
+    rationale: 'The strongest reason to be cited, and the most work to produce.',
+  },
+  extractability: {
+    impact: 4,
+    effort: 3,
+    rationale: 'Restructuring prose into liftable claims is real content work.',
+  },
+};
+
+export const DEFAULT_GEO_WEIGHT: Weighting = {
+  impact: 3,
+  effort: 3,
+  rationale: 'No specific weighting for this rule; treated as a middling fix.',
+};
+
+// ---------------------------------------------------------------------------
+// Content
+// ---------------------------------------------------------------------------
+
+export interface ContentThresholds {
+  /** Opportunity score at or above which an unstarted idea is worth raising. */
+  highOpportunity: number;
+  /** Statuses that count as "not started". */
+  unstartedStatuses: readonly string[];
+}
+
+export const CONTENT_THRESHOLDS: ContentThresholds = {
+  highOpportunity: 70,
+  unstartedStatuses: ['Idea'],
+};
+
+export const CONTENT_WEIGHT: Weighting = {
+  impact: 4,
+  effort: 3,
+  rationale:
+    'A high-opportunity topic nobody has started; writing it is a day of work.',
+};
+
+// ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+export interface AnalyticsThresholds {
+  /**
+   * Below this many sessions a channel's rates are too noisy to draw a
+   * conclusion from, so no recommendation is generated at all.
+   */
+  minimumSessions: number;
+  /** Below this many orders, a rate-based finding is flagged low confidence. */
+  minimumOrders: number;
+  /** A channel converting below this, with real traffic, is worth a look. */
+  lowConversionRate: number;
+  /** ROAS below this is losing money after the rest of the cost base. */
+  minimumRoas: number;
+  /** CAC above this share of AOV is unsustainable on a single order. */
+  maxCacShareOfAov: number;
+}
+
+export const ANALYTICS_THRESHOLDS: AnalyticsThresholds = {
+  minimumSessions: 300,
+  minimumOrders: 25,
+  lowConversionRate: 0.015,
+  minimumRoas: 2,
+  maxCacShareOfAov: 0.5,
+};
+
+export const ANALYTICS_WEIGHTS: Record<string, Weighting> = {
+  'high-traffic-low-conversion': {
+    impact: 5,
+    effort: 4,
+    rationale:
+      'Traffic already paid for that is not converting; diagnosing it is real work.',
+  },
+  'roas-below-target': {
+    impact: 5,
+    effort: 2,
+    rationale: 'Spend is losing money. Pausing or reallocating it is a decision, not a build.',
+  },
+  'cac-above-aov-share': {
+    impact: 4,
+    effort: 2,
+    rationale: 'Each new customer costs too much relative to the first order.',
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Funnel
+// ---------------------------------------------------------------------------
+
+export const FUNNEL_WEIGHTS: Record<string, Weighting> = {
+  'session->product_view': {
+    impact: 4,
+    effort: 3,
+    rationale: 'Losing visits before they see a product; landing and navigation work.',
+  },
+  'product_view->add_to_cart': {
+    impact: 5,
+    effort: 3,
+    rationale: 'The largest population in the funnel; content and merchandising work.',
+  },
+  'add_to_cart->checkout': {
+    impact: 4,
+    effort: 2,
+    rationale: 'Clear intent already shown; usually a UX fix rather than a rebuild.',
+  },
+  'checkout->purchase': {
+    impact: 5,
+    effort: 3,
+    rationale: 'The closest to revenue, and usually fixable without new traffic.',
+  },
+};
+
+export const DEFAULT_FUNNEL_WEIGHT: Weighting = {
+  impact: 4,
+  effort: 3,
+  rationale: 'No specific weighting for this step; treated as an important fix.',
+};
+
+/**
+ * Priority comes from impact and how badly the rule is failing, not from
+ * effort — a hard problem is not a less urgent one.
+ */
+export function priorityFrom(impact: number, severeFailure: boolean): Priority {
+  if (impact >= 5 && severeFailure) return 'Critical';
+  if (impact >= 4) return severeFailure ? 'Critical' : 'High';
+  if (impact >= 3) return severeFailure ? 'High' : 'Medium';
+  return severeFailure ? 'Medium' : 'Low';
+}
