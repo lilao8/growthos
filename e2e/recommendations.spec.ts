@@ -328,6 +328,59 @@ test('an ignored finding stays listed, with its reason, across a reload', async 
   expect(openAfter).toBe(openBefore - 1);
 });
 
+/**
+ * The counts in the header row all describe the same population.
+ *
+ * They previously did not: Open was status-scoped while Critical and Quick
+ * wins counted the whole list, so closing every task left "Open 0" beside a
+ * non-zero Critical. The row is read left to right as one set of numbers, so
+ * that reads as a contradiction rather than as two different questions.
+ */
+test('closing a critical finding takes it out of the Critical count too', async ({
+  page,
+}) => {
+  await page.goto('/recommendations');
+  const id = await firstCardId(page);
+
+  // Assert the fixture still puts a Critical finding first. Without this the
+  // test would quietly stop exercising the behaviour if the ordering changed,
+  // and would pass with the fix reverted.
+  await expect(page.getByTestId(`rec-${id}`)).toHaveAttribute(
+    'data-priority',
+    'Critical',
+  );
+
+  const countOf = async (testId: string): Promise<number> =>
+    Number((await page.getByTestId(testId).innerText()).replace(/,/g, ''));
+
+  const openBefore = await countOf('rec-open-value');
+  const criticalBefore = await countOf('rec-critical-value');
+  expect(criticalBefore).toBeGreaterThan(0);
+
+  await page.getByTestId(`rec-toggle-${id}`).click();
+  await expect(page.getByTestId('rec-done-value')).toHaveText('1');
+
+  expect(await countOf('rec-open-value')).toBe(openBefore - 1);
+  expect(await countOf('rec-critical-value')).toBe(criticalBefore - 1);
+
+  // And the same after a reload, so this is the stored decision rather than
+  // an optimistic update that a refresh would undo.
+  await page.reload();
+  expect(await countOf('rec-open-value')).toBe(openBefore - 1);
+  expect(await countOf('rec-critical-value')).toBe(criticalBefore - 1);
+});
+
+test('no band in the header row can exceed the open count', async ({ page }) => {
+  await page.goto('/recommendations');
+
+  const countOf = async (testId: string): Promise<number> =>
+    Number((await page.getByTestId(testId).innerText()).replace(/,/g, ''));
+
+  const open = await countOf('rec-open-value');
+  expect(await countOf('rec-critical-value')).toBeLessThanOrEqual(open);
+  expect(await countOf('rec-quick-wins-value')).toBeLessThanOrEqual(open);
+});
+
 test('an ignored finding says nothing re-checks it automatically', async ({
   page,
 }) => {

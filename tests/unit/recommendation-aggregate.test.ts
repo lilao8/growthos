@@ -596,6 +596,94 @@ describe('ordering and counting', () => {
     expect(tally.byPriority.Critical).toBe(1);
     expect(tally.byQuadrant['Quick Win']).toBe(1);
   });
+
+  /**
+   * The priority and quadrant counts sit in the same row of cards as `open`,
+   * so they have to describe the same population. Counting closed work there
+   * produced a row that contradicted itself — "Open 0" beside "Critical 6".
+   *
+   * Every case below uses findings that are Critical or Quick Win *and*
+   * closed, which is the only shape that tells the two rules apart. The
+   * earlier test above cannot: its closed finding is Low priority, so it
+   * counts 1 either way.
+   */
+  it('leaves Critical out once the finding is done', () => {
+    const tally = tallyRecommendations([
+      recommendation({ id: 'a', priority: 'Critical', status: 'Done' }),
+    ]);
+
+    expect(tally.done).toBe(1);
+    expect(tally.byPriority.Critical).toBe(0);
+  });
+
+  it('leaves Critical out once the finding is ignored', () => {
+    const tally = tallyRecommendations([
+      recommendation({ id: 'a', priority: 'Critical', status: 'Ignored' }),
+    ]);
+
+    expect(tally.ignored).toBe(1);
+    expect(tally.byPriority.Critical).toBe(0);
+  });
+
+  it('leaves a quick win out once it is closed', () => {
+    const tally = tallyRecommendations([
+      recommendation({ id: 'a', quadrant: 'Quick Win', status: 'Done' }),
+      recommendation({ id: 'b', quadrant: 'Quick Win', status: 'Ignored' }),
+      recommendation({ id: 'c', quadrant: 'Quick Win' }),
+    ]);
+
+    expect(tally.byQuadrant['Quick Win']).toBe(1);
+  });
+
+  it('never reports more in any band than are open', () => {
+    // The invariant the row depends on: no card can exceed the Open count.
+    const tally = tallyRecommendations([
+      recommendation({ id: 'a', priority: 'Critical', quadrant: 'Quick Win' }),
+      recommendation({ id: 'b', priority: 'Critical', status: 'Done' }),
+      recommendation({ id: 'c', priority: 'High', status: 'Ignored' }),
+      recommendation({ id: 'd', priority: 'Medium' }),
+    ]);
+
+    expect(tally.open).toBe(2);
+    for (const [band, count] of Object.entries(tally.byPriority)) {
+      expect(count, band).toBeLessThanOrEqual(tally.open);
+    }
+    for (const [band, count] of Object.entries(tally.byQuadrant)) {
+      expect(count, band).toBeLessThanOrEqual(tally.open);
+    }
+  });
+
+  it('adds up to exactly the open count across every priority', () => {
+    // Each open finding lands in one band and one only, so the bands
+    // partition the open set rather than merely fitting inside it.
+    const tally = tallyRecommendations([
+      recommendation({ id: 'a', priority: 'Critical' }),
+      recommendation({ id: 'b', priority: 'High' }),
+      recommendation({ id: 'c', priority: 'High' }),
+      recommendation({ id: 'd', priority: 'Low', status: 'Done' }),
+      recommendation({ id: 'e', priority: 'Medium', status: 'Ignored' }),
+    ]);
+
+    const summed = Object.values(tally.byPriority).reduce((a, b) => a + b, 0);
+    expect(summed).toBe(tally.open);
+    expect(summed).toBe(3);
+    expect(Object.values(tally.byQuadrant).reduce((a, b) => a + b, 0)).toBe(
+      tally.open,
+    );
+  });
+
+  it('empties every band when all the work is closed', () => {
+    // The case that gave the contradiction away in the first place.
+    const tally = tallyRecommendations([
+      recommendation({ id: 'a', priority: 'Critical', quadrant: 'Quick Win', status: 'Done' }),
+      recommendation({ id: 'b', priority: 'Critical', quadrant: 'Quick Win', status: 'Ignored' }),
+    ]);
+
+    expect(tally.open).toBe(0);
+    expect(tally.total).toBe(2);
+    expect(tally.byPriority.Critical).toBe(0);
+    expect(tally.byQuadrant['Quick Win']).toBe(0);
+  });
 });
 
 describe('findings on unpublished products', () => {

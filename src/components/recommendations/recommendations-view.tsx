@@ -460,13 +460,13 @@ export function RecommendationsView({ mode }: { mode: DemoDataMode | null }) {
         <MetricCard
           label="Critical"
           value={formatInteger(view.tally.byPriority.Critical)}
-          definition="High impact and failing outright."
+          definition="Open findings that are high impact and failing outright."
           testId="rec-critical"
         />
         <MetricCard
           label="Quick wins"
           value={formatInteger(view.tally.byQuadrant['Quick Win'])}
-          definition={`Impact ${QUICK_WIN_IMPACT_MIN}+ with effort ${QUICK_WIN_EFFORT_MAX} or less. An estimate, not a promise.`}
+          definition={`Open findings with impact ${QUICK_WIN_IMPACT_MIN}+ and effort ${QUICK_WIN_EFFORT_MAX} or less. An estimate, not a promise.`}
           testId="rec-quick-wins"
         />
         <MetricCard

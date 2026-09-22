@@ -108,6 +108,16 @@ export interface RecommendationTally {
   ignored: number;
   /** Ignored findings whose evidence has changed since the decision. */
   ignoredNeedingReview: number;
+  /**
+   * Priority and quadrant counts over OPEN findings only.
+   *
+   * These sit beside `open` in the same row of cards, so counting closed work
+   * here would read as a contradiction: clearing every task would leave "Open
+   * 0" next to "Critical 6". The question this row answers is how much is
+   * still outstanding, and a finding somebody has done or deliberately set
+   * aside is not outstanding. `total`, `done` and `ignored` remain available
+   * for anything that needs the whole list.
+   */
   byPriority: Record<Priority, number>;
   byQuadrant: Record<RecommendationQuadrant, number>;
 }
@@ -133,13 +143,16 @@ export function tallyRecommendations(
   let ignored = 0;
   let ignoredNeedingReview = 0;
   for (const item of items) {
-    byPriority[item.priority] += 1;
-    byQuadrant[item.quadrant] += 1;
     if (item.status === 'Done') done += 1;
     else if (item.status === 'Ignored') {
       ignored += 1;
       if (item.ignore?.needsReview === true) ignoredNeedingReview += 1;
-    } else open += 1;
+    } else {
+      open += 1;
+      // Only open findings, so this row of counts stays one population.
+      byPriority[item.priority] += 1;
+      byQuadrant[item.quadrant] += 1;
+    }
   }
 
   return {
