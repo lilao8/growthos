@@ -1,0 +1,53 @@
+#!/bin/sh
+#
+# The fast four, before every commit.
+#
+# CLAUDE.md lists six checks. The two slow ones (test:e2e at ~1.2m, build at
+# ~30s) stay in CI; these four finish in about six seconds together, which is
+# the budget a commit hook has before people start reaching for --no-verify.
+#
+# Why this exists at all: in Dispatch 9 the final gate run came back with
+# lint failing on a file added after the previous passing run. Nothing caught
+# it mechanically — it was found by re-running the gates by hand, and trusting
+# the earlier result would have meant a report that falsely claimed lint PASS.
+#
+# This runs against the working tree, not the staged snapshot. Stashing to
+# isolate the index can lose work when a check fails midway, and CLAUDE.md is
+# explicit about not clobbering edits. So a partially staged commit is checked
+# as it stands on disk; CI checks the committed result.
+#
+# Genuinely need to commit through a failure: git commit --no-verify
+
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+# No dependencies installed yet (fresh clone, mid-rebase); let the commit
+# through rather than failing on something the author cannot act on here.
+if [ ! -d node_modules ]; then
+  echo "pre-commit: node_modules missing, skipping checks. Run npm ci."
+  exit 0
+fi
+
+# The commands are the ones CLAUDE.md already specifies, spelled the same way,
+# so this hook adds no second version of the contract to keep in step.
+run() {
+  label=$1
+  shift
+  printf '  %-26s' "$label"
+  if out=$("$@" 2>&1); then
+    echo 'ok'
+  else
+    echo 'FAILED'
+    echo "$out"
+    echo
+    echo "pre-commit: $label failed. Fix it, or commit with --no-verify."
+    exit 1
+  fi
+}
+
+echo 'pre-commit:'
+run 'lint' npm run --silent lint
+run 'typecheck' npm run --silent typecheck
+run 'unit tests' npm run --silent test -- --run
+run 'integration tests' npm run --silent test:integration -- --run
