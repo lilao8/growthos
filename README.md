@@ -144,7 +144,9 @@ Revenue = 已支付订单的商品金额扣折扣，**排除税、运费、退�
 
 ## 安装、运行与测试
 
-需要 Node 20+（开发环境实测 Node 24.18 / npm 11.16）。
+需要 Node 22.12+（开发环境实测 Node 24.18 / npm 11.16；CI 在 22 与 24 上各跑一遍）。
+
+> Node 20 不可用。此前这里写的是「Node 20+」，直到 CI 首次运行时 Node 20.20.2 跑挂了 integration 套件——jsdom 依赖的 undici 需要 `webidl.util.markAsUncloneable`，而任何 Node 20 都没有这个 API。jsdom、undici、vitest 三者各自声明的下限都是 22+，所以那句话从一开始就不成立。详见 [dispatch-15 报告](docs/reports/dispatch-15.md)。
 
 ```bash
 npm ci
@@ -299,5 +301,6 @@ npm run perf
 | 12 | 跨浏览器 E2E 与无障碍审计 | [报告](docs/reports/dispatch-12.md) |
 | 13 | 部署上线与 Recommendations tally 口径修正 | [报告](docs/reports/dispatch-13.md) |
 | 14 | pre-commit / CI 与分层、确定性的 lint 强制 | [报告](docs/reports/dispatch-14.md) |
+| 15 | 推上 GitHub，CI 首次运行并证伪 Node 20 支持 | [报告](docs/reports/dispatch-15.md) |
 
 > 报告是**过程记录**，写的是当时实测到的数字。数据集在 Dispatch 6、8、11 调整过，所以早期报告里的某些数值与当前不同——这是刻意保留的，回改会把"当时确实测到这个数"变成事后修饰。当前数值以最新报告和应用本身为准。

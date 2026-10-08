@@ -18,10 +18,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 20 is the floor declared in package.json's engines field, and 24 is
+        # 22 is the floor declared in package.json's engines field, and 24 is
         # what development and the Vercel runtime actually use. Testing only
         # one of them would leave the other a claim rather than a fact.
-        node: ['20', '24']
+        #
+        # The floor was ">=20" until this workflow first ran and Node 20.20.2
+        # failed the integration suite: jsdom pulls in undici, which needs
+        # `webidl.util.markAsUncloneable` — absent from every Node 20. jsdom,
+        # undici and vitest each declare 22+ themselves, so ">=20" had never
+        # been true. The range now mirrors vitest's, the strictest of the three.
+        node: ['22', '24']
     steps:
       - uses: actions/checkout@v4
 
