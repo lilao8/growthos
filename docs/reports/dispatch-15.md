@@ -109,7 +109,25 @@ IDENTICAL tree hash — content untouched
 
 ### 4.2 CI 修正后转绿
 
-见 §6 之后补记——本报告写于第二次运行结果确认之后。
+第二次运行（matrix 改为 22/24 后）：
+
+```
+success  lint, typecheck, unit, integration (Node 22)
+success  lint, typecheck, unit, integration (Node 24)
+success  e2e (3 engines) and build
+```
+
+三个 job 全绿。e2e 在 GitHub 环境里跑满 777 个测试、chromium / firefox / webkit 三引擎。
+
+### 4.3 两条非阻塞告警也处理了
+
+首次运行的 annotations 除那条 error 外还有两条，由用户截图提供：
+
+**warning：`Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24`。** 指的是 action 自身的运行时，与 matrix 无关。工作流用的四个 action 都停在 v4，而 v4 声明 `using: 'node20'`。升到各自当前主版本——checkout v7、setup-node v7、cache v6、upload-artifact v7，四者均已是 `using: 'node24'`。
+
+升级前逐个核对了用到的输入/输出在新主版本仍存在（`node-version`、`cache`、`path`、`key`、`cache-hit`、`name`、`retention-days`），没有凭「主版本升级通常兼容」直接改。
+
+**notice：`The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026`。** 未采取行动，理由见 §5。
 
 ### 4.3 pre-commit hook 在真实提交上生效
 
@@ -119,7 +137,8 @@ dispatch-14 的 hook 在本阶段每次提交时自动执行，四条全过，�
 
 ## 5. 已知问题
 
-- **Node 22 那条 matrix 腿本地仍未验证**，与此前 Node 20 的情况相同——本机只有 v24.18.0。区别在于现在 CI 会实际跑它，所以它不再是无人检验的声明。
+- **Node 22 本地仍未验证**，本机只有 v24.18.0。区别在于 CI 现在实际跑它并已通过，所以它不再是无人检验的声明。
+- **`runs-on: ubuntu-latest` 将在 2026-10-19 迁移到 Ubuntu 26**（距今 11 天，GitHub 的 notice 提示）。未固定到 `ubuntu-24.04`：e2e 用 `playwright install --with-deps` 自带系统依赖，对基础镜像的耦合很弱，而固定版本会让这个仓库在镜像淘汰时以另一种方式坏掉。权衡的结果是接受迁移，但如果迁移后 CI 转红，第一个该怀疑的就是它。
 - `backup-before-rewrite` 分支仍在本地，未推送。确认无误后可删。
 - 仓库现为 public，历史已被 GitHub 索引。
 - 线上演示仍是 dispatch-13 的部署，`d9c78d9` 之后的改动（lint 规则、CI、本次 engines 修正）都不影响运行时行为，无需重新部署。
