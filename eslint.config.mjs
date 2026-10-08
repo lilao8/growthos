@@ -122,6 +122,10 @@ const config = [
       'playwright-report/**',
       'test-results/**',
       'next-env.d.ts',
+      // Stryker copies the whole project per worker and rewrites the sources
+      // it mutates. Linting a deliberately broken copy reports nothing true.
+      '.stryker-tmp/**',
+      'reports/**',
     ],
   },
   ...nextCoreWebVitals,

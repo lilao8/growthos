@@ -17,6 +17,9 @@ import {
 } from '@/domain/recommendations/config';
 import { recommendationId, stableHash } from '@/domain/stable-id';
 import {
+  EMPTY_RECOMMENDATION_QUERY,
+  filterRecommendations,
+  isRecommendationQueryActive,
   sortRecommendations,
   tallyRecommendations,
 } from '@/domain/recommendations/sorting';
@@ -571,6 +574,94 @@ describe('ordering and counting', () => {
     expect(sorted.map((item) => item.id)).toEqual(['d', 'c', 'a', 'b']);
   });
 
+  /**
+   * One tie-breaker at a time.
+   *
+   * The test above names four rules but cannot isolate the last two: its
+   * Quick Win item also has the lower effort, so switching either rule off
+   * leaves the order unchanged. Mutation testing found exactly that — the
+   * quadrant and effort comparisons could both be deleted and it still
+   * passed. Each case below varies one field and holds the rest equal.
+   */
+  it('prefers a quick win at equal priority and equal effort', () => {
+    const sorted = sortRecommendations([
+      recommendation({ id: 'a', priority: 'High', quadrant: 'Defer', effort: 3 }),
+      recommendation({ id: 'b', priority: 'High', quadrant: 'Quick Win', effort: 3 }),
+    ]);
+    expect(sorted.map((i) => i.id)).toEqual(['b', 'a']);
+  });
+
+  it('prefers less effort at equal priority and equal quadrant', () => {
+    const sorted = sortRecommendations([
+      recommendation({ id: 'a', priority: 'High', quadrant: 'Defer', effort: 4 }),
+      recommendation({ id: 'b', priority: 'High', quadrant: 'Defer', effort: 1 }),
+    ]);
+    expect(sorted.map((i) => i.id)).toEqual(['b', 'a']);
+  });
+
+  it('prefers more impact when priority, quadrant and effort all match', () => {
+    const sorted = sortRecommendations([
+      recommendation({ id: 'a', priority: 'High', effort: 2, impact: 1 }),
+      recommendation({ id: 'b', priority: 'High', effort: 2, impact: 5 }),
+    ]);
+    expect(sorted.map((i) => i.id)).toEqual(['b', 'a']);
+  });
+
+  it('prefers higher priority even when the lower one is a cheap quick win', () => {
+    // Priority is checked before the quadrant, so a Critical chore outranks a
+    // Low quick win. Swapping the two comparisons would reverse this.
+    const sorted = sortRecommendations([
+      recommendation({ id: 'a', priority: 'Low', quadrant: 'Quick Win', effort: 1 }),
+      recommendation({ id: 'b', priority: 'Critical', quadrant: 'Defer', effort: 5 }),
+    ]);
+    expect(sorted.map((i) => i.id)).toEqual(['b', 'a']);
+  });
+
+  it('leaves the needsReview rule inside the ignored group', () => {
+    // Both are Critical quick wins with equal effort, so only the review rule
+    // could reorder them — and it must not, because only one is ignored.
+    // Widening the guard to `||` would let an ignored finding jump an open
+    // one; the id tie-break then decides, which is what this asserts.
+    const open = recommendation({ id: 'b', priority: 'High' });
+    const ignored = recommendation({
+      id: 'a',
+      priority: 'High',
+      status: 'Ignored',
+      ignore: {
+        reason: 'deliberate',
+        note: '',
+        decidedAt: '2026-08-31T00:00:00.000Z',
+        needsReview: true,
+      },
+    });
+    expect(sortRecommendations([ignored, open]).map((i) => i.id)).toEqual([
+      'b',
+      'a',
+    ]);
+  });
+
+  it('sorts an ignored finding that carries no decision record', () => {
+    // `status: 'Ignored'` with `ignore: null` should not be reachable, but the
+    // sort reads `ignore?.needsReview` and a stored record could be partial.
+    // Dropping the optional chain throws here rather than sorting.
+    const bare = recommendation({ id: 'a', status: 'Ignored', ignore: null });
+    const flagged = recommendation({
+      id: 'b',
+      status: 'Ignored',
+      ignore: {
+        reason: 'deliberate',
+        note: '',
+        decidedAt: '2026-08-31T00:00:00.000Z',
+        needsReview: true,
+      },
+    });
+    expect(() => sortRecommendations([bare, flagged])).not.toThrow();
+    expect(sortRecommendations([bare, flagged]).map((i) => i.id)).toEqual([
+      'b',
+      'a',
+    ]);
+  });
+
   it('is stable across runs for otherwise identical items', () => {
     const items = [
       recommendation({ id: 'z' }),
@@ -683,6 +774,237 @@ describe('ordering and counting', () => {
     expect(tally.total).toBe(2);
     expect(tally.byPriority.Critical).toBe(0);
     expect(tally.byQuadrant['Quick Win']).toBe(0);
+  });
+
+  /**
+   * Ignored findings sort by whether their grounds still hold.
+   *
+   * The service flags an ignore whose evidence has moved on, and that flag is
+   * covered. The *order* was not: the whole point of flagging is that the one
+   * worth revisiting is the one you see first, and nothing asserted that.
+   */
+  it('puts an ignore whose evidence changed above one that still holds', () => {
+    const settled = recommendation({
+      id: 'a',
+      status: 'Ignored',
+      ignore: {
+        reason: 'deliberate',
+        note: '',
+        decidedAt: '2026-08-31T00:00:00.000Z',
+        needsReview: false,
+      },
+    });
+    const stale = recommendation({
+      id: 'b',
+      status: 'Ignored',
+      ignore: {
+        reason: 'deliberate',
+        note: '',
+        decidedAt: '2026-08-31T00:00:00.000Z',
+        needsReview: true,
+      },
+    });
+
+    // Given in the order that would be wrong, so a sort that does nothing
+    // fails rather than passing on the input's own ordering.
+    expect(sortRecommendations([settled, stale]).map((i) => i.id)).toEqual([
+      'b',
+      'a',
+    ]);
+  });
+
+  it('still puts every ignored finding below every open one', () => {
+    const stale = recommendation({
+      id: 'a',
+      status: 'Ignored',
+      priority: 'Critical',
+      ignore: {
+        reason: 'deliberate',
+        note: '',
+        decidedAt: '2026-08-31T00:00:00.000Z',
+        needsReview: true,
+      },
+    });
+    const open = recommendation({ id: 'b', priority: 'Low' });
+
+    // Needing review promotes within the ignored group, never out of it.
+    expect(sortRecommendations([stale, open]).map((i) => i.id)).toEqual([
+      'b',
+      'a',
+    ]);
+  });
+
+  it('counts only the ignores that need another look', () => {
+    const withIgnore = (id: string, needsReview: boolean): Recommendation =>
+      recommendation({
+        id,
+        status: 'Ignored',
+        ignore: {
+          reason: 'wont-fix',
+          note: '',
+          decidedAt: '2026-08-31T00:00:00.000Z',
+          needsReview,
+        },
+      });
+
+    const tally = tallyRecommendations([
+      withIgnore('a', true),
+      withIgnore('b', false),
+      recommendation({ id: 'c' }),
+    ]);
+
+    expect(tally.ignored).toBe(2);
+    expect(tally.ignoredNeedingReview).toBe(1);
+  });
+});
+
+/**
+ * Filtering the task list.
+ *
+ * Mutation testing found this whole module untested: every mutant of
+ * `filterRecommendations` and `isRecommendationQueryActive` survived,
+ * including replacing their bodies outright. They were exercised only
+ * through the service and the browser, where a filter quietly matching
+ * everything looks the same as a filter nobody applied.
+ */
+describe('filterRecommendations', () => {
+  function item(overrides: Partial<Recommendation>): Recommendation {
+    return {
+      id: 'rec_x',
+      source: 'seo',
+      ruleId: 'r',
+      sourceEntityId: 'e',
+      title: 't',
+      category: 'c',
+      ignore: null,
+      priority: 'Medium',
+      impact: 3,
+      effort: 3,
+      reason: 'r',
+      suggestedAction: 'a',
+      relatedProductId: null,
+      status: 'Open',
+      evidence: null,
+      ruleVersion: 'v',
+      link: '/seo',
+      quadrant: 'Defer',
+      active: true,
+      ...overrides,
+    };
+  }
+
+  const all = [
+    item({ id: 'a', priority: 'Critical', source: 'seo', quadrant: 'Quick Win' }),
+    item({ id: 'b', priority: 'Low', source: 'geo', quadrant: 'Defer' }),
+    item({
+      id: 'c',
+      priority: 'Critical',
+      source: 'amazon',
+      quadrant: 'Strategic',
+      status: 'Done',
+    }),
+  ];
+
+  const ids = (query: Parameters<typeof filterRecommendations>[1]): string[] =>
+    filterRecommendations(all, query).map((i) => i.id);
+
+  it('treats an empty selection as no constraint', () => {
+    expect(ids(EMPTY_RECOMMENDATION_QUERY)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('narrows by priority', () => {
+    expect(ids({ ...EMPTY_RECOMMENDATION_QUERY, priorities: ['Critical'] })).toEqual([
+      'a',
+      'c',
+    ]);
+  });
+
+  it('narrows by source', () => {
+    expect(ids({ ...EMPTY_RECOMMENDATION_QUERY, sources: ['geo'] })).toEqual(['b']);
+  });
+
+  it('narrows by quadrant', () => {
+    expect(
+      ids({ ...EMPTY_RECOMMENDATION_QUERY, quadrants: ['Quick Win'] }),
+    ).toEqual(['a']);
+  });
+
+  it('narrows by status', () => {
+    expect(ids({ ...EMPTY_RECOMMENDATION_QUERY, statuses: ['Done'] })).toEqual(['c']);
+  });
+
+  it('combines dimensions as an intersection, not a union', () => {
+    // 'a' and 'c' are both Critical and 'b' is the only geo item, so a union
+    // would return three and an intersection returns none.
+    expect(
+      ids({
+        ...EMPTY_RECOMMENDATION_QUERY,
+        priorities: ['Critical'],
+        sources: ['geo'],
+      }),
+    ).toEqual([]);
+  });
+
+  it('keeps several values within one dimension as alternatives', () => {
+    expect(
+      ids({ ...EMPTY_RECOMMENDATION_QUERY, sources: ['seo', 'amazon'] }),
+    ).toEqual(['a', 'c']);
+  });
+
+  it('returns nothing when the selection matches nothing', () => {
+    expect(ids({ ...EMPTY_RECOMMENDATION_QUERY, sources: ['content'] })).toEqual([]);
+  });
+
+  it('does not mutate the list it was given', () => {
+    filterRecommendations(all, {
+      ...EMPTY_RECOMMENDATION_QUERY,
+      sources: ['geo'],
+    });
+    expect(all.map((i) => i.id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('isRecommendationQueryActive', () => {
+  it('is false for the empty query', () => {
+    expect(isRecommendationQueryActive(EMPTY_RECOMMENDATION_QUERY)).toBe(false);
+  });
+
+  // One case per dimension: an OR written as an AND, or a dimension left out
+  // of the check, would still pass a test that only ever set one of them.
+  it('is true when any single dimension is set', () => {
+    const cases: Array<[string, Parameters<typeof isRecommendationQueryActive>[0]]> = [
+      ['priorities', { ...EMPTY_RECOMMENDATION_QUERY, priorities: ['Low'] }],
+      ['sources', { ...EMPTY_RECOMMENDATION_QUERY, sources: ['seo'] }],
+      ['quadrants', { ...EMPTY_RECOMMENDATION_QUERY, quadrants: ['Defer'] }],
+      ['statuses', { ...EMPTY_RECOMMENDATION_QUERY, statuses: ['Open'] }],
+    ];
+    for (const [label, query] of cases) {
+      expect(isRecommendationQueryActive(query), label).toBe(true);
+    }
+  });
+
+  it('is true when several dimensions are set', () => {
+    expect(
+      isRecommendationQueryActive({
+        ...EMPTY_RECOMMENDATION_QUERY,
+        priorities: ['Low'],
+        statuses: ['Open'],
+      }),
+    ).toBe(true);
+  });
+});
+
+describe('EMPTY_RECOMMENDATION_QUERY', () => {
+  it('carries every dimension, each empty', () => {
+    // Spread onto a partial query at a dozen call sites, so a missing key
+    // would make `query.<dimension>.length` throw rather than mean "no
+    // constraint". Mutating the whole object to {} survived before this.
+    expect(EMPTY_RECOMMENDATION_QUERY).toEqual({
+      priorities: [],
+      sources: [],
+      quadrants: [],
+      statuses: [],
+    });
   });
 });
 

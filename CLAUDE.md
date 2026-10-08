@@ -84,6 +84,7 @@ npm run build
 - 首次安装浏览器使用 `npx playwright install chromium`，所需环境、端口和数据库写入运行说明。
 - 每阶段均运行上述 lint、typecheck、unit、integration、e2e、build；E2E 先维护小型关键路径集，阶段 9 扩展完整回归。使用隔离测试存储，禁止清空非测试数据。
 - 前四条由 `.githooks/pre-commit` 在每次提交前自动执行（约 6 秒），`npm install` 时经 `prepare` 自动挂载；六条全部由 `.github/workflows/ci.yml` 执行。自动执行不替代阶段末的手工全量运行——报告里的数字必须来自你自己跑出的那一次。确需带着失败提交用 `git commit --no-verify`。
+- `npm run test:mutation` 对 `src/domain` 做变异测试（约 24 分钟，低于 68% 失败）；不在 pre-commit 与常规 CI 中，改动领域逻辑或其测试后从 Actions 手动触发 `Mutation` workflow。新增测试后若怀疑它「删掉被测代码也会通过」，用 `npx stryker run --mutate <文件>` 单文件验证，约 40 秒。
 - 分层边界与 seed 确定性由 `eslint.config.mjs` 强制：`domain` 不得 import 任何层，`fixtures` 仅可 import `repositories/types`，`components` 对 `repositories` 仅可 type-only import，`src/**` 禁用 `Math.random` 与 `crypto`。
 
 ## 完成报告

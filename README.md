@@ -303,5 +303,6 @@ npm run perf
 | 14 | pre-commit / CI 与分层、确定性的 lint 强制 | [报告](docs/reports/dispatch-14.md) |
 | 15 | 推上 GitHub，CI 首次运行并证伪 Node 20 支持 | [报告](docs/reports/dispatch-15.md) |
 | 16 | 修掉 E2E 的 hydration 竞态 | [报告](docs/reports/dispatch-16.md) |
+| 17 | `src/domain` 变异测试 | [报告](docs/reports/dispatch-17.md) |
 
 > 报告是**过程记录**，写的是当时实测到的数字。数据集在 Dispatch 6、8、11 调整过，所以早期报告里的某些数值与当前不同——这是刻意保留的，回改会把"当时确实测到这个数"变成事后修饰。当前数值以最新报告和应用本身为准。

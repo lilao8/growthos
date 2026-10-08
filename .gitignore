@@ -21,3 +21,5 @@ blob-report/
 .idea/
 .vscode/
 .vercel
+.stryker-tmp
+reports/
