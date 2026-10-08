@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * Recommendations: filtering, evidence, completion, persistence and undo, plus
@@ -10,10 +11,10 @@ function cards(page: Page) {
 }
 
 async function runBothAudits(page: Page): Promise<void> {
-  await page.goto('/seo');
+  await gotoReady(page, '/seo');
   await page.getByTestId('run-all-audits').click();
   await expect(page.getByTestId('run-all-message')).toContainText(/Audited/);
-  await page.goto('/geo');
+  await gotoReady(page, '/geo');
   await page.getByTestId('run-all-geo-audits').click();
   await expect(page.getByTestId('run-all-geo-message')).toContainText(/Audited/);
 }
@@ -22,7 +23,7 @@ test('aggregates findings from every module once the audits have run', async ({
   page,
 }) => {
   await runBothAudits(page);
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(page.getByTestId('recommendations-ready')).toBeVisible();
   await expect(cards(page).first()).toBeVisible();
 
@@ -37,7 +38,7 @@ test('aggregates findings from every module once the audits have run', async ({
 test('says which modules are reporting nothing rather than staying blank', async ({
   page,
 }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(page.getByTestId('recommendations-ready')).toBeVisible();
 
   // No audit has run in this browser, so SEO and GEO legitimately contribute
@@ -52,7 +53,7 @@ test('shows the counts, the evidence and the estimate behind each item', async (
   page,
 }) => {
   await runBothAudits(page);
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(cards(page).first()).toBeVisible();
 
   await expect(page.getByTestId('rec-open-value')).toHaveText(/^[\d,]+$/);
@@ -69,7 +70,7 @@ test('shows the counts, the evidence and the estimate behind each item', async (
 test('states that impact and effort are estimates, not promises', async ({
   page,
 }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(page.getByTestId('recommendations-ready')).toBeVisible();
 
   await expect(page.getByText(/never a promise of revenue/i)).toBeVisible();
@@ -83,7 +84,7 @@ test('filters by source and by priority, and clearing restores the list', async 
   page,
 }) => {
   await runBothAudits(page);
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(cards(page).first()).toBeVisible();
   const total = await cards(page).count();
 
@@ -104,7 +105,7 @@ test('filters by source and by priority, and clearing restores the list', async 
 test('an impossible filter combination is explained, not silently empty', async ({
   page,
 }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(cards(page).first()).toBeVisible();
 
   await page.getByTestId('rec-filter-source-seo').click();
@@ -115,7 +116,7 @@ test('an impossible filter combination is explained, not silently empty', async 
 test('marking done persists across a refresh, and can be undone', async ({
   page,
 }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(cards(page).first()).toBeVisible();
 
   const id = await cards(page).first().getAttribute('data-testid');
@@ -144,7 +145,7 @@ test('marking done persists across a refresh, and can be undone', async ({
 });
 
 test('a completed task survives running the audits afterwards', async ({ page }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(cards(page).first()).toBeVisible();
 
   const id = await cards(page).first().getAttribute('data-testid');
@@ -154,7 +155,7 @@ test('a completed task survives running the audits afterwards', async ({ page })
 
   await runBothAudits(page);
 
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(page.getByTestId(`rec-${recId}`)).toHaveAttribute(
     'data-status',
     'Done',
@@ -162,7 +163,7 @@ test('a completed task survives running the audits afterwards', async ({ page })
 });
 
 test('filtering by status finds the completed task', async ({ page }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(cards(page).first()).toBeVisible();
 
   const id = await cards(page).first().getAttribute('data-testid');
@@ -179,7 +180,7 @@ test('a page-level finding deep links to its audit and to its product', async ({
   page,
 }) => {
   await runBothAudits(page);
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await page.getByTestId('rec-filter-source-seo').click();
   await expect(cards(page).first()).toBeVisible();
 
@@ -195,7 +196,7 @@ test('a page-level finding deep links to its audit and to its product', async ({
 });
 
 test('a funnel finding links to the funnel module', async ({ page }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await page.getByTestId('rec-filter-source-funnel').click();
   await expect(cards(page).first()).toBeVisible();
 
@@ -206,7 +207,7 @@ test('a funnel finding links to the funnel module', async ({ page }) => {
 });
 
 test('a content finding links to the idea it is about', async ({ page }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await page.getByTestId('rec-filter-source-content').click();
   await expect(cards(page).first()).toBeVisible();
 
@@ -218,7 +219,7 @@ test('a content finding links to the idea it is about', async ({ page }) => {
 
 test('the same rule on two pages stays two separate tasks', async ({ page }) => {
   await runBothAudits(page);
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await page.getByTestId('rec-filter-source-seo').click();
   await expect(cards(page).first()).toBeVisible();
 
@@ -241,7 +242,7 @@ test('renders no console errors', async ({ page }) => {
     if (message.type() === 'error') errors.push(message.text());
   });
 
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(cards(page).first()).toBeVisible();
   await page.getByTestId('rec-filter-source-funnel').click();
   await expect(cards(page).first()).toBeVisible();
@@ -251,7 +252,7 @@ test('renders no console errors', async ({ page }) => {
 
 test('no page-level horizontal overflow at 375px', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(cards(page).first()).toBeVisible();
 
   const overflow = await page.evaluate(
@@ -271,7 +272,7 @@ async function firstCardId(page: Page): Promise<string> {
 }
 
 test('ignoring a finding requires choosing a reason first', async ({ page }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const id = await firstCardId(page);
 
   // There is no way to ignore without going through the reason picker: the
@@ -283,7 +284,7 @@ test('ignoring a finding requires choosing a reason first', async ({ page }) => 
 });
 
 test('cancelling the reason picker changes nothing', async ({ page }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const id = await firstCardId(page);
 
   await page.getByTestId(`rec-ignore-start-${id}`).click();
@@ -295,7 +296,7 @@ test('cancelling the reason picker changes nothing', async ({ page }) => {
 test('an ignored finding stays listed, with its reason, across a reload', async ({
   page,
 }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const id = await firstCardId(page);
   const openBefore = Number(
     (await page.getByTestId('rec-open-value').innerText()).replace(/,/g, ''),
@@ -339,7 +340,7 @@ test('an ignored finding stays listed, with its reason, across a reload', async 
 test('closing a critical finding takes it out of the Critical count too', async ({
   page,
 }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const id = await firstCardId(page);
 
   // Assert the fixture still puts a Critical finding first. Without this the
@@ -371,7 +372,7 @@ test('closing a critical finding takes it out of the Critical count too', async 
 });
 
 test('no band in the header row can exceed the open count', async ({ page }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
 
   const countOf = async (testId: string): Promise<number> =>
     Number((await page.getByTestId(testId).innerText()).replace(/,/g, ''));
@@ -384,7 +385,7 @@ test('no band in the header row can exceed the open count', async ({ page }) => 
 test('an ignored finding says nothing re-checks it automatically', async ({
   page,
 }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const id = await firstCardId(page);
 
   await page.getByTestId(`rec-ignore-start-${id}`).click();
@@ -395,7 +396,7 @@ test('an ignored finding says nothing re-checks it automatically', async ({
 });
 
 test('an ignored finding can be put back on the list', async ({ page }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const id = await firstCardId(page);
 
   await page.getByTestId(`rec-ignore-start-${id}`).click();
@@ -410,7 +411,7 @@ test('an ignored finding can be put back on the list', async ({ page }) => {
 });
 
 test('ignored findings can be filtered to', async ({ page }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const id = await firstCardId(page);
 
   await page.getByTestId(`rec-ignore-start-${id}`).click();
@@ -422,7 +423,7 @@ test('ignored findings can be filtered to', async ({ page }) => {
 });
 
 test('the ignore flow is operable by keyboard alone', async ({ page }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const id = await firstCardId(page);
 
   const start = page.getByTestId(`rec-ignore-start-${id}`);
@@ -448,7 +449,7 @@ test('the ignore flow is operable by keyboard alone', async ({ page }) => {
 test('a done finding offers no ignore button, and vice versa', async ({
   page,
 }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const id = await firstCardId(page);
 
   // Done and Ignored are alternatives, not a combination.

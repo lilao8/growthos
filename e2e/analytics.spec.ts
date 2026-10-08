@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * Analytics: range switching, reconciliation on screen, the N/A paths for CAC
@@ -18,7 +19,7 @@ async function numberFrom(page: Page, testId: string): Promise<number> {
 }
 
 test('shows the eight headline metrics for the default range', async ({ page }) => {
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
 
   await expect(page.getByTestId('analytics-sessions-value')).toHaveText(/^[\d,]+$/);
@@ -38,7 +39,7 @@ test('shows the eight headline metrics for the default range', async ({ page }) 
 test('channel sessions, orders and revenue reconcile to the site total on screen', async ({
   page,
 }) => {
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
 
   const channels = [
@@ -66,7 +67,7 @@ test('channel sessions, orders and revenue reconcile to the site total on screen
 test('users are de-duplicated, so the site total is below the sessions count', async ({
   page,
 }) => {
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
 
   const users = await numberFrom(page, 'total-users');
@@ -81,7 +82,7 @@ test('users are de-duplicated, so the site total is below the sessions count', a
 test('earned channels show N/A for ROAS rather than zero or infinity', async ({
   page,
 }) => {
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
 
   for (const channel of ['Organic Search', 'Direct', 'Email', 'AI Referral']) {
@@ -95,7 +96,7 @@ test('earned channels show N/A for ROAS rather than zero or infinity', async ({
 test('Email has a CAC but no ROAS, and the page explains a zero CAC', async ({
   page,
 }) => {
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
 
   await expect(page.getByTestId('cac-Email')).toHaveText(/^\$[\d,]+\.\d{2}$/);
@@ -106,7 +107,7 @@ test('Email has a CAC but no ROAS, and the page explains a zero CAC', async ({
 });
 
 test('switching the range updates every view together', async ({ page }) => {
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
 
   const sessions90 = await numberFrom(page, 'total-sessions');
@@ -131,7 +132,7 @@ test('switching the range updates every view together', async ({ page }) => {
 });
 
 test('the selected range is announced through aria-pressed', async ({ page }) => {
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('range-90')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('range-7')).toHaveAttribute('aria-pressed', 'false');
 
@@ -141,7 +142,7 @@ test('the selected range is announced through aria-pressed', async ({ page }) =>
 });
 
 test('every chart has a text summary and a data table', async ({ page }) => {
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
 
   await expect(page.getByTestId('trend-chart')).toBeVisible();
@@ -175,7 +176,7 @@ test('every chart has a text summary and a data table', async ({ page }) => {
 test('AI referral sources sum to the channel total and state the undercount', async ({
   page,
 }) => {
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
 
   expect(await numberFrom(page, 'ai-source-total')).toBe(
@@ -189,7 +190,7 @@ test('AI referral sources sum to the channel total and state the undercount', as
 });
 
 test('the dashboard and analytics report identical figures', async ({ page }) => {
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
   const sessions = await page.getByTestId('analytics-sessions-value').innerText();
   const revenue = await page.getByTestId('analytics-revenue-value').innerText();
@@ -197,7 +198,7 @@ test('the dashboard and analytics report identical figures', async ({ page }) =>
   const cac = await page.getByTestId('analytics-cac-value').innerText();
   const roas = await page.getByTestId('analytics-roas-value').innerText();
 
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await expect(page.getByTestId('dashboard-ready')).toBeVisible();
   await expect(page.getByTestId('metric-sessions-value')).toHaveText(sessions);
   await expect(page.getByTestId('metric-revenue-value')).toHaveText(revenue);
@@ -207,7 +208,7 @@ test('the dashboard and analytics report identical figures', async ({ page }) =>
 });
 
 test('the dashboard links through to analytics', async ({ page }) => {
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await expect(page.getByTestId('dashboard-ready')).toBeVisible();
   await page.getByTestId('dashboard-analytics-link').click();
   await expect(page).toHaveURL(/\/analytics$/);
@@ -236,7 +237,7 @@ test('renders no console errors', async ({ page }) => {
     if (message.type() === 'error') errors.push(message.text());
   });
 
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
   await page.getByTestId('range-7').click();
   await expect(rowsIn(page, DAILY_TABLE)).toHaveCount(7);
@@ -246,7 +247,7 @@ test('renders no console errors', async ({ page }) => {
 
 test('no page-level horizontal overflow on analytics at 375px', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
 
   const overflow = await page.evaluate(

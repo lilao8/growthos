@@ -153,7 +153,11 @@ export function ProductDetailView({
 
   return (
     <>
-      <PageHeader title={product.title} description={product.productDescription}>
+      <PageHeader
+        title={product.title}
+        description={product.productDescription}
+        testId="product-detail-ready"
+      >
         <div className="flex flex-col items-end gap-2">
           <Badge tone={product.status === 'active' ? 'neutral' : 'muted'}>
             {product.status}

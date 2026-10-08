@@ -313,7 +313,10 @@ export function ContentListView({ mode }: { mode: DemoDataMode | null }) {
       )}
 
       {state?.status === 'ready' && (
-        <Card>
+        // Same reasoning as the products catalogue: the search and filter
+        // controls above are server-rendered, so their presence says nothing
+        // about whether React is listening yet. This node does.
+        <Card testId="content-ready">
           <CardHeader
             title="Content ideas"
             description="Ordered by opportunity score — the top row is the one to write next."

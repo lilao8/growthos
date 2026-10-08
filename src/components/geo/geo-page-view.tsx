@@ -117,6 +117,7 @@ export function GeoPageView({
       <PageHeader
         title={`GEO audit — ${title}`}
         description={`Content readiness of the stored snapshot for ${snapshot.url}`}
+        testId="geo-page-ready"
       >
         <div className="flex flex-col items-end gap-2">
           <button

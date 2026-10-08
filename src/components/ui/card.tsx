@@ -3,12 +3,20 @@ import type { ReactNode } from 'react';
 interface CardProps {
   children: ReactNode;
   className?: string;
+  /**
+   * Usually a readiness sentinel. A card that renders only once its data has
+   * resolved is proof the component hydrated and the effect finished, which
+   * the server-rendered markup around it cannot show. Named `testId` to match
+   * MetricCard rather than adding a second spelling.
+   */
+  testId?: string;
 }
 
-export function Card({ children, className = '' }: CardProps) {
+export function Card({ children, className = '', testId }: CardProps) {
   return (
     <section
       className={`rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] ${className}`}
+      data-testid={testId}
     >
       {children}
     </section>

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * Amazon listings: overview, audit run, detail, edit → stale → re-run, and the
@@ -9,7 +10,7 @@ const SUPPRESSED = 'lst_trailcell_lantern';
 const CLEAN = 'lst_emberlite_stove';
 
 async function runAll(page: Page): Promise<void> {
-  await page.goto('/amazon');
+  await gotoReady(page, '/amazon');
   await page.getByTestId('run-all-listing-audits').click();
   await expect(page.getByTestId('run-all-listing-message')).toContainText(
     /Audited/,
@@ -23,7 +24,7 @@ function rows(page: Page) {
 test('the overview lists every ASIN with no score before an audit', async ({
   page,
 }) => {
-  await page.goto('/amazon');
+  await gotoReady(page, '/amazon');
   await expect(page.getByTestId('amazon-overview')).toBeVisible();
   await expect(rows(page).first()).toBeVisible();
 
@@ -35,7 +36,7 @@ test('the overview lists every ASIN with no score before an audit', async ({
 });
 
 test('the suppressed count is known before any audit runs', async ({ page }) => {
-  await page.goto('/amazon');
+  await gotoReady(page, '/amazon');
   await expect(page.getByTestId('amazon-metric-suppressed-value')).toHaveText('1');
 });
 
@@ -51,7 +52,7 @@ test('running the audit produces scores and issues', async ({ page }) => {
 test('it states its limits and that the channels are never mixed', async ({
   page,
 }) => {
-  await page.goto('/amazon');
+  await gotoReady(page, '/amazon');
 
   await expect(page.getByTestId('amazon-disclaimer').first()).toContainText(
     /never calls SP-API and never crawls/i,
@@ -66,7 +67,7 @@ test('it states its limits and that the channels are never mixed', async ({
 
 test('a listing detail shows every check with its evidence', async ({ page }) => {
   await runAll(page);
-  await page.goto(`/amazon/${SUPPRESSED}`);
+  await gotoReady(page, `/amazon/${SUPPRESSED}`);
   await expect(page.getByTestId('listing-detail')).toBeVisible();
 
   await expect(page.getByTestId('listing-detail-score')).toHaveText(/^\d+$/);
@@ -80,7 +81,7 @@ test('a listing detail shows every check with its evidence', async ({ page }) =>
 test('an unaudited listing says so rather than showing a zero', async ({
   page,
 }) => {
-  await page.goto(`/amazon/${CLEAN}`);
+  await gotoReady(page, `/amazon/${CLEAN}`);
   await expect(page.getByTestId('listing-detail-score')).toHaveText('Not audited');
 });
 
@@ -88,7 +89,7 @@ test('editing a listing makes its audit stale, and re-running clears it', async 
   page,
 }) => {
   await runAll(page);
-  await page.goto(`/amazon/${CLEAN}`);
+  await gotoReady(page, `/amazon/${CLEAN}`);
   await expect(page.getByTestId('listing-stale-notice')).toHaveCount(0);
 
   await page
@@ -106,7 +107,7 @@ test('editing a listing makes its audit stale, and re-running clears it', async 
 test('an edit survives a reload', async ({ page }) => {
   const title =
     'NorthTrail Emberlite Canister Stove, a persisted title for this test case';
-  await page.goto(`/amazon/${CLEAN}`);
+  await gotoReady(page, `/amazon/${CLEAN}`);
   await page.getByTestId('listing-field-title').fill(title);
   await page.getByTestId('save-listing').click();
   await expect(page.getByTestId('listing-save-success')).toBeVisible();
@@ -118,7 +119,7 @@ test('an edit survives a reload', async ({ page }) => {
 test('backend terms are counted in bytes, and an over-budget value is refused', async ({
   page,
 }) => {
-  await page.goto(`/amazon/${CLEAN}`);
+  await gotoReady(page, `/amazon/${CLEAN}`);
 
   // 246 characters but 261 bytes: a character-based check would accept this.
   const overBudget =
@@ -161,7 +162,7 @@ test('a failed save keeps the typed input and says nothing was saved', async ({
 test('a listing links to its storefront product and back to the list', async ({
   page,
 }) => {
-  await page.goto(`/amazon/${CLEAN}`);
+  await gotoReady(page, `/amazon/${CLEAN}`);
   await page.getByTestId('listing-product-link').click();
   await expect(page).toHaveURL(/\/products\/prd_/);
 
@@ -178,7 +179,7 @@ test('an unknown listing id is reported, not crashed on', async ({ page }) => {
 
 test('Amazon findings reach the recommendations list', async ({ page }) => {
   await runAll(page);
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await page.getByTestId('rec-filter-source-amazon').click();
   await expect(
     page.locator('[data-source="amazon"]').first(),
@@ -199,7 +200,7 @@ test('auditing listings does not move a single storefront number', async ({
   page,
 }) => {
   const read = async (): Promise<string[]> => {
-    await page.goto('/dashboard');
+    await gotoReady(page, '/dashboard');
     await expect(page.getByTestId('dashboard-ready')).toBeVisible();
     return page
       .locator('[data-metric-card] [data-testid$="-value"]')
@@ -226,9 +227,9 @@ test('renders no console errors', async ({ page }) => {
     if (message.type() === 'error') errors.push(message.text());
   });
 
-  await page.goto('/amazon');
+  await gotoReady(page, '/amazon');
   await expect(rows(page).first()).toBeVisible();
-  await page.goto(`/amazon/${SUPPRESSED}`);
+  await gotoReady(page, `/amazon/${SUPPRESSED}`);
   await expect(page.getByTestId('listing-detail')).toBeVisible();
 
   expect(errors).toEqual([]);
@@ -239,7 +240,7 @@ for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
 
     for (const route of ['/amazon', `/amazon/${SUPPRESSED}`]) {
-      await page.goto(route);
+      await gotoReady(page, route);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
       const overflow = await page.evaluate(

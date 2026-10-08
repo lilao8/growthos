@@ -115,6 +115,7 @@ export function ContentDetailView({
       <PageHeader
         title={row.idea.topic}
         description={`${row.idea.contentType} · ${row.idea.searchIntent} intent · ${row.idea.funnelStage} · status ${row.idea.status}`}
+        testId="content-detail-ready"
       >
         <Link
           href="/content"

@@ -109,6 +109,7 @@ export function SeoPageView({
       <PageHeader
         title={`SEO audit — ${title}`}
         description={`Rule-based check of the stored snapshot for ${snapshot.url}`}
+        testId="seo-page-ready"
       >
         <div className="flex flex-col items-end gap-2">
           <button

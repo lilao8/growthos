@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * Amazon advertising: metrics, search terms, harvest and negation, and the
@@ -14,7 +15,7 @@ function termRows(page: Page) {
 }
 
 test('the advertising page reports in Amazon’s own metrics', async ({ page }) => {
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
   await expect(page.getByTestId('advertising-ready')).toBeVisible();
 
   for (const key of ['acos', 'tacos', 'ctr', 'cvr', 'cpc', 'organic', 'usp']) {
@@ -28,7 +29,7 @@ test('the advertising page reports in Amazon’s own metrics', async ({ page }) 
 });
 
 test('it explains why ACOS and ROAS are not interchangeable', async ({ page }) => {
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
 
   await expect(page.getByTestId('acos-vs-roas-note')).toContainText(
     /not comparable figures/i,
@@ -50,7 +51,7 @@ test('it explains why ACOS and ROAS are not interchangeable', async ({ page }) =
 test('a search term and the target that matched it are separate columns', async ({
   page,
 }) => {
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
   await expect(termRows(page).first()).toBeVisible();
 
   const header = page.getByRole('columnheader', {
@@ -74,7 +75,7 @@ test('a search term and the target that matched it are separate columns', async 
 test('harvest candidates are suggestions with evidence, not instructions', async ({
   page,
 }) => {
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
   await expect(page.getByTestId('harvest-list')).toBeVisible();
 
   const first = page.getByTestId('harvest-list').getByRole('listitem').first();
@@ -86,7 +87,7 @@ test('harvest candidates are suggestions with evidence, not instructions', async
 test('a term with an exact target of its own is never offered for harvest', async ({
   page,
 }) => {
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
   await expect(page.getByTestId('harvest-list')).toBeVisible();
 
   // "2 person tent" converts well through the broad target but already has an
@@ -103,7 +104,7 @@ test('a term with an exact target of its own is never offered for harvest', asyn
 test('negation candidates warn that the listing may be the problem', async ({
   page,
 }) => {
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
   await expect(page.getByTestId('negation-list')).toBeVisible();
 
   const first = page.getByTestId('negation-list').getByRole('listitem').first();
@@ -114,7 +115,7 @@ test('negation candidates warn that the listing may be the problem', async ({
 test('terms with too few clicks are shown as set aside, not dropped', async ({
   page,
 }) => {
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
   await expect(page.getByTestId('advertising-ready')).toBeVisible();
 
   await expect(page.getByText(/Looked at, no verdict/i)).toBeVisible();
@@ -124,7 +125,7 @@ test('terms with too few clicks are shown as set aside, not dropped', async ({
 test('the ASIN table flags the listing carried by advertising', async ({
   page,
 }) => {
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
   await expect(page.getByTestId(`ad-asin-${LOW_ORGANIC}`)).toBeVisible();
 
   // Scoped to the ASIN table: "Beacon 400 — Exact" is also a campaign name,
@@ -141,7 +142,7 @@ test('the ASIN table flags the listing carried by advertising', async ({
 });
 
 test('a listing page shows its own advertising figures', async ({ page }) => {
-  await page.goto(`/amazon/${LOW_ORGANIC}`);
+  await gotoReady(page, `/amazon/${LOW_ORGANIC}`);
   await expect(page.getByTestId('listing-ads-panel')).toBeVisible();
 
   await expect(page.getByTestId('listing-ads-acos')).toHaveText(/%$/);
@@ -155,7 +156,7 @@ test('a listing page shows its own advertising figures', async ({ page }) => {
 test('an unadvertised listing says so rather than showing zeros', async ({
   page,
 }) => {
-  await page.goto(`/amazon/${NOT_ADVERTISED}`);
+  await gotoReady(page, `/amazon/${NOT_ADVERTISED}`);
   await expect(page.getByTestId('listing-ads-none')).toContainText(
     /not the same as performing badly/i,
   );
@@ -166,14 +167,14 @@ test('the advertising route is not swallowed by the listing route', async ({
 }) => {
   // /amazon/[listingId] would match "advertising" as an id if Next did not
   // give the static segment precedence.
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
   await expect(page.getByTestId('advertising-ready')).toBeVisible();
   await expect(page.getByTestId('listing-not-found')).toHaveCount(0);
 });
 
 test('only the most specific nav entry is marked current', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
 
   const nav = page.getByRole('navigation', { name: 'Main' });
   await expect(nav.getByTestId('nav-amazon-ads')).toHaveAttribute(
@@ -187,7 +188,7 @@ test('only the most specific nav entry is marked current', async ({ page }) => {
 });
 
 test('advertising findings reach the recommendations list', async ({ page }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await page.getByTestId('rec-filter-source-amazon').click();
   await expect(page.locator('[data-source="amazon"]').first()).toBeVisible();
 
@@ -202,7 +203,7 @@ test('advertising findings reach the recommendations list', async ({ page }) => 
 
 test('advertising does not move a single storefront number', async ({ page }) => {
   const read = async (): Promise<string[]> => {
-    await page.goto('/dashboard');
+    await gotoReady(page, '/dashboard');
     await expect(page.getByTestId('dashboard-ready')).toBeVisible();
     return page
       .locator('[data-metric-card] [data-testid$="-value"]')
@@ -210,7 +211,7 @@ test('advertising does not move a single storefront number', async ({ page }) =>
   };
 
   const before = await read();
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
   await expect(page.getByTestId('advertising-ready')).toBeVisible();
   const after = await read();
 
@@ -234,9 +235,9 @@ test('renders no console errors', async ({ page }) => {
     if (message.type() === 'error') errors.push(message.text());
   });
 
-  await page.goto('/amazon/advertising');
+  await gotoReady(page, '/amazon/advertising');
   await expect(page.getByTestId('advertising-ready')).toBeVisible();
-  await page.goto(`/amazon/${LOW_ORGANIC}`);
+  await gotoReady(page, `/amazon/${LOW_ORGANIC}`);
   await expect(page.getByTestId('listing-ads-panel')).toBeVisible();
 
   expect(errors).toEqual([]);
@@ -245,7 +246,7 @@ test('renders no console errors', async ({ page }) => {
 for (const width of [375, 768, 1440]) {
   test(`no horizontal overflow at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/amazon/advertising');
+    await gotoReady(page, '/amazon/advertising');
     await expect(page.getByTestId('advertising-ready')).toBeVisible();
 
     const overflow = await page.evaluate(

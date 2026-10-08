@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * GEO audit: readiness scoring, the mandatory disclaimer, per-rule points and
@@ -17,7 +18,7 @@ function rowsIn(page: Page, caption: string) {
 }
 
 async function runAllGeoAudits(page: Page): Promise<void> {
-  await page.goto('/geo');
+  await gotoReady(page, '/geo');
   await page.getByTestId('run-all-geo-audits').click();
   await expect(page.getByTestId('run-all-geo-message')).toContainText(
     /Audited \d+ pages/,
@@ -25,7 +26,7 @@ async function runAllGeoAudits(page: Page): Promise<void> {
 }
 
 test('before any audit, nothing claims a readiness score', async ({ page }) => {
-  await page.goto('/geo');
+  await gotoReady(page, '/geo');
 
   await expect(page.getByTestId('geo-overview')).toBeVisible();
   await expect(page.getByTestId('geo-metric-score-value')).toHaveText('N/A');
@@ -38,7 +39,7 @@ test('before any audit, nothing claims a readiness score', async ({ page }) => {
 });
 
 test('shows the required internal-heuristic disclaimer', async ({ page }) => {
-  await page.goto('/geo');
+  await gotoReady(page, '/geo');
 
   const disclaimer = page.getByTestId('geo-disclaimer').first();
   await expect(disclaimer).toBeVisible();
@@ -80,7 +81,7 @@ test('the recommendation count equals the rules not yet met', async ({ page }) =
 });
 
 test('every catalogue page appears in the readiness table', async ({ page }) => {
-  await page.goto('/geo');
+  await gotoReady(page, '/geo');
   await expect(rowsIn(page, PAGES_TABLE).first()).toBeVisible();
   expect(await rowsIn(page, PAGES_TABLE).count()).toBeGreaterThanOrEqual(15);
 });
@@ -88,7 +89,7 @@ test('every catalogue page appears in the readiness table', async ({ page }) => 
 test('a page detail shows all ten rules with points, signal and evidence', async ({
   page,
 }) => {
-  await page.goto(`/geo/${RICH_PAGE}`);
+  await gotoReady(page, `/geo/${RICH_PAGE}`);
   await expect(page.getByTestId('geo-never-audited')).toBeVisible();
 
   await page.getByTestId('run-geo-page-audit').click();
@@ -108,13 +109,13 @@ test('a page detail shows all ten rules with points, signal and evidence', async
 test('content-rich and marketing-copy pages land in different bands', async ({
   page,
 }) => {
-  await page.goto(`/geo/${RICH_PAGE}`);
+  await gotoReady(page, `/geo/${RICH_PAGE}`);
   await page.getByTestId('run-geo-page-audit').click();
   await expect(page.getByTestId('geo-page-score')).toHaveText(/^\d+$/);
   const richScore = Number(await page.getByTestId('geo-page-score').innerText());
   const richBand = await page.getByTestId('geo-page-readiness').innerText();
 
-  await page.goto(`/geo/${THIN_PAGE}`);
+  await gotoReady(page, `/geo/${THIN_PAGE}`);
   await page.getByTestId('run-geo-page-audit').click();
   await expect(page.getByTestId('geo-page-score')).toHaveText(/^\d+$/);
   const thinScore = Number(await page.getByTestId('geo-page-score').innerText());
@@ -125,7 +126,7 @@ test('content-rich and marketing-copy pages land in different bands', async ({
 });
 
 test('a thin page reports the specific signals it is missing', async ({ page }) => {
-  await page.goto(`/geo/${THIN_PAGE}`);
+  await gotoReady(page, `/geo/${THIN_PAGE}`);
   await page.getByTestId('run-geo-page-audit').click();
   await expect(page.getByTestId('geo-page-score')).toBeVisible();
 
@@ -152,7 +153,7 @@ test('a missing input is reported as a specific gap, not a silent zero', async (
 }) => {
   // The draft lantern page has no meta title, so topic clarity is only half met
   // and the evidence names exactly what is absent.
-  await page.goto('/geo/snap_trailcell_lantern');
+  await gotoReady(page, '/geo/snap_trailcell_lantern');
   await page.getByTestId('run-geo-page-audit').click();
   await expect(page.getByTestId('geo-page-score')).toBeVisible();
 
@@ -165,7 +166,7 @@ test('a missing input is reported as a specific gap, not a silent zero', async (
 test('coverage is reported and explains how unassessed rules are treated', async ({
   page,
 }) => {
-  await page.goto(`/geo/${RICH_PAGE}`);
+  await gotoReady(page, `/geo/${RICH_PAGE}`);
   await page.getByTestId('run-geo-page-audit').click();
 
   // Every input on this page was captured, so coverage is complete.
@@ -178,12 +179,12 @@ test('coverage is reported and explains how unassessed rules are treated', async
 test('editing the page makes the GEO audit stale, and re-running clears it', async ({
   page,
 }) => {
-  await page.goto(`/geo/${RICH_PAGE}`);
+  await gotoReady(page, `/geo/${RICH_PAGE}`);
   await page.getByTestId('run-geo-page-audit').click();
   await expect(page.getByTestId('geo-page-score')).toBeVisible();
   await expect(page.getByTestId('geo-stale-notice')).toHaveCount(0);
 
-  await page.goto(`/products/${RICH_PRODUCT}`);
+  await gotoReady(page, `/products/${RICH_PRODUCT}`);
   await page
     .getByTestId('field-meta-description')
     .fill('A rewritten description of the Ridgeline 2P for the GEO staleness check.');
@@ -191,7 +192,7 @@ test('editing the page makes the GEO audit stale, and re-running clears it', asy
   await expect(page.getByTestId('save-success')).toBeVisible();
   await expect(page.getByTestId('detail-geo-score')).toContainText('(stale)');
 
-  await page.goto(`/geo/${RICH_PAGE}`);
+  await gotoReady(page, `/geo/${RICH_PAGE}`);
   await expect(page.getByTestId('geo-stale-notice')).toBeVisible();
 
   await page.getByTestId('run-geo-page-audit').click();
@@ -200,7 +201,7 @@ test('editing the page makes the GEO audit stale, and re-running clears it', asy
 });
 
 test('GEO results survive a reload', async ({ page }) => {
-  await page.goto(`/geo/${RICH_PAGE}`);
+  await gotoReady(page, `/geo/${RICH_PAGE}`);
   await page.getByTestId('run-geo-page-audit').click();
   await expect(page.getByTestId('geo-page-score')).toHaveText(/^\d+$/);
   const score = await page.getByTestId('geo-page-score').innerText();
@@ -212,7 +213,7 @@ test('GEO results survive a reload', async ({ page }) => {
 test('running GEO does not fabricate an SEO result', async ({ page }) => {
   await runAllGeoAudits(page);
 
-  await page.goto('/seo');
+  await gotoReady(page, '/seo');
   await expect(page.getByTestId('seo-metric-score-value')).toHaveText('N/A');
   await expect(page.getByText('Never audited').first()).toBeVisible();
 });
@@ -222,12 +223,12 @@ test('the two scores are shown separately on the product and the dashboard', asy
 }) => {
   await runAllGeoAudits(page);
 
-  await page.goto(`/products/${RICH_PRODUCT}`);
+  await gotoReady(page, `/products/${RICH_PRODUCT}`);
   await expect(page.getByTestId('detail-geo-score')).toHaveText(/^\d+$/);
   // SEO has not been run, so it must still read Not audited.
   await expect(page.getByTestId('detail-seo-score')).toHaveText('Not audited');
 
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await expect(page.getByTestId('geo-health-score-value')).toHaveText(/^\d+$/);
   await expect(page.getByTestId('seo-health-score-value')).toHaveText('N/A');
 });
@@ -242,7 +243,7 @@ test('the dashboard reports the same GEO figures as the GEO module', async ({
   const gaps = await page.getByTestId('geo-metric-gaps-value').innerText();
   const met = await page.getByTestId('geo-metric-met-value').innerText();
 
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await expect(page.getByTestId('geo-health-score-value')).toHaveText(score);
   await expect(page.getByTestId('geo-health-readiness-value')).toHaveText(readiness);
   await expect(page.getByTestId('geo-health-gaps-value')).toHaveText(gaps);
@@ -250,7 +251,7 @@ test('the dashboard reports the same GEO figures as the GEO module', async ({
 });
 
 test('the dashboard links through to the GEO module', async ({ page }) => {
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await page.getByTestId('dashboard-geo-link').click();
   await expect(page).toHaveURL(/\/geo$/);
   await expect(page.getByRole('heading', { name: 'GEO Audit', level: 1 })).toBeVisible();
@@ -259,14 +260,14 @@ test('the dashboard links through to the GEO module', async ({ page }) => {
 test('a product links to its GEO audit, and the audit links back and across', async ({
   page,
 }) => {
-  await page.goto(`/products/${RICH_PRODUCT}`);
+  await gotoReady(page, `/products/${RICH_PRODUCT}`);
   await page.getByTestId('link-to-geo-audit').click();
   await expect(page).toHaveURL(new RegExp(`/geo/${RICH_PAGE}$`));
 
   await page.getByTestId('link-to-seo-page').click();
   await expect(page).toHaveURL(new RegExp(`/seo/${RICH_PAGE}$`));
 
-  await page.goto(`/geo/${RICH_PAGE}`);
+  await gotoReady(page, `/geo/${RICH_PAGE}`);
   await page.getByTestId('geo-link-to-product').click();
   await expect(page).toHaveURL(new RegExp(`/products/${RICH_PRODUCT}$`));
 });
@@ -296,7 +297,7 @@ test('renders no console errors', async ({ page }) => {
   });
 
   await runAllGeoAudits(page);
-  await page.goto(`/geo/${RICH_PAGE}`);
+  await gotoReady(page, `/geo/${RICH_PAGE}`);
   await expect(page.getByTestId('geo-page-score')).toBeVisible();
 
   expect(errors).toEqual([]);

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * About page and the demo reset control.
@@ -10,7 +11,7 @@ import { expect, test } from '@playwright/test';
 
 test('the about page is reachable from the sidebar', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
 
   await page
     .getByRole('navigation', { name: 'About' })
@@ -24,7 +25,7 @@ test('the about page is reachable from the sidebar', async ({ page }) => {
 });
 
 test('it explains the chain, the modules and the limits', async ({ page }) => {
-  await page.goto('/about-project');
+  await gotoReady(page, '/about-project');
 
   await expect(page.getByTestId('about-chain')).toContainText('Recommendations');
   await expect(page.getByTestId('about-limitations')).toBeVisible();
@@ -38,7 +39,7 @@ test('it explains the chain, the modules and the limits', async ({ page }) => {
 });
 
 test('every module is linked from the about page', async ({ page }) => {
-  await page.goto('/about-project');
+  await gotoReady(page, '/about-project');
 
   for (const slug of [
     'dashboard',
@@ -61,7 +62,7 @@ test('every module is linked from the about page', async ({ page }) => {
 });
 
 test('a fresh browser is reported as already clean', async ({ page }) => {
-  await page.goto('/about-project');
+  await gotoReady(page, '/about-project');
 
   await expect(page.getByTestId('reset-clean')).toBeVisible();
   await expect(page.getByTestId('reset-start')).toBeVisible();
@@ -69,11 +70,11 @@ test('a fresh browser is reported as already clean', async ({ page }) => {
 
 test('the reset names what it will discard before doing it', async ({ page }) => {
   // Make something worth losing.
-  await page.goto('/seo');
+  await gotoReady(page, '/seo');
   await page.getByTestId('run-all-audits').click();
   await expect(page.getByTestId('run-all-message')).toContainText(/Audited/);
 
-  await page.goto('/about-project');
+  await gotoReady(page, '/about-project');
   await expect(page.getByTestId('reset-preview')).toBeVisible();
   await expect(page.getByTestId('reset-preview')).toContainText(
     'Stored audit results',
@@ -82,64 +83,64 @@ test('the reset names what it will discard before doing it', async ({ page }) =>
 });
 
 test('backing out of the reset keeps the data', async ({ page }) => {
-  await page.goto('/seo');
+  await gotoReady(page, '/seo');
   await page.getByTestId('run-all-audits').click();
   await expect(page.getByTestId('run-all-message')).toContainText(/Audited/);
   const score = await page.getByTestId('seo-metric-score-value').innerText();
 
-  await page.goto('/about-project');
+  await gotoReady(page, '/about-project');
   await page.getByTestId('reset-start').click();
   await expect(page.getByTestId('reset-confirm-panel')).toBeVisible();
   await page.getByTestId('reset-cancel').click();
 
   await expect(page.getByTestId('reset-confirm-panel')).toHaveCount(0);
-  await page.goto('/seo');
+  await gotoReady(page, '/seo');
   await expect(page.getByTestId('seo-metric-score-value')).toHaveText(score);
 });
 
 test('a confirmed reset returns the workbench to its seed state', async ({
   page,
 }) => {
-  await page.goto('/seo');
+  await gotoReady(page, '/seo');
   await page.getByTestId('run-all-audits').click();
   await expect(page.getByTestId('run-all-message')).toContainText(/Audited/);
   await expect(page.getByTestId('seo-metric-score-value')).toHaveText(/^\d+$/);
 
-  await page.goto('/about-project');
+  await gotoReady(page, '/about-project');
   await page.getByTestId('reset-start').click();
   await page.getByTestId('reset-confirm').click();
   await expect(page.getByTestId('reset-done')).toBeVisible();
 
-  await page.goto('/seo');
+  await gotoReady(page, '/seo');
   await expect(page.getByTestId('seo-metric-score-value')).toHaveText('N/A');
 });
 
 test('a reset also clears product edits and completed recommendations', async ({
   page,
 }) => {
-  await page.goto('/products/prd_ridgeline_2p_tent');
+  await gotoReady(page, '/products/prd_ridgeline_2p_tent');
   await page.getByTestId('field-meta-title').fill('A title that reset will undo');
   await page.getByTestId('save-seo').click();
   await expect(page.getByTestId('save-success')).toBeVisible();
 
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const card = page.locator('[data-testid^="rec-"][data-source]').first();
   await expect(card).toBeVisible();
   const id = ((await card.getAttribute('data-testid')) ?? '').replace(/^rec-/, '');
   await page.getByTestId(`rec-toggle-${id}`).click();
   await expect(page.getByTestId('rec-done-value')).toHaveText('1');
 
-  await page.goto('/about-project');
+  await gotoReady(page, '/about-project');
   await expect(page.getByTestId('reset-preview')).toBeVisible();
   await page.getByTestId('reset-start').click();
   await page.getByTestId('reset-confirm').click();
   await expect(page.getByTestId('reset-done')).toBeVisible();
 
-  await page.goto('/products/prd_ridgeline_2p_tent');
+  await gotoReady(page, '/products/prd_ridgeline_2p_tent');
   await expect(page.getByTestId('field-meta-title')).not.toHaveValue(
     'A title that reset will undo',
   );
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   await expect(page.getByTestId('rec-done-value')).toHaveText('0');
 });
 
@@ -159,7 +160,7 @@ test('renders no console errors', async ({ page }) => {
     if (message.type() === 'error') errors.push(message.text());
   });
 
-  await page.goto('/about-project');
+  await gotoReady(page, '/about-project');
   await expect(page.getByTestId('reset-start')).toBeVisible();
 
   expect(errors).toEqual([]);
@@ -168,7 +169,7 @@ test('renders no console errors', async ({ page }) => {
 for (const width of [375, 768, 1440]) {
   test(`no page-level horizontal overflow at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/about-project');
+    await gotoReady(page, '/about-project');
     await expect(page.getByTestId('about-chain')).toBeVisible();
 
     const overflow = await page.evaluate(

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * Products: catalogue, search and filters, detail, and the SEO metadata edit
@@ -16,7 +17,7 @@ function rows(page: Page) {
 }
 
 test('lists the whole catalogue with at least 15 SKUs', async ({ page }) => {
-  await page.goto('/products');
+  await gotoReady(page, '/products');
 
   await expect(page.getByTestId('result-count')).toBeVisible();
   const count = await rows(page).count();
@@ -28,7 +29,7 @@ test('lists the whole catalogue with at least 15 SKUs', async ({ page }) => {
 });
 
 test('shows Not audited instead of a score, since no audit has run', async ({ page }) => {
-  await page.goto('/products');
+  await gotoReady(page, '/products');
   await expect(rows(page).first()).toBeVisible();
 
   const notAudited = await page.getByText('Not audited', { exact: true }).count();
@@ -38,7 +39,7 @@ test('shows Not audited instead of a score, since no audit has run', async ({ pa
 });
 
 test('search narrows the catalogue and tolerates case and spacing', async ({ page }) => {
-  await page.goto('/products');
+  await gotoReady(page, '/products');
   await expect(rows(page).first()).toBeVisible();
   const total = await rows(page).count();
 
@@ -54,7 +55,7 @@ test('search narrows the catalogue and tolerates case and spacing', async ({ pag
 });
 
 test('search matches SKU as well as title', async ({ page }) => {
-  await page.goto('/products');
+  await gotoReady(page, '/products');
   await page.getByTestId('product-search').fill('NT-LGT-BCN4');
 
   await expect(rows(page)).toHaveCount(1);
@@ -62,7 +63,7 @@ test('search matches SKU as well as title', async ({ page }) => {
 });
 
 test('category and status filters intersect', async ({ page }) => {
-  await page.goto('/products');
+  await gotoReady(page, '/products');
 
   await page.getByTestId('filter-category-tents-shelters').click();
   const tents = await rows(page).count();
@@ -75,7 +76,7 @@ test('category and status filters intersect', async ({ page }) => {
 });
 
 test('an impossible combination shows an explained empty state', async ({ page }) => {
-  await page.goto('/products');
+  await gotoReady(page, '/products');
 
   await page.getByTestId('product-search').fill('headlamp');
   await page.getByTestId('filter-category-cooking').click();
@@ -86,7 +87,7 @@ test('an impossible combination shows an explained empty state', async ({ page }
 });
 
 test('clear filters restores the full catalogue', async ({ page }) => {
-  await page.goto('/products');
+  await gotoReady(page, '/products');
   await expect(rows(page).first()).toBeVisible();
   const total = await rows(page).count();
 
@@ -102,7 +103,7 @@ test('clear filters restores the full catalogue', async ({ page }) => {
 });
 
 test('opens a product from the list and shows its record', async ({ page }) => {
-  await page.goto('/products');
+  await gotoReady(page, '/products');
   await page.getByTestId('product-link-NT-TENT-RDG2').click();
 
   await expect(page).toHaveURL(new RegExp(`/products/${TENT_ID}$`));
@@ -128,7 +129,7 @@ test('an unknown product id shows not found rather than an error', async ({ page
 });
 
 test('a valid SEO edit saves and survives a reload', async ({ page }) => {
-  await page.goto(`/products/${TENT_ID}`);
+  await gotoReady(page, `/products/${TENT_ID}`);
 
   await page.getByTestId('field-primary-keyword').fill('two person tent');
   await page.getByTestId('field-meta-title').fill(VALID_TITLE);
@@ -148,19 +149,19 @@ test('a valid SEO edit saves and survives a reload', async ({ page }) => {
 });
 
 test('the edit is visible back on the catalogue list', async ({ page }) => {
-  await page.goto(`/products/${TENT_ID}`);
+  await gotoReady(page, `/products/${TENT_ID}`);
   await page.getByTestId('field-primary-keyword').fill('bivvy shelter');
   await page.getByTestId('save-seo').click();
   await expect(page.getByTestId('save-success')).toBeVisible();
 
-  await page.goto('/products');
+  await gotoReady(page, '/products');
   await page.getByTestId('product-search').fill('bivvy shelter');
   await expect(rows(page)).toHaveCount(1);
   await expect(page.getByText('Ridgeline 2P Backpacking Tent')).toBeVisible();
 });
 
 test('an invalid edit is rejected, keeps the input and writes nothing', async ({ page }) => {
-  await page.goto(`/products/${TENT_ID}`);
+  await gotoReady(page, `/products/${TENT_ID}`);
 
   await page.getByTestId('field-primary-keyword').fill('keyword worth keeping');
   await page.getByTestId('field-meta-title').fill('   ');
@@ -196,7 +197,7 @@ test('a storage failure is reported and the typed values are kept', async ({ pag
 });
 
 test('the form is labelled and reachable by keyboard', async ({ page }) => {
-  await page.goto(`/products/${TENT_ID}`);
+  await gotoReady(page, `/products/${TENT_ID}`);
 
   const keyword = page.getByLabel('Primary keyword');
   await expect(keyword).toBeVisible();
@@ -222,7 +223,7 @@ test('renders no console errors', async ({ page }) => {
     if (message.type() === 'error') errors.push(message.text());
   });
 
-  await page.goto('/products');
+  await gotoReady(page, '/products');
   await expect(rows(page).first()).toBeVisible();
   await page.getByTestId('product-link-NT-TENT-RDG2').click();
   await expect(page.getByTestId('detail-sku')).toBeVisible();
@@ -232,7 +233,7 @@ test('renders no console errors', async ({ page }) => {
 
 test('no page-level horizontal overflow on the catalogue at 375px', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/products');
+  await gotoReady(page, '/products');
   await expect(rows(page).first()).toBeVisible();
 
   const overflow = await page.evaluate(

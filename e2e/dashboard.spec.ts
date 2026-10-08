@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * Dashboard: the headline metrics, the data window, and the loading / empty / error
@@ -20,13 +21,13 @@ const METRIC_IDS = [
 ] as const;
 
 test('root redirects to the dashboard', async ({ page }) => {
-  await page.goto('/');
+  await gotoReady(page, '/');
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 });
 
 test('shows exactly the eleven headline metrics with real values', async ({ page }) => {
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await expect(page.getByTestId('dashboard-ready')).toBeVisible();
 
   for (const id of METRIC_IDS) {
@@ -47,7 +48,7 @@ test('shows exactly the eleven headline metrics with real values', async ({ page
 });
 
 test('organic traffic never exceeds total sessions', async ({ page }) => {
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await expect(page.getByTestId('dashboard-ready')).toBeVisible();
 
   const toNumber = async (testId: string): Promise<number> => {
@@ -65,7 +66,7 @@ test('organic traffic never exceeds total sessions', async ({ page }) => {
 });
 
 test('states the demo window and the demo-data framing', async ({ page }) => {
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
 
   await expect(page.getByTestId('dashboard-window')).toHaveText(
     '2026-06-03 — 2026-08-31 · 90 days · UTC',
@@ -125,7 +126,7 @@ test('renders no console errors', async ({ page }) => {
     if (message.type() === 'error') errors.push(message.text());
   });
 
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await expect(page.getByTestId('dashboard-ready')).toBeVisible();
   expect(errors).toEqual([]);
 });

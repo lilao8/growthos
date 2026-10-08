@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * Navigation, active state, keyboard operation and layout at the three widths
@@ -31,7 +32,7 @@ test('every route is reachable and renders its own heading', async ({ page }) =>
 
 test('the current route is marked with aria-current in the sidebar', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
 
   const sidebar = page.getByRole('navigation', { name: 'Main' });
   await expect(sidebar.getByTestId('nav-analytics')).toHaveAttribute(
@@ -46,7 +47,7 @@ test('the current route is marked with aria-current in the sidebar', async ({ pa
 
 test('sidebar links navigate between modules', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
 
   await page.getByRole('navigation', { name: 'Main' }).getByTestId('nav-funnel').click();
   await expect(page).toHaveURL(/\/funnel$/);
@@ -55,7 +56,7 @@ test('sidebar links navigate between modules', async ({ page }) => {
 
 test('navigation is operable by keyboard alone', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
 
   const link = page.getByRole('navigation', { name: 'Main' }).getByTestId('nav-products');
   await link.focus();
@@ -67,7 +68,7 @@ test('navigation is operable by keyboard alone', async ({ page }) => {
 
 test('mobile menu toggles, reports its state and closes on Escape', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
 
   const toggle = page.getByTestId('menu-toggle');
   await expect(toggle).toBeVisible();
@@ -85,7 +86,7 @@ test('mobile menu toggles, reports its state and closes on Escape', async ({ pag
 
 test('mobile menu closes after navigating', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
 
   await page.getByTestId('menu-toggle').click();
   await page.getByTestId('mobile-nav').getByTestId('nav-seo-audit').click();
@@ -97,7 +98,7 @@ test('mobile menu closes after navigating', async ({ page }) => {
 for (const width of [375, 768, 1440]) {
   test(`no page-level horizontal overflow at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/dashboard');
+    await gotoReady(page, '/dashboard');
     await expect(page.getByTestId('dashboard-ready')).toBeVisible();
 
     const overflow = await page.evaluate(
@@ -109,7 +110,7 @@ for (const width of [375, 768, 1440]) {
 
 test('the sidebar is visible on desktop and hidden on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await expect(page.getByTestId('menu-toggle')).toBeHidden();
   await expect(
     page.getByRole('navigation', { name: 'Main' }).getByTestId('nav-dashboard'),
@@ -123,7 +124,7 @@ test('a skip link comes first and jumps to the main content', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
 
   const skip = page.getByRole('link', { name: 'Skip to main content' });
 
@@ -141,7 +142,7 @@ test('a skip link comes first and jumps to the main content', async ({
   // link regardless, so the skip link still does its job there; what is not
   // true is that Tab alone gets you to it.
   if (testInfo.project.name !== 'webkit') {
-    await page.goto('/dashboard');
+    await gotoReady(page, '/dashboard');
     await page.keyboard.press('Tab');
     await expect(skip).toBeFocused();
   }

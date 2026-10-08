@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * Content planner: the prioritised list, filters, create, edit, status
@@ -14,7 +15,7 @@ function rows(page: Page) {
 }
 
 test('lists the seeded plan ordered by opportunity', async ({ page }) => {
-  await page.goto('/content');
+  await gotoReady(page, '/content');
   await expect(rows(page).first()).toBeVisible();
 
   const count = await rows(page).count();
@@ -31,7 +32,7 @@ test('lists the seeded plan ordered by opportunity', async ({ page }) => {
 });
 
 test('the top row answers which piece to write next', async ({ page }) => {
-  await page.goto('/content');
+  await gotoReady(page, '/content');
 
   const first = rows(page).first();
   await expect(first).toContainText('Best two-person backpacking tents');
@@ -41,7 +42,7 @@ test('the top row answers which piece to write next', async ({ page }) => {
 test('states that opportunity inputs are judgements, not audit scores', async ({
   page,
 }) => {
-  await page.goto('/content');
+  await gotoReady(page, '/content');
 
   await expect(
     page.getByText(/SEO and GEO opportunity are entered by an editor/i),
@@ -53,7 +54,7 @@ test('states that opportunity inputs are judgements, not audit scores', async ({
 });
 
 test('search and filters narrow the plan and clear restores it', async ({ page }) => {
-  await page.goto('/content');
+  await gotoReady(page, '/content');
   await expect(rows(page).first()).toBeVisible();
   const total = await rows(page).count();
 
@@ -78,7 +79,7 @@ test('search and filters narrow the plan and clear restores it', async ({ page }
 });
 
 test('creates a content idea that persists across a reload', async ({ page }) => {
-  await page.goto('/content');
+  await gotoReady(page, '/content');
   await expect(rows(page).first()).toBeVisible();
   const before = await rows(page).count();
 
@@ -111,7 +112,7 @@ test('creates a content idea that persists across a reload', async ({ page }) =>
 test('an invalid entry is rejected, keeps the input and writes nothing', async ({
   page,
 }) => {
-  await page.goto('/content');
+  await gotoReady(page, '/content');
   await expect(rows(page).first()).toBeVisible();
   const before = await rows(page).count();
 
@@ -135,7 +136,7 @@ test('an invalid entry is rejected, keeps the input and writes nothing', async (
 test('opens an idea, edits it, and the new score shows in the list', async ({
   page,
 }) => {
-  await page.goto('/content');
+  await gotoReady(page, '/content');
   await page.getByTestId(`content-link-${PAD_IDEA}`).click();
   await expect(page).toHaveURL(new RegExp(`/content/${PAD_IDEA}$`));
 
@@ -151,12 +152,12 @@ test('opens an idea, edits it, and the new score shows in the list', async ({
   // 0.35×90 + 0.25×90 + 0.20×80 + 0.20×90 = 88
   await expect(page.getByTestId('detail-opportunity')).toHaveText('88');
 
-  await page.goto('/content');
+  await gotoReady(page, '/content');
   await expect(page.getByTestId(`opportunity-${PAD_IDEA}`)).toHaveText('88');
 });
 
 test('the detail page explains every part of the score', async ({ page }) => {
-  await page.goto(`/content/${PAD_IDEA}`);
+  await gotoReady(page, `/content/${PAD_IDEA}`);
 
   await expect(page.getByText('Entered by an editor').first()).toBeVisible();
   await expect(page.getByText('Derived from search intent')).toBeVisible();
@@ -167,7 +168,7 @@ test('the detail page explains every part of the score', async ({ page }) => {
 test('the detail page separates measured audit scores from the estimates', async ({
   page,
 }) => {
-  await page.goto(`/content/${PAD_IDEA}`);
+  await gotoReady(page, `/content/${PAD_IDEA}`);
 
   await expect(page.getByTestId('measured-scores')).toContainText('Not audited');
   await expect(
@@ -176,20 +177,20 @@ test('the detail page separates measured audit scores from the estimates', async
 
   // Run the audits, and the measured figures appear without moving the score.
   const before = await page.getByTestId('detail-opportunity').innerText();
-  await page.goto('/seo');
+  await gotoReady(page, '/seo');
   await page.getByTestId('run-all-audits').click();
   await expect(page.getByTestId('run-all-message')).toContainText(/Audited/);
-  await page.goto('/geo');
+  await gotoReady(page, '/geo');
   await page.getByTestId('run-all-geo-audits').click();
   await expect(page.getByTestId('run-all-geo-message')).toContainText(/Audited/);
 
-  await page.goto(`/content/${PAD_IDEA}`);
+  await gotoReady(page, `/content/${PAD_IDEA}`);
   await expect(page.getByTestId('measured-scores')).toHaveText(/SEO \d+ · GEO \d+/);
   await expect(page.getByTestId('detail-opportunity')).toHaveText(before);
 });
 
 test('status can be moved from the list and persists', async ({ page }) => {
-  await page.goto('/content');
+  await gotoReady(page, '/content');
 
   await page.getByTestId(`status-select-${TOP_IDEA}`).selectOption('Published');
   await expect(page.getByTestId('content-status-message')).toHaveText(
@@ -207,7 +208,7 @@ test('status can be moved from the list and persists', async ({ page }) => {
 });
 
 test('filtering by status reflects a status change', async ({ page }) => {
-  await page.goto('/content');
+  await gotoReady(page, '/content');
   await page.getByTestId('content-filter-status-published').click();
   await expect(rows(page).first()).toBeVisible();
   const before = await rows(page).count();
@@ -251,7 +252,7 @@ test('the plan reports a load failure with a retry', async ({ page }) => {
 });
 
 test('the form is labelled and reachable by keyboard', async ({ page }) => {
-  await page.goto('/content');
+  await gotoReady(page, '/content');
   await page.getByTestId('content-new').click();
 
   const topic = page.getByLabel('Topic', { exact: true });
@@ -271,7 +272,7 @@ test('renders no console errors', async ({ page }) => {
     if (message.type() === 'error') errors.push(message.text());
   });
 
-  await page.goto('/content');
+  await gotoReady(page, '/content');
   await expect(rows(page).first()).toBeVisible();
   await page.getByTestId(`content-link-${PAD_IDEA}`).click();
   await expect(page.getByTestId('detail-opportunity')).toBeVisible();
@@ -283,7 +284,7 @@ test('no page-level horizontal overflow on the content plan at 375px', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/content');
+  await gotoReady(page, '/content');
   await expect(rows(page).first()).toBeVisible();
 
   const overflow = await page.evaluate(

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * Funnel: the five layers, the largest drop-off, the advice attached to each
@@ -19,7 +20,7 @@ async function numberFrom(page: Page, testId: string): Promise<number> {
 }
 
 test('shows five layers that only ever fall', async ({ page }) => {
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
 
   const stages = [
@@ -45,7 +46,7 @@ test('shows five layers that only ever fall', async ({ page }) => {
 test('the step table chains together and can be checked by hand', async ({
   page,
 }) => {
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
 
   await expect(rowsIn(page, STEPS_TABLE)).toHaveCount(4);
@@ -67,7 +68,7 @@ test('the step table chains together and can be checked by hand', async ({
 test('highlights the largest drop-off and says how it was chosen', async ({
   page,
 }) => {
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
 
   const banner = page.getByTestId('largest-drop-banner');
@@ -80,13 +81,13 @@ test('highlights the largest drop-off and says how it was chosen', async ({
 });
 
 test('the funnel matches analytics for the same range', async ({ page }) => {
-  await page.goto('/analytics');
+  await gotoReady(page, '/analytics');
   await expect(page.getByTestId('analytics-ready')).toBeVisible();
   const sessions = await page.getByTestId('analytics-sessions-value').innerText();
   const orders = await page.getByTestId('analytics-orders-value').innerText();
   const cvr = await page.getByTestId('analytics-cvr-value').innerText();
 
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
   await expect(page.getByTestId('funnel-sessions-value')).toHaveText(sessions);
   await expect(page.getByTestId('funnel-purchases-value')).toHaveText(orders);
@@ -94,7 +95,7 @@ test('the funnel matches analytics for the same range', async ({ page }) => {
 });
 
 test('switching the range moves every layer together', async ({ page }) => {
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
   const sessions90 = await numberFrom(page, 'stage-session');
 
@@ -109,7 +110,7 @@ test('switching the range moves every layer together', async ({ page }) => {
 });
 
 test('advice is attached to the step it belongs to', async ({ page }) => {
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
 
   // Checkout to purchase is below threshold in the demo data.
@@ -133,7 +134,7 @@ test('advice is attached to the step it belongs to', async ({ page }) => {
 });
 
 test('every item is framed as a hypothesis, not a diagnosis', async ({ page }) => {
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
 
   const disclaimer = page.getByTestId('hypothesis-disclaimer');
@@ -143,7 +144,7 @@ test('every item is framed as a hypothesis, not a diagnosis', async ({ page }) =
 });
 
 test('states the reason each step was raised', async ({ page }) => {
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
 
   const belowThreshold = page.getByTestId(
@@ -159,7 +160,7 @@ test('states the reason each step was raised', async ({ page }) => {
 });
 
 test('shows the sample each rate rests on', async ({ page }) => {
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
 
   await expect(
@@ -168,7 +169,7 @@ test('shows the sample each rate rests on', async ({ page }) => {
 });
 
 test('flags low confidence when the range shrinks the sample', async ({ page }) => {
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await page.getByTestId('funnel-range-7').click();
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
 
@@ -182,7 +183,7 @@ test('flags low confidence when the range shrinks the sample', async ({ page }) 
 test('explains that layers are sessions, not people or page views', async ({
   page,
 }) => {
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
 
   await expect(
@@ -194,7 +195,7 @@ test('explains that layers are sessions, not people or page views', async ({
 test('the dashboard carries the cart and checkout rates and links to the funnel', async ({
   page,
 }) => {
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await expect(page.getByTestId('dashboard-ready')).toBeVisible();
 
   await expect(page.getByTestId('metric-add-to-cart-rate-value')).toHaveText(
@@ -220,13 +221,13 @@ test('the dashboard carries the cart and checkout rates and links to the funnel'
 });
 
 test('the dashboard alert agrees with the funnel page', async ({ page }) => {
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
   const banner = await page.getByTestId('largest-drop-banner').innerText();
   const step = banner.split('Largest drop-off: ')[1]?.split('.')[0] ?? '';
   expect(step.length).toBeGreaterThan(0);
 
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await expect(page.getByTestId('dashboard-largest-drop')).toContainText(step);
 });
 
@@ -252,7 +253,7 @@ test('renders no console errors', async ({ page }) => {
     if (message.type() === 'error') errors.push(message.text());
   });
 
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
   await page.getByTestId('funnel-range-30').click();
   await expect(page.getByTestId('funnel-window')).toContainText('30 days');
@@ -262,7 +263,7 @@ test('renders no console errors', async ({ page }) => {
 
 test('no page-level horizontal overflow on the funnel at 375px', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
   await expect(page.getByTestId('funnel-ready')).toBeVisible();
 
   const overflow = await page.evaluate(

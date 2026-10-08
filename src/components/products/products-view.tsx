@@ -243,7 +243,14 @@ export function ProductsView({ mode }: { mode: DemoDataMode | null }) {
       )}
 
       {state?.status === 'ready' && (
-        <Card>
+        // The sentinel sits here rather than on the wrapper above, because the
+        // wrapper and the search box are server-rendered and present before
+        // React hydrates. A test that filled the search box on sight of them
+        // set a DOM value no handler was listening for, and hydration then
+        // reset the controlled input — the list stayed unfiltered for good,
+        // which no amount of assertion retrying could recover from. This node
+        // only exists once the effect has resolved, so it is proof of both.
+        <Card testId="products-ready">
           <CardHeader
             title="Catalogue"
             description={`Showing ${state.rows.length} of ${state.totalCount} products. Conversion rate and revenue are demo figures for the 90-day window.`}

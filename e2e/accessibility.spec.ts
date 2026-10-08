@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { gotoReady } from './ready';
 
 /**
  * Accessibility.
@@ -58,7 +59,7 @@ const ROUTES = [
 
 /** Navigates and waits for the route's content, not just its heading. */
 async function open(page: Page, route: string): Promise<void> {
-  await page.goto(route);
+  await gotoReady(page, route);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   const sentinel = READY[route];
   if (sentinel !== undefined) {
@@ -110,13 +111,13 @@ test('the audited pages are checked with audits actually run', async ({
 }) => {
   // Scores, issue tables and evidence only exist after an audit. Checking the
   // empty state alone would skip most of the markup these pages render.
-  await page.goto('/seo');
+  await gotoReady(page, '/seo');
   await page.getByTestId('run-all-audits').click();
   await expect(page.getByTestId('run-all-message')).toContainText(/Audited/);
-  await page.goto('/geo');
+  await gotoReady(page, '/geo');
   await page.getByTestId('run-all-geo-audits').click();
   await expect(page.getByTestId('run-all-geo-message')).toContainText(/Audited/);
-  await page.goto('/amazon');
+  await gotoReady(page, '/amazon');
   await page.getByTestId('run-all-listing-audits').click();
   await expect(page.getByTestId('run-all-listing-message')).toContainText(
     /Audited/,
@@ -134,7 +135,7 @@ test('the audited pages are checked with audits actually run', async ({
 
 test('the mobile navigation panel is accessible when open', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
   await page.getByTestId('menu-toggle').click();
   await expect(page.getByTestId('mobile-nav')).toBeVisible();
 
@@ -151,7 +152,7 @@ test('error and empty states are accessible too', async ({ page }) => {
     '/dashboard?demo=empty',
     '/amazon/advertising?demo=error',
   ]) {
-    await page.goto(url);
+    await gotoReady(page, url);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     const results = await audit(page).analyze();
     expect(
@@ -179,7 +180,7 @@ test('navigation regions are named, so they are distinguishable', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/dashboard');
+  await gotoReady(page, '/dashboard');
 
   // Two navs in the sidebar; unnamed, a screen reader would announce both as
   // "navigation" and give no way to tell them apart.
@@ -189,7 +190,7 @@ test('navigation regions are named, so they are distinguishable', async ({
 
 test('the current page is marked in the navigation', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/funnel');
+  await gotoReady(page, '/funnel');
 
   // Playwright's role selector has no `current` option, so this asserts the
   // attribute a screen reader actually reads.
@@ -248,7 +249,7 @@ test('loading, error and success states announce themselves', async ({
   // carries role="alert", so an unscoped query matches two elements.
   await expect(page.getByTestId('state-error')).toHaveRole('alert');
 
-  await page.goto('/seo');
+  await gotoReady(page, '/seo');
   await page.getByTestId('run-all-audits').click();
   const status = page.getByTestId('run-all-message');
   await expect(status).toContainText(/Audited/);
@@ -264,7 +265,7 @@ test('every form control has an accessible name', async ({ page }) => {
     '/content/idea_r-value-faq',
     '/amazon/lst_trailcell_lantern',
   ]) {
-    await page.goto(route);
+    await gotoReady(page, route);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     const controls = page.locator(
@@ -300,7 +301,7 @@ test('every form control has an accessible name', async ({ page }) => {
 test('the whole task list is reachable and operable by keyboard', async ({
   page,
 }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const card = page.locator('[data-testid^="rec-"][data-source]').first();
   await expect(card).toBeVisible();
 
@@ -324,7 +325,7 @@ test('the whole task list is reachable and operable by keyboard', async ({
 test('filters are real buttons that report their pressed state', async ({
   page,
 }) => {
-  await page.goto('/recommendations');
+  await gotoReady(page, '/recommendations');
   const filter = page.getByTestId('rec-filter-source-seo');
 
   await expect(filter).toHaveAttribute('aria-pressed', 'false');
