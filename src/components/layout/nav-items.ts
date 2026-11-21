@@ -111,6 +111,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
     question:
       'Given everything above, what should I do on Monday morning?',
   },
+  {
+    href: '/agent',
+    label: 'Ops Agent',
+    purpose:
+      'Ask in plain language; a read-only agent queries channels, funnel, products and audits and cites every figure.',
+    channel: 'Storefront',
+    question:
+      'Over the last 30 days, what should the storefront look into first?',
+  },
 ];
 
 /**

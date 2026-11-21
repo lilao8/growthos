@@ -37,6 +37,7 @@ const SENTINELS: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/analytics$/, 'analytics-ready'],
   [/^\/funnel$/, 'funnel-ready'],
   [/^\/recommendations$/, 'recommendations-ready'],
+  [/^\/agent$/, 'agent-ready'],
 ];
 
 export function sentinelFor(path: string): string | null {

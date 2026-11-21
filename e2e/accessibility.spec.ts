@@ -36,6 +36,7 @@ const READY: Record<string, string> = {
   '/amazon/advertising': 'advertising-ready',
   '/amazon': 'amazon-overview',
   '/recommendations': 'recommendations-ready',
+  '/agent': 'agent-ready',
 };
 
 const ROUTES = [
@@ -54,6 +55,7 @@ const ROUTES = [
   '/amazon/lst_trailcell_lantern',
   '/amazon/advertising',
   '/recommendations',
+  '/agent',
   '/about-project',
 ] as const;
 

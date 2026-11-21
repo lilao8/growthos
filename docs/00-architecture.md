@@ -371,3 +371,12 @@ npm run build
 - **指标引用。** 工具返回的关键数字带确定性的 `refId`（`工具:起..止:渠道:商品:指标`）和指标口径键；审计发现带 `AuditRef`（规则、状态、严重度、evidence、规则版本、指纹、来源）。Dispatch 19 的回答校验只认这些 ref。
 - **复核修正。** 审计证据统一走 `src/domain/audit-preview.ts` 的 `currentAudit()`：Agent 工具与 SEO/GEO 审计页的 `?preview=1` 只读预览共用它，引用和链接页面是同一个函数在同一个快照上算出来的，预览不写存储。低于漏斗步骤自身样本下限的发现改为缺口（附原始数字的 refIds），不进入排序。比较结果带双方 refId。工具入参用 `z.strictObject`。Funnel/Analytics 视图的结果按筛选条件打标签，避免新标签配旧数字。
 - **第二轮复核。** 每个两期比较都带 `evidence`（`comparisonEvidence()`）：两期使用与单期发现相同的门槛，取较弱一方，并给出 `supportsConclusion` 和原始样本；没有前一期或任一期不足时不支持结论。前一期读取失败不影响本期结果，以 `previous-window-unavailable` 缺口报告。
+
+## 实施记录更新（Dispatch 19：编排循环、回答校验、API 与 `/agent`）
+
+- **回答契约。** 模型的回答是 JSON（summary / findings / gaps），数字只能写成 `{{ref:…}}`、`{{change:…}}`、`{{audit:…}}` 占位符，由 GrowthOS 按口径渲染成链接。`src/domain/agent/answer.ts` 的 `validateAnswer()` 是纯函数：未知引用、裸数字、无支持的变化措辞、不支持结论的比较、未知/样本不足/重复的依据、全站漏斗推断渠道或商品，都会被拦截。失败先修一次，再失败由 `fallbackAnswer()` 按 GrowthOS 排序直接生成工具结果摘要。
+- **排序归 GrowthOS。** 每条发现必须以 `basedOn` 指向本轮的工具发现，展示顺序由 `rankFindings` 决定。
+- **分析范围是对话状态。** `ConversationScope` 由 GrowthOS 合并（`mergeScope`），模型只能通过 `set_analysis_scope` 元工具提出修改；数据工具调用里省略的 range/channel/products 从范围注入。服务端无状态，范围随请求回传。
+- **编排在 `src/services/agent/`。** `ModelClient` 是唯一的模型接缝；循环负责调用上限（8）、单工具超时（5s）、整轮超时（60s）、模型步数上限（12），全部在代码里强制，不依赖提示词。
+- **`/api/agent`。** POST + NDJSON 流式事件。`AGENT_LIVE_ENABLED` 必须恰好为 `"true"`，否则 503；provider 由 `AGENT_MODEL_PROVIDER` 选择（本阶段只有 `scripted`）。请求体 zod 严格校验，浏览器状态经 `parseLocalState`，不合格 400 且不调用模型。
+- **替身模型。** `createDemoModel()` 根据工具结果决定下一步，供本地演示与 E2E；id 为 `scripted:demo`，界面标注 Scripted stand-in model。

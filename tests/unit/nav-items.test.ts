@@ -20,8 +20,9 @@ const ALL = [...NAV_ITEMS, ...SECONDARY_NAV_ITEMS];
 describe('navigation items', () => {
   it('lists the modules in the order an operator works through them', () => {
     // Order is the reading order, not the build order: the storefront chain
-    // stays contiguous, Amazon sits as its own channel, and Recommendations is
-    // last because it is where every other module converges.
+    // stays contiguous, Amazon sits as its own channel, Recommendations is
+    // where every module converges, and the Ops Agent comes after it because
+    // it reads across all of them on demand.
     expect(NAV_ITEMS.map((item) => item.href)).toEqual([
       '/dashboard',
       '/products',
@@ -33,6 +34,7 @@ describe('navigation items', () => {
       '/amazon',
       '/amazon/advertising',
       '/recommendations',
+      '/agent',
     ]);
   });
 

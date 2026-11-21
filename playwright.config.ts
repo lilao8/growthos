@@ -47,6 +47,10 @@ export default defineConfig({
     stdout: 'ignore',
     env: {
       NEXT_PUBLIC_GROWTHOS_STORAGE_NAMESPACE: 'growthos.e2e',
+      // The agent runs live against the scripted stand-in model only; E2E
+      // never calls a real model.
+      AGENT_LIVE_ENABLED: 'true',
+      AGENT_MODEL_PROVIDER: 'scripted',
     },
   },
 });
