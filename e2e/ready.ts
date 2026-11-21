@@ -37,6 +37,8 @@ const SENTINELS: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/analytics$/, 'analytics-ready'],
   [/^\/funnel$/, 'funnel-ready'],
   [/^\/recommendations$/, 'recommendations-ready'],
+  [/^\/agent\/replays\/[^/]+$/, 'replay-ready'],
+  [/^\/agent\/replays$/, 'replays-ready'],
   [/^\/agent$/, 'agent-ready'],
 ];
 

@@ -18,7 +18,8 @@
     "screenshots": "playwright test --config playwright.screenshots.config.ts capture",
     "perf": "playwright test --config playwright.screenshots.config.ts perf",
     "prepare": "git rev-parse --git-dir > /dev/null 2>&1 && git config core.hooksPath .githooks || true",
-    "test:mutation": "stryker run"
+    "test:mutation": "stryker run",
+    "agent:record": "vitest run --config vitest.record.config.ts"
   },
   "dependencies": {
     "next": "^16.3.5",

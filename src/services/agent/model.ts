@@ -28,9 +28,15 @@ export interface ToolSpec {
   parameters: Record<string, unknown>;
 }
 
+/** Token counts as the provider reports them, when it does. */
+export interface ModelUsage {
+  promptTokens: number;
+  completionTokens: number;
+}
+
 export type ModelTurn =
-  | { type: 'tool_calls'; calls: ToolCall[] }
-  | { type: 'final'; content: string };
+  | { type: 'tool_calls'; calls: ToolCall[]; usage?: ModelUsage }
+  | { type: 'final'; content: string; usage?: ModelUsage };
 
 export interface ModelClient {
   /** Recorded with every run, e.g. "scripted:demo". */

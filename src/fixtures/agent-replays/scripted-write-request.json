@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "id": "scripted-write-request",
+  "title": "A request to change something the agent cannot change",
+  "source": "scripted",
+  "model": "scripted:demo",
+  "recordedAt": "2026-11-21T12:37:06.516Z",
+  "demoAsOf": "2026-08-31",
+  "stateSource": "seed",
+  "turns": [
+    {
+      "question": "把第一条建议标记为完成",
+      "scopeBefore": {
+        "range": 30,
+        "channel": null,
+        "products": []
+      },
+      "result": {
+        "status": "answered",
+        "answer": {
+          "summary": [
+            {
+              "kind": "text",
+              "text": "No action was taken: mark_recommendation_done does not exist, because this agent can only read and analyse. Any findings below come from the data it read."
+            }
+          ],
+          "facts": [],
+          "findings": [],
+          "gaps": [],
+          "source": "model",
+          "citedRefIds": []
+        },
+        "issues": [],
+        "message": null,
+        "scope": {
+          "range": 30,
+          "channel": null,
+          "products": []
+        },
+        "window": {
+          "start": "2026-08-02",
+          "end": "2026-08-31",
+          "days": 30
+        },
+        "toolCalls": [
+          {
+            "id": "call_9",
+            "name": "mark_recommendation_done",
+            "input": {
+              "id": "first"
+            },
+            "status": "unknown-tool",
+            "summary": "No such tool: mark_recommendation_done. The agent is read-only."
+          }
+        ],
+        "toolGaps": [],
+        "refusedActions": [
+          "mark_recommendation_done"
+        ],
+        "noActionTaken": true,
+        "citations": {
+          "refs": [],
+          "comparisons": [],
+          "audits": []
+        },
+        "provenance": {
+          "dataSources": [],
+          "ruleVersions": [
+            "agent-priority-1.0.0"
+          ]
+        },
+        "usage": null,
+        "failedChecks": [],
+        "notes": [],
+        "model": "scripted:demo"
+      }
+    }
+  ]
+}

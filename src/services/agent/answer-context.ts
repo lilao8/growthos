@@ -30,6 +30,8 @@ export class AnswerContextBuilder {
   private readonly gaps: ToolGap[] = [];
   private readonly products: Map<string, string>;
   private readonly figuresWithoutFindings: string[] = [];
+  private readonly dataSources = new Set<string>();
+  private readonly ruleVersions = new Set<string>();
 
   constructor(products: readonly Product[]) {
     this.products = new Map(products.map((product) => [product.id, product.title]));
@@ -37,6 +39,9 @@ export class AnswerContextBuilder {
 
   add(outcome: RunToolOutcome): void {
     if (outcome.status !== 'ok' && outcome.status !== 'empty') return;
+    for (const source of outcome.meta.dataSources) this.dataSources.add(source);
+    for (const audit of outcome.meta.auditRefs) this.ruleVersions.add(audit.ruleVersion);
+    for (const finding of outcome.findings) this.ruleVersions.add(finding.ruleVersion);
     for (const ref of outcome.meta.refs) {
       this.refs.set(ref.refId, {
         refId: ref.refId,
@@ -90,6 +95,11 @@ export class AnswerContextBuilder {
       this.gaps.push({ message: gap.message, links });
     }
     collectComparisons(outcome.data, this.comparisons);
+  }
+
+  /** Where the turn's figures came from, and which rule versions judged them. */
+  provenance(): { dataSources: string[]; ruleVersions: string[] } {
+    return { dataSources: [...this.dataSources].sort(), ruleVersions: [...this.ruleVersions].sort() };
   }
 
   toolGaps(): ToolGap[] {

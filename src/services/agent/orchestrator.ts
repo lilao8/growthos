@@ -3,13 +3,19 @@ import {
   agentAnswerSchema,
   repairRequest,
   validateAnswer,
+  type AnswerContext,
   type AnswerIssue,
+  type CitableAudit,
+  type CitableComparison,
+  type CitableRef,
 } from '@/domain/agent/answer';
+import { AGENT_PRIORITY_VERSION, rankFindings } from '@/domain/agent/priority';
+import type { MetricRef } from '@/domain/agent/refs';
 import { fallbackAnswer, renderAnswer, type RenderedAnswer } from '@/domain/agent/answer-render';
 import { scopeWindow, type ConversationScope } from '@/domain/agent/scope';
 import type { DateWindow } from '@/domain/demo-window';
 import { AGENT_TOOLS, runTool, type RunToolOutcome } from '@/services/agent-tools/registry';
-import type { ProvidedState } from '@/services/agent-tools/types';
+import type { AgentFinding, AuditRef, ProvidedState } from '@/services/agent-tools/types';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
 import { AnswerContextBuilder, type ToolGap } from './answer-context';
 import type { AgentMessage, ModelClient, ToolCall, ToolSpec } from './model';
@@ -36,6 +42,10 @@ export interface AgentLimits {
   turnTimeoutMs: number;
   /** Model round trips, including the one repair. Bounds a model that never answers. */
   maxModelSteps: number;
+  /** Characters of one tool result sent to the model, after compaction. */
+  maxToolResultChars: number;
+  /** Characters of all messages sent to the model in one turn. */
+  maxInputChars: number;
 }
 
 export const DEFAULT_LIMITS: AgentLimits = {
@@ -43,6 +53,8 @@ export const DEFAULT_LIMITS: AgentLimits = {
   toolTimeoutMs: 5_000,
   turnTimeoutMs: 60_000,
   maxModelSteps: 12,
+  maxToolResultChars: 24_000,
+  maxInputChars: 160_000,
 };
 
 export interface PriorTurn {
@@ -103,6 +115,19 @@ export interface AgentTurnResult {
   noActionTaken: boolean;
   /** Tool calls that failed, so a failure is never read as an empty result. */
   failedChecks: Array<{ name: string; message: string }>;
+  /**
+   * The raw figures, comparisons and audit verdicts the answer shows or rests
+   * on, frozen with the result so a replay can be checked without the tools.
+   */
+  citations: {
+    refs: CitableRef[];
+    comparisons: CitableComparison[];
+    audits: CitableAudit[];
+  };
+  /** Where the figures came from and which rule versions judged them. */
+  provenance: { dataSources: string[]; ruleVersions: string[] };
+  /** Tokens the model reported for this turn, when it reports them. */
+  usage: { promptTokens: number; completionTokens: number } | null;
   /** Issues from the last validation, when the answer had to be repaired or replaced. */
   issues: AnswerIssue[];
   /** Limits hit, timeouts and similar, for the operator. */
@@ -148,6 +173,22 @@ export function applyScope(name: string, input: unknown, scope: ConversationScop
   return filled;
 }
 
+/** Characters sent to the model: every message's text and tool-call arguments. */
+export function messageChars(messages: readonly AgentMessage[]): number {
+  let total = 0;
+  for (const message of messages) {
+    total += message.content?.length ?? 0;
+    if (message.role === 'assistant') for (const call of message.toolCalls) total += call.name.length + call.arguments.length;
+  }
+  return total;
+}
+
+function citationsFor(answer: RenderedAnswer | null, context: AnswerContext): AgentTurnResult['citations'] {
+  const ids = answer?.citedRefIds ?? [];
+  const pick = <T>(map: ReadonlyMap<string, T>): T[] => ids.map((id) => map.get(id)).filter((value): value is T => value !== undefined);
+  return { refs: pick(context.refs), comparisons: pick(context.comparisons), audits: pick(context.audits) };
+}
+
 class Timeout extends Error {}
 
 function withTimeout<T>(work: Promise<T>, ms: number, signal: AbortSignal): Promise<T> {
@@ -174,8 +215,71 @@ function withTimeout<T>(work: Promise<T>, ms: number, signal: AbortSignal): Prom
   });
 }
 
-/** What the model sees of a tool outcome: the data and everything citable, not internals. */
-function forModel(outcome: RunToolOutcome | { status: 'ok'; scope: ConversationScope }): string {
+/**
+ * What the model sees of a tool outcome, within a character budget.
+ *
+ * Full first. Over budget, the raw `data` goes, keeping the findings, the
+ * figures and verdicts they cite, and the gaps — everything an answer may
+ * cite. Still over, findings are cut to the best-ranked ones that fit. The
+ * result always says what was left out, so the model never mistakes a
+ * trimmed result for a complete one.
+ */
+export function forModel(
+  outcome: RunToolOutcome | { status: 'ok'; scope: ConversationScope },
+  maxChars: number = DEFAULT_LIMITS.maxToolResultChars,
+): string {
+  const full = fullForModel(outcome);
+  if (full.length <= maxChars || !('meta' in outcome) || (outcome.status !== 'ok' && outcome.status !== 'empty')) return full;
+
+  const ranked = rankFindings(outcome.findings).ranked.map((entry) => entry.finding);
+  const unranked = outcome.findings.filter((finding) => !ranked.includes(finding));
+  const ordered = [...ranked, ...unranked];
+  for (let keep = ordered.length; keep >= 0; keep -= 1) {
+    const findings = ordered.slice(0, keep);
+    const cited = new Set(findings.flatMap((finding) => finding.refIds));
+    const compact = JSON.stringify({
+      status: outcome.status,
+      truncated: {
+        reason: `This result was larger than ${maxChars} characters, so its raw data was left out.`,
+        findingsShown: findings.length,
+        findingsTotal: outcome.findings.length,
+      },
+      window: outcome.meta.window,
+      previousWindow: outcome.meta.previousWindow,
+      findings: findings.map(findingForModel),
+      refs: outcome.meta.refs.filter((ref) => cited.has(ref.refId)).map(refForModel),
+      auditRefs: outcome.meta.auditRefs.filter((ref) => cited.has(ref.refId)).map(auditForModel),
+      gaps: outcome.meta.gaps,
+    });
+    if (compact.length <= maxChars) return compact;
+  }
+  return JSON.stringify({ status: outcome.status, truncated: { reason: `This result was too large to send (limit ${maxChars} characters).` } });
+}
+
+function findingForModel(finding: AgentFinding) {
+  return {
+    id: finding.id,
+    ruleId: finding.ruleId,
+    title: finding.title,
+    priority: finding.priority,
+    strength: finding.strength,
+    affectedSessions: finding.affectedSessions,
+    observed: finding.observed,
+    howToVerify: finding.howToVerify,
+    refIds: finding.refIds,
+    scope: finding.scope,
+  };
+}
+
+function refForModel(ref: MetricRef) {
+  return { refId: ref.refId, label: ref.label, value: ref.value, unit: ref.unit, channel: ref.channel, productId: ref.productId, window: ref.window };
+}
+
+function auditForModel(ref: AuditRef) {
+  return { refId: ref.refId, productId: ref.productId, ruleId: ref.ruleId, status: ref.status, severity: ref.severity, evidence: ref.evidence };
+}
+
+function fullForModel(outcome: RunToolOutcome | { status: 'ok'; scope: ConversationScope }): string {
   if (outcome.status !== 'ok' && outcome.status !== 'empty') return JSON.stringify(outcome);
   if (!('meta' in outcome)) return JSON.stringify(outcome);
   return JSON.stringify({
@@ -183,34 +287,9 @@ function forModel(outcome: RunToolOutcome | { status: 'ok'; scope: ConversationS
     window: outcome.meta.window,
     previousWindow: outcome.meta.previousWindow,
     data: outcome.data,
-    findings: outcome.findings.map((finding) => ({
-      id: finding.id,
-      ruleId: finding.ruleId,
-      title: finding.title,
-      priority: finding.priority,
-      strength: finding.strength,
-      affectedSessions: finding.affectedSessions,
-      observed: finding.observed,
-      howToVerify: finding.howToVerify,
-      refIds: finding.refIds,
-    })),
-    refs: outcome.meta.refs.map((ref) => ({
-      refId: ref.refId,
-      label: ref.label,
-      value: ref.value,
-      unit: ref.unit,
-      channel: ref.channel,
-      productId: ref.productId,
-      window: ref.window,
-    })),
-    auditRefs: outcome.meta.auditRefs.map((ref) => ({
-      refId: ref.refId,
-      productId: ref.productId,
-      ruleId: ref.ruleId,
-      status: ref.status,
-      severity: ref.severity,
-      evidence: ref.evidence,
-    })),
+    findings: outcome.findings.map(findingForModel),
+    refs: outcome.meta.refs.map(refForModel),
+    auditRefs: outcome.meta.auditRefs.map(auditForModel),
     gaps: outcome.meta.gaps,
     dataSources: outcome.meta.dataSources,
   });
@@ -272,6 +351,8 @@ export async function runAgentTurn(
   let issues: AnswerIssue[] = [];
   let repaired = false;
   let toolCallsUsed = 0;
+  let usage = null as AgentTurnResult['usage'];
+  let budgetReached = false;
   /** Set when any answer this turn claimed an action was carried out. */
   let actionClaimed = false;
   let limitAnnounced = false;
@@ -284,7 +365,7 @@ export async function runAgentTurn(
   messages.push({ role: 'user', content: input.question });
 
   const finish = (
-    result: Omit<AgentTurnResult, 'scope' | 'window' | 'toolCalls' | 'toolGaps' | 'notes' | 'model' | 'refusedActions' | 'failedChecks' | 'noActionTaken'>,
+    result: Omit<AgentTurnResult, 'scope' | 'window' | 'toolCalls' | 'toolGaps' | 'notes' | 'model' | 'refusedActions' | 'failedChecks' | 'noActionTaken' | 'citations' | 'provenance' | 'usage'>,
   ): AgentTurnResult => {
     clearTimeout(turnTimer);
     deps.signal?.removeEventListener('abort', onOuterAbort);
@@ -305,7 +386,7 @@ export async function runAgentTurn(
     const answer: RenderedAnswer | null = !noActionTaken
       ? result.answer
       : result.answer === null
-        ? { summary: refusal, facts: [], findings: [], gaps: [], source: 'fallback' }
+        ? { summary: refusal, facts: [], findings: [], gaps: [], source: 'fallback', citedRefIds: [] }
         : { ...result.answer, summary: refusal };
     const status = noActionTaken && result.status === 'failed' ? 'fallback' : result.status;
     const done: AgentTurnResult = {
@@ -318,6 +399,9 @@ export async function runAgentTurn(
       toolGaps: context.toolGaps(),
       refusedActions,
       noActionTaken,
+      citations: citationsFor(answer, context.build()),
+      provenance: { ...context.provenance(), ruleVersions: [...context.provenance().ruleVersions, AGENT_PRIORITY_VERSION].sort() },
+      usage,
       failedChecks: toolCalls
         .filter((call) => call.status === 'error')
         .map((call) => ({ name: call.name, message: call.summary })),
@@ -392,12 +476,26 @@ export async function runAgentTurn(
     };
     toolCalls.push(record);
     onEvent({ type: 'tool-end', record });
-    return forModel(outcome);
+    return forModel(outcome, limits.maxToolResultChars);
   };
 
   try {
     for (let step = 0; step < limits.maxModelSteps; step += 1) {
       if (turn.signal.aborted) return fallback('The analysis ran out of time before an answer was ready.');
+
+      // The whole conversation is resent on every round trip, so the input is
+      // bounded per turn: at the budget no new tools run and the model must
+      // answer; well past it the turn stops.
+      const inputChars = messageChars(messages);
+      if (inputChars > limits.maxInputChars * 1.25) {
+        notes.push(`The input to the model reached ${inputChars} characters, past the ${limits.maxInputChars}-character budget.`);
+        return fallback('The analysis gathered more data than fits in one answer.');
+      }
+      if (inputChars > limits.maxInputChars && !budgetReached) {
+        budgetReached = true;
+        notes.push(`The input budget of ${limits.maxInputChars} characters was reached, so no further tools were run.`);
+        messages.push({ role: 'user', content: 'The input budget for this question has been reached. Do not call more tools. Answer now with what you have, and list what you could not check as gaps.' });
+      }
 
       let reply;
       try {
@@ -415,6 +513,13 @@ export async function runAgentTurn(
         return fallback(reason);
       }
 
+      if (reply.usage !== undefined) {
+        usage = {
+          promptTokens: (usage?.promptTokens ?? 0) + reply.usage.promptTokens,
+          completionTokens: (usage?.completionTokens ?? 0) + reply.usage.completionTokens,
+        };
+      }
+
       if (reply.type === 'tool_calls') {
         messages.push({ role: 'assistant', content: null, toolCalls: reply.calls });
         for (const call of reply.calls) {
@@ -423,6 +528,12 @@ export async function runAgentTurn(
             const message = 'Not run: the request was cancelled or ran out of time.';
             messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify({ status: 'cancelled', message }) });
             toolCalls.push({ id: call.id, name: call.name, input: call.arguments, status: 'cancelled', summary: message });
+            continue;
+          }
+          if (budgetReached) {
+            const message = 'Not run: the input budget for this question has been reached.';
+            messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify({ status: 'budget-reached', message }) });
+            toolCalls.push({ id: call.id, name: call.name, input: call.arguments, status: 'budget-reached', summary: message });
             continue;
           }
           if (toolCallsUsed >= limits.maxToolCalls) {
@@ -460,7 +571,7 @@ export async function runAgentTurn(
 
       const built = context.build();
       issues = validateAnswer(answer, built);
-    if (issues.some((issue) => issue.code === 'action-claim')) actionClaimed = true;
+      if (issues.some((issue) => issue.code === 'action-claim')) actionClaimed = true;
       if (issues.length === 0) {
         return finish({ status: 'answered', answer: renderAnswer(answer, built, 'model'), issues: [], message: null });
       }

@@ -1,0 +1,1144 @@
+{
+  "version": 1,
+  "id": "scripted-review",
+  "title": "30-day storefront review, then \"only organic search?\"",
+  "source": "scripted",
+  "model": "scripted:demo",
+  "recordedAt": "2026-11-21T12:37:06.510Z",
+  "demoAsOf": "2026-08-31",
+  "stateSource": "seed",
+  "turns": [
+    {
+      "question": "过去 30 天，独立站最该优先排查什么？",
+      "scopeBefore": {
+        "range": 30,
+        "channel": null,
+        "products": []
+      },
+      "result": {
+        "status": "answered",
+        "answer": {
+          "summary": [
+            {
+              "kind": "text",
+              "text": "以下是当前分析范围内建议优先排查的问题，排序由 GrowthOS 按规则严重度、证据充分度和受影响会话决定。每个数字都链接到可以核对的页面。"
+            }
+          ],
+          "facts": [],
+          "findings": [
+            {
+              "rank": 1,
+              "basedOn": "rec_funnel_eb1c1da9@all:2026-08-02..2026-08-31",
+              "title": "Checkout → Purchase: investigate the drop-off",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "Checkout → Purchase conversion (all channels), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "37.09%",
+                    "href": "/funnel?range=30",
+                    "title": "Checkout → Purchase conversion (all channels), 2026-08-02 — 2026-08-31"
+                  }
+                ],
+                [
+                  {
+                    "kind": "text",
+                    "text": "Checkout → Purchase drop-off (all channels), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "62.91%",
+                    "href": "/funnel?range=30",
+                    "title": "Checkout → Purchase drop-off (all channels), 2026-08-02 — 2026-08-31"
+                  }
+                ],
+                [
+                  {
+                    "kind": "text",
+                    "text": "Checkout sessions (all channels), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "213",
+                    "href": "/funnel?range=30",
+                    "title": "Checkout sessions (all channels), 2026-08-02 — 2026-08-31"
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "规则严重度为 Critical，证据充分度为 sufficient。"
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "按下方的规则原文逐项核对，并在证据链接打开的页面上确认同一日期范围的数字。"
+                }
+              ],
+              "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Shipping cost at checkout may be higher than expected. Compare shipping cost and any free-shipping threshold against the average order value. 2. The payment methods offered may not cover what buyers use. List the methods available and compare against what the market expects — wallets included. 3. The checkout may be asking for too much, or across too many steps. Count the fields and steps required to buy, and whether guest checkout exists. 4. The checkout may not carry the reassurance a first-time buyer needs. Check for returns policy, security indicators and contact details inside the checkout. 5. Quoted delivery time may be slower than buyers will accept. Compare the delivery estimate shown at checkout against what competitors promise.",
+              "scope": {
+                "channel": null,
+                "productId": null
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 213,
+              "evidence": [
+                {
+                  "href": "/funnel?range=30",
+                  "label": "Checkout → Purchase: investigate the drop-off"
+                },
+                {
+                  "href": "/funnel?range=30&end=2026-08-01",
+                  "label": "Checkout → Purchase conversion (all channels), 2026-07-03 — 2026-08-01"
+                }
+              ]
+            },
+            {
+              "rank": 2,
+              "basedOn": "rec_seo_2fac631f@2026-08-02..2026-08-31",
+              "title": "Single H1 — Summit 20 Down Sleeping Bag",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "Summit 20 Down Sleeping Bag: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "h1: error (h1: absent)",
+                    "href": "/seo/snap_summit_20_bag?preview=1",
+                    "title": "Open the audit evidence for Summit 20 Down Sleeping Bag"
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "规则严重度为 Critical，证据充分度为 sufficient。"
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "按下方的规则原文逐项核对，并在证据链接打开的页面上确认同一日期范围的数字。"
+                }
+              ],
+              "ruleGuidance": "Add a single H1 that names the product, matching what the page is about.",
+              "scope": {
+                "channel": null,
+                "productId": "prd_summit_20_bag"
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 175,
+              "evidence": [
+                {
+                  "href": "/seo/snap_summit_20_bag?preview=1",
+                  "label": "Single H1 — Summit 20 Down Sleeping Bag"
+                }
+              ]
+            },
+            {
+              "rank": 3,
+              "basedOn": "rec_seo_5a9f4638@2026-08-02..2026-08-31",
+              "title": "Canonical URL — Summit 20 Down Sleeping Bag",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "Summit 20 Down Sleeping Bag: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "canonical: error (canonical: absent)",
+                    "href": "/seo/snap_summit_20_bag?preview=1",
+                    "title": "Open the audit evidence for Summit 20 Down Sleeping Bag"
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "规则严重度为 Critical，证据充分度为 sufficient。"
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "按下方的规则原文逐项核对，并在证据链接打开的页面上确认同一日期范围的数字。"
+                }
+              ],
+              "ruleGuidance": "Add a self-referencing canonical unless this page is deliberately a duplicate of another.",
+              "scope": {
+                "channel": null,
+                "productId": "prd_summit_20_bag"
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 175,
+              "evidence": [
+                {
+                  "href": "/seo/snap_summit_20_bag?preview=1",
+                  "label": "Canonical URL — Summit 20 Down Sleeping Bag"
+                }
+              ]
+            },
+            {
+              "rank": 4,
+              "basedOn": "rec_seo_0226f630@2026-08-02..2026-08-31",
+              "title": "Single H1 — Basecamp Ultralight Tarp Shelter",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "Basecamp Ultralight Tarp Shelter: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "h1: error (h1: absent)",
+                    "href": "/seo/snap_basecamp_tarp?preview=1",
+                    "title": "Open the audit evidence for Basecamp Ultralight Tarp Shelter"
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "规则严重度为 Critical，证据充分度为 sufficient。"
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "按下方的规则原文逐项核对，并在证据链接打开的页面上确认同一日期范围的数字。"
+                }
+              ],
+              "ruleGuidance": "Add a single H1 that names the product, matching what the page is about.",
+              "scope": {
+                "channel": null,
+                "productId": "prd_basecamp_tarp"
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 157,
+              "evidence": [
+                {
+                  "href": "/seo/snap_basecamp_tarp?preview=1",
+                  "label": "Single H1 — Basecamp Ultralight Tarp Shelter"
+                }
+              ]
+            },
+            {
+              "rank": 5,
+              "basedOn": "rec_funnel_9bc52355@all:2026-08-02..2026-08-31",
+              "title": "Product View → Add to Cart: investigate the drop-off",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "Product View → Add to Cart conversion (all channels), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "28.11%",
+                    "href": "/funnel?range=30",
+                    "title": "Product View → Add to Cart conversion (all channels), 2026-08-02 — 2026-08-31"
+                  }
+                ],
+                [
+                  {
+                    "kind": "text",
+                    "text": "Product View → Add to Cart drop-off (all channels), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "71.89%",
+                    "href": "/funnel?range=30",
+                    "title": "Product View → Add to Cart drop-off (all channels), 2026-08-02 — 2026-08-31"
+                  }
+                ],
+                [
+                  {
+                    "kind": "text",
+                    "text": "Product View sessions (all channels), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "1,825",
+                    "href": "/funnel?range=30",
+                    "title": "Product View sessions (all channels), 2026-08-02 — 2026-08-31"
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "规则严重度为 High，证据充分度为 sufficient。"
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "按下方的规则原文逐项核对，并在证据链接打开的页面上确认同一日期范围的数字。"
+                }
+              ],
+              "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Price may be out of line with what comparable products ask. Compare price against the alternatives a shopper would see in the same search. 2. The page may not make the case for the product in concrete terms. Check whether the first screen states weight, capacity, rating or whatever the category buys on. 3. Absent or thin reviews may leave the claim unsupported. Check review count and recency against the better-converting products. 4. The add-to-cart control may be unclear or below the fold. View the page at mobile width and confirm the action is visible without scrolling. 5. Images may not show the product in use, at scale or in detail. Compare the image set against what the category leaders show, including scale references. 6. Delivery cost and timing may not be visible before the cart. Check whether shipping cost and delivery estimate appear on the product page itself.",
+              "scope": {
+                "channel": null,
+                "productId": null
+              },
+              "priority": "High",
+              "effectivePriority": "High",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 1825,
+              "evidence": [
+                {
+                  "href": "/funnel?range=30",
+                  "label": "Product View → Add to Cart: investigate the drop-off"
+                },
+                {
+                  "href": "/funnel?range=30&end=2026-08-01",
+                  "label": "Product View → Add to Cart conversion (all channels), 2026-07-03 — 2026-08-01"
+                }
+              ]
+            }
+          ],
+          "gaps": [],
+          "source": "model",
+          "citedRefIds": [
+            "funnel:2026-08-02..2026-08-31:all:all:conversion:checkout->purchase",
+            "funnel:2026-08-02..2026-08-31:all:all:drop_off:checkout->purchase",
+            "funnel:2026-08-02..2026-08-31:all:all:stage:checkout",
+            "audits:seo:snap_summit_20_bag:h1:2cc06589-c6654b9e",
+            "audits:seo:snap_summit_20_bag:canonical:2cc06589-c6654b9e",
+            "audits:seo:snap_basecamp_tarp:h1:95788f3c-e32e7869",
+            "funnel:2026-08-02..2026-08-31:all:all:conversion:product_view->add_to_cart",
+            "funnel:2026-08-02..2026-08-31:all:all:drop_off:product_view->add_to_cart",
+            "funnel:2026-08-02..2026-08-31:all:all:stage:product_view",
+            "funnel:2026-07-03..2026-08-01:all:all:conversion:checkout->purchase",
+            "funnel:2026-07-03..2026-08-01:all:all:conversion:product_view->add_to_cart"
+          ]
+        },
+        "issues": [],
+        "message": null,
+        "scope": {
+          "range": 30,
+          "channel": null,
+          "products": []
+        },
+        "window": {
+          "start": "2026-08-02",
+          "end": "2026-08-31",
+          "days": 30
+        },
+        "toolCalls": [
+          {
+            "id": "call_1",
+            "name": "get_channel_performance",
+            "input": {
+              "range": 30,
+              "channel": null
+            },
+            "status": "ok",
+            "summary": "3 findings, 122 citable figures, 4 gaps."
+          },
+          {
+            "id": "call_2",
+            "name": "get_funnel",
+            "input": {
+              "range": 30,
+              "channel": null
+            },
+            "status": "ok",
+            "summary": "2 findings, 28 citable figures, 0 gaps."
+          },
+          {
+            "id": "call_3",
+            "name": "get_funnel",
+            "input": {
+              "channel": "Meta",
+              "range": 30
+            },
+            "status": "ok",
+            "summary": "0 findings, 28 citable figures, 2 gaps."
+          },
+          {
+            "id": "call_4",
+            "name": "get_audit_findings",
+            "input": {
+              "minSeverity": "high",
+              "range": 30
+            },
+            "status": "ok",
+            "summary": "14 findings, 14 citable figures, 1 gaps."
+          }
+        ],
+        "toolGaps": [
+          {
+            "message": "TikTok had 237 sessions, below the 300 this project needs before drawing a conclusion from its rates.",
+            "links": []
+          },
+          {
+            "message": "Email had 299 sessions, below the 300 this project needs before drawing a conclusion from its rates.",
+            "links": []
+          },
+          {
+            "message": "Referral had 188 sessions, below the 300 this project needs before drawing a conclusion from its rates.",
+            "links": []
+          },
+          {
+            "message": "AI Referral had 124 sessions, below the 300 this project needs before drawing a conclusion from its rates.",
+            "links": []
+          },
+          {
+            "message": "Checkout → Purchase (Meta): only 18 sessions entered this step, below the 60 this project needs before reading its rate. The figures are reported, but no conclusion is drawn from them; a longer window or more traffic would be needed to check it.",
+            "links": [
+              {
+                "label": "Checkout → Purchase conversion, 2026-08-02 — 2026-08-31",
+                "href": "/funnel?range=30&channel=Meta"
+              }
+            ]
+          },
+          {
+            "message": "Add to Cart → Checkout (Meta): only 52 sessions entered this step, below the 100 this project needs before reading its rate. The figures are reported, but no conclusion is drawn from them; a longer window or more traffic would be needed to check it.",
+            "links": [
+              {
+                "label": "Add to Cart → Checkout conversion, 2026-08-02 — 2026-08-31",
+                "href": "/funnel?range=30&channel=Meta"
+              }
+            ]
+          },
+          {
+            "message": "34 of 34 page audits were not current in this browser and were computed for this answer only. Their audit pages will show \"Not audited\" or \"stale\" until the audit is run there; running it produces the same checks.",
+            "links": []
+          }
+        ],
+        "refusedActions": [],
+        "noActionTaken": false,
+        "citations": {
+          "refs": [
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:all:all:conversion:checkout->purchase",
+              "label": "Checkout → Purchase conversion",
+              "value": 0.37089201877934275,
+              "unit": "ratio",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:all:all:drop_off:checkout->purchase",
+              "label": "Checkout → Purchase drop-off",
+              "value": 0.6291079812206573,
+              "unit": "ratio",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:all:all:stage:checkout",
+              "label": "Checkout sessions",
+              "value": 213,
+              "unit": "count",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:all:all:conversion:product_view->add_to_cart",
+              "label": "Product View → Add to Cart conversion",
+              "value": 0.2810958904109589,
+              "unit": "ratio",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:all:all:drop_off:product_view->add_to_cart",
+              "label": "Product View → Add to Cart drop-off",
+              "value": 0.7189041095890412,
+              "unit": "ratio",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:all:all:stage:product_view",
+              "label": "Product View sessions",
+              "value": 1825,
+              "unit": "count",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30"
+            },
+            {
+              "refId": "funnel:2026-07-03..2026-08-01:all:all:conversion:checkout->purchase",
+              "label": "Checkout → Purchase conversion",
+              "value": 0.37681159420289856,
+              "unit": "ratio",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-07-03",
+                "end": "2026-08-01"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&end=2026-08-01"
+            },
+            {
+              "refId": "funnel:2026-07-03..2026-08-01:all:all:conversion:product_view->add_to_cart",
+              "label": "Product View → Add to Cart conversion",
+              "value": 0.2943898207056102,
+              "unit": "ratio",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-07-03",
+                "end": "2026-08-01"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&end=2026-08-01"
+            }
+          ],
+          "comparisons": [
+            {
+              "currentRefId": "funnel:2026-08-02..2026-08-31:all:all:conversion:checkout->purchase",
+              "previousRefId": "funnel:2026-07-03..2026-08-01:all:all:conversion:checkout->purchase",
+              "current": 0.37089201877934275,
+              "previous": 0.37681159420289856,
+              "relativeChange": -0.015709642470205808,
+              "direction": "down",
+              "supportsConclusion": true
+            },
+            {
+              "currentRefId": "funnel:2026-08-02..2026-08-31:all:all:conversion:product_view->add_to_cart",
+              "previousRefId": "funnel:2026-07-03..2026-08-01:all:all:conversion:product_view->add_to_cart",
+              "current": 0.2810958904109589,
+              "previous": 0.2943898207056102,
+              "relativeChange": -0.045157574615819485,
+              "direction": "down",
+              "supportsConclusion": true
+            }
+          ],
+          "audits": [
+            {
+              "refId": "audits:seo:snap_summit_20_bag:h1:2cc06589-c6654b9e",
+              "ruleId": "h1",
+              "status": "error",
+              "evidence": "h1: absent",
+              "productId": "prd_summit_20_bag",
+              "pageLabel": "Summit 20 Down Sleeping Bag",
+              "href": "/seo/snap_summit_20_bag?preview=1"
+            },
+            {
+              "refId": "audits:seo:snap_summit_20_bag:canonical:2cc06589-c6654b9e",
+              "ruleId": "canonical",
+              "status": "error",
+              "evidence": "canonical: absent",
+              "productId": "prd_summit_20_bag",
+              "pageLabel": "Summit 20 Down Sleeping Bag",
+              "href": "/seo/snap_summit_20_bag?preview=1"
+            },
+            {
+              "refId": "audits:seo:snap_basecamp_tarp:h1:95788f3c-e32e7869",
+              "ruleId": "h1",
+              "status": "error",
+              "evidence": "h1: absent",
+              "productId": "prd_basecamp_tarp",
+              "pageLabel": "Basecamp Ultralight Tarp Shelter",
+              "href": "/seo/snap_basecamp_tarp?preview=1"
+            }
+          ]
+        },
+        "provenance": {
+          "dataSources": [
+            "fixture:traffic (NorthTrail demo data, 2026-06-03..2026-08-31, UTC)",
+            "rules:geo-1.0.0",
+            "rules:seo-1.0.0",
+            "seed:audit-results",
+            "seed:page-snapshots"
+          ],
+          "ruleVersions": [
+            "agent-priority-1.0.0",
+            "funnel-1.0.0",
+            "recommendations-1.0.0",
+            "seo-1.0.0"
+          ]
+        },
+        "usage": null,
+        "failedChecks": [],
+        "notes": [],
+        "model": "scripted:demo"
+      }
+    },
+    {
+      "question": "只看自然搜索呢？",
+      "scopeBefore": {
+        "range": 30,
+        "channel": null,
+        "products": []
+      },
+      "result": {
+        "status": "answered",
+        "answer": {
+          "summary": [
+            {
+              "kind": "text",
+              "text": "以下是自然搜索渠道、同一日期范围内建议优先排查的问题，排序由 GrowthOS 按规则严重度、证据充分度和受影响会话决定。每个数字都链接到可以核对的页面。"
+            }
+          ],
+          "facts": [],
+          "findings": [
+            {
+              "rank": 1,
+              "basedOn": "rec_funnel_4c5888c1@Organic Search:2026-08-02..2026-08-31",
+              "title": "Organic Search: Add to Cart → Checkout: investigate the drop-off",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "Add to Cart → Checkout conversion (Organic Search), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "39.49%",
+                    "href": "/funnel?range=30&channel=Organic+Search",
+                    "title": "Add to Cart → Checkout conversion (Organic Search), 2026-08-02 — 2026-08-31"
+                  }
+                ],
+                [
+                  {
+                    "kind": "text",
+                    "text": "Add to Cart → Checkout drop-off (Organic Search), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "60.51%",
+                    "href": "/funnel?range=30&channel=Organic+Search",
+                    "title": "Add to Cart → Checkout drop-off (Organic Search), 2026-08-02 — 2026-08-31"
+                  }
+                ],
+                [
+                  {
+                    "kind": "text",
+                    "text": "Add to Cart sessions (Organic Search), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "195",
+                    "href": "/funnel?range=30&channel=Organic+Search",
+                    "title": "Add to Cart sessions (Organic Search), 2026-08-02 — 2026-08-31"
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "规则严重度为 Critical，证据充分度为 sufficient。"
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "按下方的规则原文逐项核对，并在证据链接打开的页面上确认同一日期范围的数字。"
+                }
+              ],
+              "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Adding to cart may not make the next step obvious, leaving people stalled. Add an item and confirm the path to checkout is visible without hunting for it. 2. Costs first revealed at the cart may be causing people to reconsider. Compare the price shown on the product page against the cart subtotal including shipping and tax. 3. Carts may not survive a return visit, so intent is lost between sessions. Add an item, leave, return later and confirm the cart is still there.",
+              "scope": {
+                "channel": "Organic Search",
+                "productId": null
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 195,
+              "evidence": [
+                {
+                  "href": "/funnel?range=30&channel=Organic+Search",
+                  "label": "Organic Search: Add to Cart → Checkout: investigate the drop-off"
+                },
+                {
+                  "href": "/funnel?range=30&channel=Organic+Search&end=2026-08-01",
+                  "label": "Add to Cart → Checkout conversion (Organic Search), 2026-07-03 — 2026-08-01"
+                }
+              ]
+            },
+            {
+              "rank": 2,
+              "basedOn": "rec_funnel_eb1c1da9@Organic Search:2026-08-02..2026-08-31",
+              "title": "Organic Search: Checkout → Purchase: investigate the drop-off",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "Checkout → Purchase conversion (Organic Search), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "41.56%",
+                    "href": "/funnel?range=30&channel=Organic+Search",
+                    "title": "Checkout → Purchase conversion (Organic Search), 2026-08-02 — 2026-08-31"
+                  }
+                ],
+                [
+                  {
+                    "kind": "text",
+                    "text": "Checkout → Purchase drop-off (Organic Search), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "58.44%",
+                    "href": "/funnel?range=30&channel=Organic+Search",
+                    "title": "Checkout → Purchase drop-off (Organic Search), 2026-08-02 — 2026-08-31"
+                  }
+                ],
+                [
+                  {
+                    "kind": "text",
+                    "text": "Checkout sessions (Organic Search), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "77",
+                    "href": "/funnel?range=30&channel=Organic+Search",
+                    "title": "Checkout sessions (Organic Search), 2026-08-02 — 2026-08-31"
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "规则严重度为 Critical，证据充分度为 sufficient。"
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "按下方的规则原文逐项核对，并在证据链接打开的页面上确认同一日期范围的数字。"
+                }
+              ],
+              "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Shipping cost at checkout may be higher than expected. Compare shipping cost and any free-shipping threshold against the average order value. 2. The payment methods offered may not cover what buyers use. List the methods available and compare against what the market expects — wallets included. 3. The checkout may be asking for too much, or across too many steps. Count the fields and steps required to buy, and whether guest checkout exists. 4. The checkout may not carry the reassurance a first-time buyer needs. Check for returns policy, security indicators and contact details inside the checkout. 5. Quoted delivery time may be slower than buyers will accept. Compare the delivery estimate shown at checkout against what competitors promise.",
+              "scope": {
+                "channel": "Organic Search",
+                "productId": null
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 77,
+              "evidence": [
+                {
+                  "href": "/funnel?range=30&channel=Organic+Search",
+                  "label": "Organic Search: Checkout → Purchase: investigate the drop-off"
+                },
+                {
+                  "href": "/funnel?range=30&channel=Organic+Search&end=2026-08-01",
+                  "label": "Checkout → Purchase conversion (Organic Search), 2026-07-03 — 2026-08-01"
+                }
+              ]
+            },
+            {
+              "rank": 3,
+              "basedOn": "rec_funnel_9bc52355@Organic Search:2026-08-02..2026-08-31",
+              "title": "Organic Search: Product View → Add to Cart: investigate the drop-off",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "Product View → Add to Cart conversion (Organic Search), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "32.07%",
+                    "href": "/funnel?range=30&channel=Organic+Search",
+                    "title": "Product View → Add to Cart conversion (Organic Search), 2026-08-02 — 2026-08-31"
+                  }
+                ],
+                [
+                  {
+                    "kind": "text",
+                    "text": "Product View → Add to Cart drop-off (Organic Search), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "67.93%",
+                    "href": "/funnel?range=30&channel=Organic+Search",
+                    "title": "Product View → Add to Cart drop-off (Organic Search), 2026-08-02 — 2026-08-31"
+                  }
+                ],
+                [
+                  {
+                    "kind": "text",
+                    "text": "Product View sessions (Organic Search), 2026-08-02 — 2026-08-31: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "608",
+                    "href": "/funnel?range=30&channel=Organic+Search",
+                    "title": "Product View sessions (Organic Search), 2026-08-02 — 2026-08-31"
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "规则严重度为 High，证据充分度为 sufficient。"
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "按下方的规则原文逐项核对，并在证据链接打开的页面上确认同一日期范围的数字。"
+                }
+              ],
+              "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Price may be out of line with what comparable products ask. Compare price against the alternatives a shopper would see in the same search. 2. The page may not make the case for the product in concrete terms. Check whether the first screen states weight, capacity, rating or whatever the category buys on. 3. Absent or thin reviews may leave the claim unsupported. Check review count and recency against the better-converting products. 4. The add-to-cart control may be unclear or below the fold. View the page at mobile width and confirm the action is visible without scrolling. 5. Images may not show the product in use, at scale or in detail. Compare the image set against what the category leaders show, including scale references. 6. Delivery cost and timing may not be visible before the cart. Check whether shipping cost and delivery estimate appear on the product page itself.",
+              "scope": {
+                "channel": "Organic Search",
+                "productId": null
+              },
+              "priority": "High",
+              "effectivePriority": "High",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 608,
+              "evidence": [
+                {
+                  "href": "/funnel?range=30&channel=Organic+Search",
+                  "label": "Organic Search: Product View → Add to Cart: investigate the drop-off"
+                },
+                {
+                  "href": "/funnel?range=30&channel=Organic+Search&end=2026-08-01",
+                  "label": "Product View → Add to Cart conversion (Organic Search), 2026-07-03 — 2026-08-01"
+                }
+              ]
+            }
+          ],
+          "gaps": [],
+          "source": "model",
+          "citedRefIds": [
+            "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:add_to_cart->checkout",
+            "funnel:2026-08-02..2026-08-31:Organic Search:all:drop_off:add_to_cart->checkout",
+            "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:add_to_cart",
+            "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:checkout->purchase",
+            "funnel:2026-08-02..2026-08-31:Organic Search:all:drop_off:checkout->purchase",
+            "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:checkout",
+            "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:product_view->add_to_cart",
+            "funnel:2026-08-02..2026-08-31:Organic Search:all:drop_off:product_view->add_to_cart",
+            "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:product_view",
+            "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:add_to_cart->checkout",
+            "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:checkout->purchase",
+            "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:product_view->add_to_cart"
+          ]
+        },
+        "issues": [],
+        "message": null,
+        "scope": {
+          "range": 30,
+          "channel": "Organic Search",
+          "products": []
+        },
+        "window": {
+          "start": "2026-08-02",
+          "end": "2026-08-31",
+          "days": 30
+        },
+        "toolCalls": [
+          {
+            "id": "call_5",
+            "name": "set_analysis_scope",
+            "input": {
+              "channel": "Organic Search"
+            },
+            "status": "ok",
+            "summary": "Scope set to 30 days, Organic Search."
+          },
+          {
+            "id": "call_6",
+            "name": "get_channel_performance",
+            "input": {
+              "range": 30,
+              "channel": "Organic Search"
+            },
+            "status": "ok",
+            "summary": "0 findings, 24 citable figures, 0 gaps."
+          },
+          {
+            "id": "call_7",
+            "name": "get_funnel",
+            "input": {
+              "range": 30,
+              "channel": "Organic Search"
+            },
+            "status": "ok",
+            "summary": "3 findings, 28 citable figures, 0 gaps."
+          }
+        ],
+        "toolGaps": [],
+        "refusedActions": [],
+        "noActionTaken": false,
+        "citations": {
+          "refs": [
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:add_to_cart->checkout",
+              "label": "Add to Cart → Checkout conversion",
+              "value": 0.39487179487179486,
+              "unit": "ratio",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:drop_off:add_to_cart->checkout",
+              "label": "Add to Cart → Checkout drop-off",
+              "value": 0.6051282051282052,
+              "unit": "ratio",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:add_to_cart",
+              "label": "Add to Cart sessions",
+              "value": 195,
+              "unit": "count",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:checkout->purchase",
+              "label": "Checkout → Purchase conversion",
+              "value": 0.4155844155844156,
+              "unit": "ratio",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:drop_off:checkout->purchase",
+              "label": "Checkout → Purchase drop-off",
+              "value": 0.5844155844155844,
+              "unit": "ratio",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:checkout",
+              "label": "Checkout sessions",
+              "value": 77,
+              "unit": "count",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:product_view->add_to_cart",
+              "label": "Product View → Add to Cart conversion",
+              "value": 0.3207236842105263,
+              "unit": "ratio",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:drop_off:product_view->add_to_cart",
+              "label": "Product View → Add to Cart drop-off",
+              "value": 0.6792763157894737,
+              "unit": "ratio",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:product_view",
+              "label": "Product View sessions",
+              "value": 608,
+              "unit": "count",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search"
+            },
+            {
+              "refId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:add_to_cart->checkout",
+              "label": "Add to Cart → Checkout conversion",
+              "value": 0.4393939393939394,
+              "unit": "ratio",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-07-03",
+                "end": "2026-08-01"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search&end=2026-08-01"
+            },
+            {
+              "refId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:checkout->purchase",
+              "label": "Checkout → Purchase conversion",
+              "value": 0.40229885057471265,
+              "unit": "ratio",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-07-03",
+                "end": "2026-08-01"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search&end=2026-08-01"
+            },
+            {
+              "refId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:product_view->add_to_cart",
+              "label": "Product View → Add to Cart conversion",
+              "value": 0.33221476510067116,
+              "unit": "ratio",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-07-03",
+                "end": "2026-08-01"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&channel=Organic+Search&end=2026-08-01"
+            }
+          ],
+          "comparisons": [
+            {
+              "currentRefId": "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:add_to_cart->checkout",
+              "previousRefId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:add_to_cart->checkout",
+              "current": 0.39487179487179486,
+              "previous": 0.4393939393939394,
+              "relativeChange": -0.10132625994694963,
+              "direction": "down",
+              "supportsConclusion": true
+            },
+            {
+              "currentRefId": "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:checkout->purchase",
+              "previousRefId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:checkout->purchase",
+              "current": 0.4155844155844156,
+              "previous": 0.40229885057471265,
+              "relativeChange": 0.0330241187384045,
+              "direction": "up",
+              "supportsConclusion": true
+            },
+            {
+              "currentRefId": "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:product_view->add_to_cart",
+              "previousRefId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:product_view->add_to_cart",
+              "current": 0.3207236842105263,
+              "previous": 0.33221476510067116,
+              "relativeChange": -0.03458931419457738,
+              "direction": "down",
+              "supportsConclusion": true
+            }
+          ],
+          "audits": []
+        },
+        "provenance": {
+          "dataSources": [
+            "fixture:traffic (NorthTrail demo data, 2026-06-03..2026-08-31, UTC)"
+          ],
+          "ruleVersions": [
+            "agent-priority-1.0.0",
+            "funnel-1.0.0"
+          ]
+        },
+        "usage": null,
+        "failedChecks": [],
+        "notes": [],
+        "model": "scripted:demo"
+      }
+    }
+  ]
+}

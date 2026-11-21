@@ -66,6 +66,16 @@ function relativeText(relative: number | null): string {
   return `, ${sign}${formatPercent(Math.abs(relative), 1)}`;
 }
 
+/** Adds the previous-period figure of each cited comparison, so both sides are on record. */
+function withPrevious(refIds: readonly string[], context: AnswerContext): string[] {
+  const all = new Set(refIds);
+  for (const id of refIds) {
+    const previous = context.comparisons.get(id)?.previousRefId ?? null;
+    if (previous !== null) all.add(previous);
+  }
+  return [...all];
+}
+
 /** The previous-period figure a comparison points at, when both exist. */
 function previousRef(currentRefId: string, context: AnswerContext): CitableRef | undefined {
   const previousRefId = context.comparisons.get(currentRefId)?.previousRefId ?? null;
@@ -153,6 +163,8 @@ export interface RenderedAnswer {
   gaps: Segment[][];
   /** 'model' when the model's answer passed validation; 'fallback' otherwise. */
   source: 'model' | 'fallback';
+  /** Every figure and verdict the answer shows or rests on, for the record. */
+  citedRefIds: string[];
 }
 
 function linksFor(basis: KnownFinding, citedIds: readonly string[], context: AnswerContext): Array<{ label: string; href: string }> {
@@ -207,12 +219,18 @@ export function renderAnswer(answer: AgentAnswer, context: AnswerContext, source
     ];
   });
 
+  const cited = [
+    ...answer.facts.map((fact) => fact.refId),
+    ...answer.findings.flatMap((finding) => finding.facts.map((fact) => fact.refId)),
+    ...ranking.ranked.flatMap((entry) => entry.finding.refIds),
+  ];
   return {
     summary: renderProse(answer.summary, context),
     facts: answer.facts.map((fact) => renderFact(fact, context)),
     findings,
     gaps: answer.gaps.map((gap) => renderProse(gap, context)),
     source,
+    citedRefIds: withPrevious([...new Set(cited)], context),
   };
 }
 
@@ -253,5 +271,13 @@ export function fallbackAnswer(context: AnswerContext, reason: string, limit = 5
     .slice(0, 12)
     .map((refId) => renderFact({ kind: 'value', refId }, context))
     .filter((segments) => segments.length > 0);
-  return { summary: [{ kind: 'text', text: reason }], facts, findings, gaps: [], source: 'fallback' };
+  const cited = [...context.figuresWithoutFindings.slice(0, 12), ...ranking.ranked.slice(0, limit).flatMap((entry) => entry.finding.refIds)];
+  return {
+    summary: [{ kind: 'text', text: reason }],
+    facts,
+    findings,
+    gaps: [],
+    source: 'fallback',
+    citedRefIds: withPrevious([...new Set(cited)], context),
+  };
 }

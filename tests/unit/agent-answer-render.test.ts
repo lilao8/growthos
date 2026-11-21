@@ -230,6 +230,30 @@ describe('renderAnswer', () => {
   });
 });
 
+describe('cited refs, for the record', () => {
+  it('lists every figure the answer shows or rests on, with both sides of a change, once each', () => {
+    const ctx = context([known('f', { refIds: ['aud', ORDERS] })]);
+    const rendered = renderAnswer(
+      {
+        summary: 'S',
+        facts: [{ kind: 'value', refId: ORDERS }],
+        findings: [{ basedOn: 'f', facts: [{ kind: 'change', refId: CVR, direction: 'down' }], whyPriority: 'b', howToVerify: 'c' }],
+        gaps: [],
+      },
+      ctx,
+      'model',
+    );
+    expect(rendered.citedRefIds).toEqual([ORDERS, CVR, 'aud', CVR_PREV]);
+  });
+
+  it('records the figures and finding refs a fallback shows, within its limits', () => {
+    const ids = Array.from({ length: 14 }, (_, index) => `fig${index}`);
+    const findings = [known('a', { priority: 'Critical', refIds: ['ra'] }), known('b', { priority: 'High', refIds: ['rb', CVR] }), known('c', { priority: 'Low', refIds: ['rc'] })];
+    const rendered = fallbackAnswer(context(findings, { figuresWithoutFindings: ids }), 'R', 2);
+    expect(rendered.citedRefIds).toEqual([...ids.slice(0, 12), 'ra', 'rb', CVR, CVR_PREV]);
+  });
+});
+
 describe('fallbackAnswer', () => {
   it('ranks the tool findings itself, leaves out insufficient ones and stops at the limit', () => {
     const findings = [

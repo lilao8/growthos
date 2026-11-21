@@ -41,7 +41,7 @@ function describeScope(scope: ConversationScope): string {
   return `${formatDateRange(window.start, window.end)} · ${scope.range} days · UTC · ${channel} · ${products}`;
 }
 
-interface Turn {
+export interface Turn {
   question: string;
   result: AgentTurnResult;
 }
@@ -192,6 +192,11 @@ export function AgentView({ mode }: { mode: DemoDataMode | null }) {
             <p className="mt-2 text-sm text-[var(--color-ink-muted)]">
               Live questions run only on a local build with the agent enabled. This deployment never calls a model.
             </p>
+            <p className="mt-2 text-sm">
+              <Link href="/agent/replays" className="underline underline-offset-2" data-testid="agent-replays-link">
+                See recorded runs instead
+              </Link>
+            </p>
           </CardBody>
         </Card>
       )}
@@ -282,7 +287,7 @@ function Progress({ question, events }: { question: string; events: readonly Age
   );
 }
 
-function TurnView({ turn, index }: { turn: Turn; index: number }) {
+export function TurnView({ turn, index }: { turn: Turn; index: number }) {
   const { result } = turn;
   const scripted = result.model.startsWith('scripted:');
   return (
