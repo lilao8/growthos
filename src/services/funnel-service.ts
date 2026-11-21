@@ -9,6 +9,9 @@ import {
   type AnalyticsRange,
 } from './analytics-service';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
+import { sessionsForChannel } from '@/domain/analytics/session-filters';
+import { DEMO_AS_OF } from '@/domain/demo-window';
+import type { Channel, IsoDate } from '@/domain/types';
 
 /**
  * Funnel service.
@@ -22,8 +25,16 @@ export interface FunnelDeps {
   traffic: TrafficRepository;
 }
 
+export interface FunnelOptions {
+  /** null = every channel. A channel funnel is the same calculation on fewer sessions. */
+  channel?: Channel | null;
+  /** Validated end date for comparison-period links; defaults to the demo end. */
+  end?: IsoDate;
+}
+
 export interface FunnelView {
   range: AnalyticsRange;
+  channel: Channel | null;
   report: FunnelReport;
   recommendations: FunnelRecommendation[];
 }
@@ -36,8 +47,10 @@ export type FunnelState =
 export async function loadFunnel(
   deps: FunnelDeps,
   range: AnalyticsRange = DEFAULT_ANALYTICS_RANGE,
+  options: FunnelOptions = {},
 ): Promise<FunnelState> {
-  const window = windowForRange(range);
+  const channel = options.channel ?? null;
+  const window = windowForRange(range, options.end ?? DEMO_AS_OF);
 
   let traffic;
   try {
@@ -50,9 +63,13 @@ export async function loadFunnel(
     };
   }
 
-  const report = buildFunnel({ sessions: traffic.sessions, window });
+  const report = buildFunnel({
+    sessions: sessionsForChannel(traffic.sessions, channel),
+    window,
+  });
   const view: FunnelView = {
     range,
+    channel,
     report,
     recommendations: funnelRecommendations({
       transitions: report.transitions,

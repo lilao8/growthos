@@ -23,8 +23,18 @@ import {
   formatInteger,
   formatPercent,
 } from '@/domain/format';
+import { replaceQuery } from '@/components/ui/replace-query';
+import { DEMO_AS_OF } from '@/domain/demo-window';
+import { CHANNELS, type Channel, type IsoDate } from '@/domain/types';
+import {
+  CHANNEL_PARAM,
+  END_PARAM,
+  parseChannelParam,
+  RANGE_PARAM,
+} from '@/domain/url-params';
 import {
   ANALYTICS_RANGES,
+  DEFAULT_ANALYTICS_RANGE,
   type AnalyticsRange,
 } from '@/services/analytics-service';
 import {
@@ -39,51 +49,101 @@ import {
 
 /** The funnel: one population of sessions, where they are lost, and what to check. */
 
-export function FunnelView({ mode }: { mode: DemoDataMode | null }) {
+export function FunnelView({
+  mode,
+  initialRange = DEFAULT_ANALYTICS_RANGE,
+  initialChannel = null,
+  initialEnd = DEMO_AS_OF,
+}: {
+  mode: DemoDataMode | null;
+  initialRange?: AnalyticsRange;
+  initialChannel?: Channel | null;
+  /** Only a comparison-period link sets this; picking a range clears it. */
+  initialEnd?: IsoDate;
+}) {
   const deps = useMemo<FunnelDeps>(
     () => ({ traffic: resolveTrafficRepository(mode) }),
     [mode],
   );
 
-  const [range, setRange] = useState<AnalyticsRange>(90);
+  const [range, setRange] = useState<AnalyticsRange>(initialRange);
+  const [channel, setChannel] = useState<Channel | null>(initialChannel);
+  const [end, setEnd] = useState<IsoDate>(initialEnd);
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<FunnelState | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void loadFunnel(deps, range).then((next) => {
+    void loadFunnel(deps, range, { channel, end }).then((next) => {
       if (!cancelled) setState(next);
     });
     return () => {
       cancelled = true;
     };
-  }, [deps, range, attempt]);
+  }, [deps, range, channel, end, attempt]);
 
-  const rangePicker = (
-    <div role="group" aria-label="Reporting range" className="flex flex-wrap gap-2">
-      {ANALYTICS_RANGES.map((option) => (
-        <button
-          key={option}
-          type="button"
-          aria-pressed={range === option}
-          onClick={() => setRange(option)}
-          data-testid={`funnel-range-${option}`}
-          className={`rounded-md border px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${
-            range === option
-              ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
-              : 'border-[var(--color-line-strong)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]'
-          }`}
+  const pickRange = (option: AnalyticsRange): void => {
+    setRange(option);
+    setEnd(DEMO_AS_OF);
+    replaceQuery({ [RANGE_PARAM]: String(option), [END_PARAM]: null });
+  };
+
+  const pickChannel = (value: string): void => {
+    const next = parseChannelParam(value === '' ? null : value);
+    setChannel(next);
+    replaceQuery({ [CHANNEL_PARAM]: next });
+  };
+
+  const controls = (
+    <div className="flex flex-wrap items-center gap-3">
+      <div
+        role="group"
+        aria-label="Reporting range"
+        className="flex flex-wrap gap-2"
+      >
+        {ANALYTICS_RANGES.map((option) => (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={range === option}
+            onClick={() => pickRange(option)}
+            data-testid={`funnel-range-${option}`}
+            className={`rounded-md border px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${
+              range === option
+                ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
+                : 'border-[var(--color-line-strong)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]'
+            }`}
+          >
+            {option} days
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <label htmlFor="funnel-channel" className="text-sm font-medium">
+          Channel
+        </label>
+        <select
+          id="funnel-channel"
+          value={channel ?? ''}
+          onChange={(event) => pickChannel(event.target.value)}
+          data-testid="funnel-channel"
+          className="rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-2 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
-          {option} days
-        </button>
-      ))}
+          <option value="">All channels</option>
+          {CHANNELS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 
   if (state === null) {
     return (
       <div className="flex flex-col gap-6">
-        {rangePicker}
+        {controls}
         <LoadingBlock label="Walking sessions through the funnel." />
       </div>
     );
@@ -92,7 +152,7 @@ export function FunnelView({ mode }: { mode: DemoDataMode | null }) {
   if (state.status === 'error') {
     return (
       <div className="flex flex-col gap-6">
-        {rangePicker}
+        {controls}
         <ErrorBlock
           title="Could not load the funnel"
           message={state.message}
@@ -107,10 +167,10 @@ export function FunnelView({ mode }: { mode: DemoDataMode | null }) {
   if (state.status === 'empty') {
     return (
       <div className="flex flex-col gap-6">
-        {rangePicker}
+        {controls}
         <EmptyBlock
           title="No sessions in this range"
-          description={`There were no sessions between ${report.window.start} and ${report.window.end}, so there is no funnel to describe. Rates are left out rather than shown as zero.`}
+          description={`There were no ${channel === null ? '' : `${channel} `}sessions between ${report.window.start} and ${report.window.end}, so there is no funnel to describe. Rates are left out rather than shown as zero.`}
         />
       </div>
     );
@@ -121,7 +181,7 @@ export function FunnelView({ mode }: { mode: DemoDataMode | null }) {
   return (
     <div className="flex flex-col gap-6" data-testid="funnel-ready">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {rangePicker}
+        {controls}
         <p
           className="text-xs text-[var(--color-ink-muted)]"
           data-testid="funnel-window"
@@ -130,6 +190,25 @@ export function FunnelView({ mode }: { mode: DemoDataMode | null }) {
           {report.window.days} days · UTC
         </p>
       </div>
+      <p className="text-xs text-[var(--color-ink-muted)]" data-testid="funnel-scope">
+        Scope: {channel === null ? 'All channels' : `${channel} sessions only`}
+      </p>
+      {end !== DEMO_AS_OF ? (
+        <p
+          className="rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm"
+          data-testid="funnel-comparison-note"
+        >
+          Comparison window: this view ends on {end}, before the demo end date
+          ({DEMO_AS_OF}). Pick a range to return to the latest window.
+        </p>
+      ) : null}
+      {channel !== null ? (
+        <p className="text-xs text-[var(--color-ink-muted)]" data-testid="funnel-channel-note">
+          Same definition as the site funnel, over {channel} sessions only. Each
+          session has one attributed channel, so channel funnels add up to the
+          site funnel.
+        </p>
+      ) : null}
 
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MetricCard

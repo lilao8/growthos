@@ -21,7 +21,8 @@ import {
   computeProductMetrics,
   type ProductMetrics,
 } from '@/domain/product-metrics';
-import type { Product } from '@/domain/types';
+import type { IsoDate, Product } from '@/domain/types';
+import { parseRangeParam } from '@/domain/url-params';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
 import type { DemoStateRepository } from '@/repositories/types';
 
@@ -39,16 +40,21 @@ export const ANALYTICS_RANGES = DEMO_RANGE_DAYS;
 export type AnalyticsRange = DemoRangeDays;
 export const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = 90;
 
+/** Kept for existing callers; the shared URL parser is the one implementation. */
 export function parseAnalyticsRange(value: string | null): AnalyticsRange {
-  const parsed = Number(value);
-  return (ANALYTICS_RANGES as readonly number[]).includes(parsed)
-    ? (parsed as AnalyticsRange)
-    : DEFAULT_ANALYTICS_RANGE;
+  return parseRangeParam(value, DEFAULT_ANALYTICS_RANGE);
 }
 
-/** Every range ends on the same fixed demo day, so they are comparable. */
-export function windowForRange(range: AnalyticsRange): DateWindow {
-  return buildWindow(range, DEMO_AS_OF);
+/**
+ * Every range ends on the same fixed demo day by default, so they are
+ * comparable. An explicit end is only for comparison-period links, and callers
+ * must have validated it against the data (see `parseEndParam`).
+ */
+export function windowForRange(
+  range: AnalyticsRange,
+  end: IsoDate = DEMO_AS_OF,
+): DateWindow {
+  return buildWindow(range, end);
 }
 
 export interface AnalyticsDeps {
@@ -91,8 +97,9 @@ function messageFrom(cause: unknown, fallback: string): string {
 export async function loadAnalytics(
   deps: AnalyticsDeps,
   range: AnalyticsRange = DEFAULT_ANALYTICS_RANGE,
+  end: IsoDate = DEMO_AS_OF,
 ): Promise<AnalyticsState> {
-  const window = windowForRange(range);
+  const window = windowForRange(range, end);
 
   let traffic;
   try {

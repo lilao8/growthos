@@ -30,8 +30,13 @@ import {
   NOT_AVAILABLE,
 } from '@/domain/format';
 import { formatCents } from '@/domain/money';
+import { replaceQuery } from '@/components/ui/replace-query';
+import { DEMO_AS_OF } from '@/domain/demo-window';
+import type { IsoDate } from '@/domain/types';
+import { END_PARAM, RANGE_PARAM } from '@/domain/url-params';
 import {
   ANALYTICS_RANGES,
+  DEFAULT_ANALYTICS_RANGE,
   loadAnalytics,
   type AnalyticsDeps,
   type AnalyticsRange,
@@ -53,7 +58,16 @@ function Summary({ id, children }: { id: string; children: React.ReactNode }) {
   );
 }
 
-export function AnalyticsView({ mode }: { mode: DemoDataMode | null }) {
+export function AnalyticsView({
+  mode,
+  initialRange = DEFAULT_ANALYTICS_RANGE,
+  initialEnd = DEMO_AS_OF,
+}: {
+  mode: DemoDataMode | null;
+  initialRange?: AnalyticsRange;
+  /** Only a comparison-period link sets this; picking a range clears it. */
+  initialEnd?: IsoDate;
+}) {
   const deps = useMemo<AnalyticsDeps>(
     () => ({
       traffic: resolveTrafficRepository(mode),
@@ -62,19 +76,26 @@ export function AnalyticsView({ mode }: { mode: DemoDataMode | null }) {
     [mode],
   );
 
-  const [range, setRange] = useState<AnalyticsRange>(90);
+  const [range, setRange] = useState<AnalyticsRange>(initialRange);
+  const [end, setEnd] = useState<IsoDate>(initialEnd);
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<AnalyticsState | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void loadAnalytics(deps, range).then((next) => {
+    void loadAnalytics(deps, range, end).then((next) => {
       if (!cancelled) setState(next);
     });
     return () => {
       cancelled = true;
     };
-  }, [deps, range, attempt]);
+  }, [deps, range, end, attempt]);
+
+  const pickRange = (option: AnalyticsRange): void => {
+    setRange(option);
+    setEnd(DEMO_AS_OF);
+    replaceQuery({ [RANGE_PARAM]: String(option), [END_PARAM]: null });
+  };
 
   const rangePicker = (
     <div
@@ -87,7 +108,7 @@ export function AnalyticsView({ mode }: { mode: DemoDataMode | null }) {
           key={option}
           type="button"
           aria-pressed={range === option}
-          onClick={() => setRange(option)}
+          onClick={() => pickRange(option)}
           data-testid={`range-${option}`}
           className={`rounded-md border px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${
             range === option
@@ -161,6 +182,15 @@ export function AnalyticsView({ mode }: { mode: DemoDataMode | null }) {
           {view.window.days} days · UTC
         </p>
       </div>
+      {end !== DEMO_AS_OF ? (
+        <p
+          className="rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm"
+          data-testid="analytics-comparison-note"
+        >
+          Comparison window: this view ends on {end}, before the demo end date
+          ({DEMO_AS_OF}). Pick a range to return to the latest window.
+        </p>
+      ) : null}
 
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard

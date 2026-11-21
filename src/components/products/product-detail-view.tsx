@@ -12,12 +12,19 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SeoMetadataForm } from './seo-metadata-form';
 import { formatCents } from '@/domain/money';
 import {
+  formatDateRange,
   formatInteger,
   formatMoneyMetric,
   formatPercent,
   NOT_AVAILABLE,
 } from '@/domain/format';
 import { safeRatio } from '@/domain/metrics';
+import {
+  buildWindow,
+  DEMO_AS_OF,
+  type DemoRangeDays,
+} from '@/domain/demo-window';
+import type { Channel } from '@/domain/types';
 import {
   loadProductDetail,
   saveProductSeo,
@@ -63,17 +70,26 @@ function DetailRow({
 export function ProductDetailView({
   productId,
   mode,
+  range = 90,
+  channel = null,
 }: {
   productId: string;
   mode: DemoDataMode | null;
+  /** Window for the derived metrics; set by evidence links. */
+  range?: DemoRangeDays;
+  channel?: Channel | null;
 }) {
+  const window = useMemo(() => buildWindow(range, DEMO_AS_OF), [range]);
   const deps = useMemo<ProductServiceDeps>(
     () => ({
       state: resolveStateRepository(mode),
       traffic: resolveTrafficRepository(mode),
+      window,
+      channel,
     }),
-    [mode],
+    [mode, window, channel],
   );
+  const scoped = range !== 90 || channel !== null;
 
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<ProductDetailState | null>(null);
@@ -200,8 +216,22 @@ export function ProductDetailView({
         <Card>
           <CardHeader
             title="Derived metrics"
-            description="Computed from demo traffic over the 90-day window. Not editable."
+            description={`Computed from demo traffic, ${formatDateRange(window.start, window.end)} (${window.days} days, UTC)${channel === null ? '' : `, ${channel} sessions only`}. Not editable.`}
           />
+          {scoped ? (
+            <p
+              className="px-5 pt-3 text-xs text-[var(--color-ink-muted)]"
+              data-testid="detail-metrics-scope"
+            >
+              Showing a narrower scope than the catalogue default.{' '}
+              <Link
+                href={`/products/${encodeURIComponent(productId)}`}
+                className="underline"
+              >
+                Show 90 days, all channels
+              </Link>
+            </p>
+          ) : null}
           <CardBody>
             <dl>
               <DetailRow

@@ -358,3 +358,14 @@ npm run build
 - **存下决定当时的 evidence,用来标记"值得再看一眼"。** "这些图是装饰性的"这个理由,在有人换上真实图片的那天就不成立了。比对的是一个字符串,和审计的 `inputFingerprint` 是同一个套路:**读取时推导,不信任存下来的判断**。需要复核的条目在忽略组内排最前。
 - 界面明说 **"Nothing re-checks this automatically"** ——忽略是一个长期有效的决定,除了 evidence 变化这一条,系统不会替你重新审视它。
 - Done 与 Ignored 是互斥的两个选择,不是可叠加的标记:已完成的卡片不显示忽略按钮,已忽略的不显示完成按钮。
+
+## 实施记录更新（Dispatch 18：运营 Agent 只读工具层）
+
+- **新增 `src/services/agent-tools/`**：`get_channel_performance`、`get_funnel`、`get_product_performance`、`get_audit_findings` 四个只读工具，以及一个闭合注册表。每个工具用 zod 校验输入，类型上 `readOnly: true` 是字面量，上下文里只有只读的 traffic 仓库与一个**值**形式的 `DemoState`，没有任何带 `save` 的东西可用。`runTool` 从不抛异常：未知工具、非法参数、数据源失败各自返回结构化结果。
+- **不新写指标公式。** 工具调用的是页面同一条代码路径：`loadAnalytics`、`loadFunnel`、`loadProductList`，以及现有的 `analyticsRecommendations` / `funnelRecommendations` / `seoRecommendations` / `geoRecommendations`。新增的纯函数只有 `src/domain/agent/`（窗口与前一期、两期比较、证据充分度与排序、证据链接、指标引用）、`src/domain/url-params.ts`、`src/domain/analytics/session-filters.ts`。
+- **渠道漏斗 = 先按渠道过滤会话，再调同一个 `buildFunnel`。** 会话只有一个归因渠道，所以各渠道每一层之和等于全站对应层，集成测试逐层断言。**没有 SKU 漏斗**：加购与结账没有归到商品，`get_funnel` 收到 `productId` 返回 `unsupported` 并指向商品转化。
+- **前一期必须完整落在数据内。** 30 天的前一期是 2026-07-03 — 2026-08-01；90 天没有前一期，返回 `no-prior-window` 缺口。
+- **排序**（`agent-priority-1.0.0`）：规则严重度取现有 Recommendation 引擎的 priority；证据有限（订单或会话低于 `ANALYTICS_THRESHOLDS`，或漏斗引擎自己标的低置信）降一档；会话低于下限的不排序，作为缺口返回；同档按受影响会话数降序、再按稳定 ID。
+- **审计数据来源（D2）。** 工具读调用方提供的浏览器本地状态：已存且未 stale 的审计原样使用（`origin: 'stored'`）；没审计过或已 stale 的页面，用该浏览器的快照现场跑同一版本的引擎（`computed-on-request`），不写回。`parseLocalState` 用 `demoStateSchema` 校验、限制 256 KB，不匹配就报错，不静默回退到种子。
+- **证据链接（D3）。** Analytics 读 `?range=&end=`，Funnel 读 `?range=&channel=&end=` 并新增渠道筛选，商品详情读 `?range=&channel=`。页面与链接构造共用 `url-params.ts` 的参数名和解析器；`end` 只在整个窗口落在数据内时才接受，并在页面上标注为对比窗口。切换范围或渠道时用 `history.replaceState` 同步 URL，保留 `demo` 等其他参数。不带参数时三页的默认行为与之前完全相同。
+- **指标引用。** 工具返回的关键数字带确定性的 `refId`（`工具:起..止:渠道:商品:指标`）和指标口径键；审计发现带 `AuditRef`（规则、状态、严重度、evidence、规则版本、指纹、来源）。Dispatch 19 的回答校验只认这些 ref。

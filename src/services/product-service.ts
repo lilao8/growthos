@@ -17,7 +17,11 @@ import {
   validateSeoEdit,
   type FieldErrors,
 } from '@/domain/product-seo';
-import type { AuditResult, PageSnapshot, Product } from '@/domain/types';
+import type { AuditResult, Channel, PageSnapshot, Product } from '@/domain/types';
+import {
+  ordersForChannel,
+  sessionsForChannel,
+} from '@/domain/analytics/session-filters';
 import { readAudit } from '@/domain/audit-lookup';
 import type { DemoState, DemoStateRepository } from '@/repositories/types';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
@@ -32,6 +36,11 @@ export interface ProductServiceDeps {
   state: DemoStateRepository;
   traffic: TrafficRepository;
   window?: DateWindow;
+  /**
+   * null or absent = every channel. Narrows the sessions and orders the
+   * metrics are computed from; the formula is unchanged.
+   */
+  channel?: Channel | null;
 }
 
 /**
@@ -91,6 +100,7 @@ function messageFrom(cause: unknown, fallback: string): string {
 
 async function loadData(deps: ProductServiceDeps): Promise<LoadedData> {
   const window = deps.window ?? DEMO_WINDOW;
+  const channel = deps.channel ?? null;
   const [stateResult, traffic] = await Promise.all([
     deps.state.load(),
     deps.traffic.load(),
@@ -99,8 +109,8 @@ async function loadData(deps: ProductServiceDeps): Promise<LoadedData> {
   return {
     state: stateResult.state,
     metrics: computeProductMetrics(
-      traffic.sessions,
-      traffic.orders,
+      sessionsForChannel(traffic.sessions, channel),
+      ordersForChannel(traffic.orders, channel),
       traffic.orderItems,
       window,
     ),
