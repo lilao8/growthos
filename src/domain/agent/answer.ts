@@ -162,7 +162,7 @@ const ANY_PLACEHOLDER = /\{\{[^{}]*\}\}/g;
  * facts, not the prose, carry the figures.
  */
 const CHANGE_WORDS =
-  /\b(fell|falls?|falling|dropped|declin\w*|decreas\w*|rose|rises?|rising|increas\w*|grew|grow(s|ing)?|worsen\w*|improv\w*|weaker|stronger|down from|up from|than (last|the previous|before)|previous (period|month|week)|last (month|week))\b|下降|下滑|下跌|减少|降低|上升|增长|提升|提高|增加|回落|走低|走高|变差|变弱|变强|改善|环比|同比|上月|上周|上期|前期|之前|以前|从前|不及|不如|逊于|好于|差于/i;
+  /\b(fell|falls?|falling|dropped|declin\w*|decreas\w*|rose|rises?|rising|increas\w*|grew|grow(s|ing)?|worsen\w*|improv\w*|weaker|stronger|down from|up from|than (last|the previous|before)|previous (period|month|week)|last (month|week))\b|下降|下滑|下跌|减少|降低|上升|增长|提升|提高|增加|回落|走低|走高|变差|变弱|变强|改善|环比|同比|上月|上周|上期|前期|之前|以前|从前|不及|不如|逊于|好于|差于|走弱|走强|恶化|好转|回升|攀升|下挫|疲软|\b(weaken\w*|strengthen\w*|deteriorat\w*|recover\w*|slipp\w*|plung\w*|surg\w*|soar\w*)\b/i;
 
 const DIGIT = /\d+(?:[.,]\d+)*/g;
 

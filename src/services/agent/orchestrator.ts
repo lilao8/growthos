@@ -9,6 +9,7 @@ import {
   type CitableComparison,
   type CitableRef,
 } from '@/domain/agent/answer';
+import { looksLikeActionRequest } from '@/domain/agent/intent';
 import { AGENT_PRIORITY_VERSION, rankFindings } from '@/domain/agent/priority';
 import type { MetricRef } from '@/domain/agent/refs';
 import { fallbackAnswer, renderAnswer, type RenderedAnswer } from '@/domain/agent/answer-render';
@@ -370,7 +371,9 @@ export async function runAgentTurn(
     clearTimeout(turnTimer);
     deps.signal?.removeEventListener('abort', onOuterAbort);
     const refusedActions = [...new Set(toolCalls.filter((call) => call.status === 'unknown-tool').map((call) => call.name))];
-    const noActionTaken = refusedActions.length > 0 || actionClaimed;
+    // Asked to act, tried to act, or claimed to have acted: in every case
+    // nothing was done, and the system says so.
+    const noActionTaken = refusedActions.length > 0 || actionClaimed || looksLikeActionRequest(input.question);
     const refusal = [
       {
         kind: 'text' as const,

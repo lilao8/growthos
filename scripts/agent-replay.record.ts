@@ -66,7 +66,7 @@ it('records agent replays', async () => {
     for (const question of scenario.questions) {
       const result = await runAgentTurn(
         { question, history, scope },
-        { model, traffic: createFixtureTrafficRepository(), state: { source: 'seed', value: buildDemoSeedState() }, now: () => new Date().toISOString() },
+        { model, limits: live.limits, traffic: createFixtureTrafficRepository(), state: { source: 'seed', value: buildDemoSeedState() }, now: () => new Date().toISOString() },
       );
       turns.push({ question, scopeBefore: scope, result });
       history.push({ question, answerSummary: result.answer === null ? (result.message ?? '') : result.answer.summary.map((segment) => segment.text).join('') });

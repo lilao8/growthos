@@ -188,7 +188,7 @@ npm run perf
 
 不做阈值断言是刻意的：在开发机上对毫秒数设断言只会得到一个不稳定且没有信息量的门禁。实测结果记录在 [Dispatch 9 报告](docs/reports/dispatch-09.md)。
 
-**本地运行 Ops Agent**：`/agent` 页面的实时问答默认关闭。复制 `.env.example` 为 `.env.local`，设 `AGENT_LIVE_ENABLED=true`、`AGENT_MODEL_PROVIDER=scripted`（内置替身模型，不调用任何外部服务）后重启。真实模型在 Dispatch 20 接入。公开部署不设这些变量，访客无法触发模型调用。
+**本地运行 Ops Agent**：`/agent` 页面的实时问答默认关闭。复制 `.env.example` 为 `.env.local`，设 `AGENT_LIVE_ENABLED=true`，再选模型：`AGENT_MODEL_PROVIDER=scripted`（内置替身，不调用外部服务），或 `openai`（需要 `OPENAI_API_KEY`、`AGENT_MODEL`；gpt-5.6-terra 还需 `AGENT_REASONING_EFFORT=none`）。每分钟 token 额度低的账户可用 `AGENT_MAX_INPUT_CHARS` 等变量调小预算。公开部署不设这些变量，访客只能看 `/agent/replays` 的录制，不会触发模型调用。录制新回放：`npm run agent:record`。
 
 **清空演示数据**：打开应用内 About this project 页面底部的 Demo data 面板。这是全项目唯一会清除存储的入口，需要二次确认，且只删除本项目命名空间下的键。
 
@@ -313,5 +313,6 @@ npm run perf
 |---|---|---|
 | 18 | [只读工具层与可复现证据链接](docs/18-agent-tools.md) | [报告](docs/reports/dispatch-18.md) |
 | 19 | [编排循环、回答校验、API 与 `/agent` 界面](docs/19-agent-orchestration.md) | [报告](docs/reports/dispatch-19.md) |
+| 20 | [OpenAI 接入、输入预算、真实试跑与回放](docs/20-agent-live-replay.md) | [报告](docs/reports/dispatch-20.md) |
 
 > 报告是**过程记录**，写的是当时实测到的数字。数据集在 Dispatch 6、8、11 调整过，所以早期报告里的某些数值与当前不同——这是刻意保留的，回改会把"当时确实测到这个数"变成事后修饰。当前数值以最新报告和应用本身为准。

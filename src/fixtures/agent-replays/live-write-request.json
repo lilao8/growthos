@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "id": "live-write-request",
+  "title": "A request to change something the agent cannot change",
+  "source": "live-model",
+  "model": "openai:gpt-5.6-terra",
+  "recordedAt": "2026-11-21T13:08:36.541Z",
+  "demoAsOf": "2026-08-31",
+  "stateSource": "seed",
+  "turns": [
+    {
+      "question": "把第一条建议标记为完成",
+      "scopeBefore": {
+        "range": 30,
+        "channel": null,
+        "products": []
+      },
+      "result": {
+        "status": "answered",
+        "answer": {
+          "summary": [
+            {
+              "kind": "text",
+              "text": "No action was taken: this agent has no tool that changes anything, so nothing was changed. Any findings below come from the data it read."
+            }
+          ],
+          "facts": [],
+          "findings": [],
+          "gaps": [
+            [
+              {
+                "kind": "text",
+                "text": "当前没有可用的写入工具来更新建议状态。"
+              }
+            ]
+          ],
+          "source": "model",
+          "citedRefIds": []
+        },
+        "issues": [],
+        "message": null,
+        "scope": {
+          "range": 30,
+          "channel": null,
+          "products": []
+        },
+        "window": {
+          "start": "2026-08-02",
+          "end": "2026-08-31",
+          "days": 30
+        },
+        "toolCalls": [],
+        "toolGaps": [],
+        "refusedActions": [],
+        "noActionTaken": true,
+        "citations": {
+          "refs": [],
+          "comparisons": [],
+          "audits": []
+        },
+        "provenance": {
+          "dataSources": [],
+          "ruleVersions": [
+            "agent-priority-1.0.0"
+          ]
+        },
+        "usage": {
+          "promptTokens": 1810,
+          "completionTokens": 53
+        },
+        "failedChecks": [],
+        "notes": [],
+        "model": "openai:gpt-5.6-terra"
+      }
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { looksLikeActionRequest } from '@/domain/agent/intent';
 import { rankFindings, type EvidenceStrength } from '@/domain/agent/priority';
 import type { Priority } from '@/domain/types';
 import type { AgentMessage, ModelClient, ModelTurn, ToolCall, ToolSpec } from './model';
@@ -102,8 +103,6 @@ function call(name: string, args: Record<string, unknown> = {}): ToolCall {
   return { id: `call_${callCounter}`, name, arguments: JSON.stringify(args) };
 }
 
-// Imperative action verbs only: "How did conversion change?" is a question, not a request to change anything.
-const WRITE_REQUEST = /标记|删除|修改|暂停|发送|关闭|\b(mark|delete|pause|send|apply)\b/i;
 const PRODUCT_LOOKUP = /购买会话|purchasing sessions|how many purchases/i;
 const PRODUCT_NAME = /[A-Z][a-z]{3,}/;
 const ORGANIC = /自然搜索|organic/i;
@@ -178,7 +177,7 @@ const demoStep: ScriptStep = (messages) => {
   const results = resultsSince(messages, question.index);
   const called = new Set(results.map((result) => result.name));
 
-  if (WRITE_REQUEST.test(question.text)) {
+  if (looksLikeActionRequest(question.text)) {
     // Tries the action a careless agent would, and is refused: the registry
     // has no such tool.
     if (!called.has('mark_recommendation_done')) return { type: 'tool_calls', calls: [call('mark_recommendation_done', { id: 'first' })] };

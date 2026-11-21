@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "id": "live-lookup",
+  "title": "Lookup with no alert: Ridgeline purchasing sessions from organic search",
+  "source": "live-model",
+  "model": "openai:gpt-5.6-terra",
+  "recordedAt": "2026-11-21T13:08:35.004Z",
+  "demoAsOf": "2026-08-31",
+  "stateSource": "seed",
+  "turns": [
+    {
+      "question": "过去 30 天 Ridgeline 从自然搜索获得多少购买会话？",
+      "scopeBefore": {
+        "range": 30,
+        "channel": null,
+        "products": []
+      },
+      "result": {
+        "status": "answered",
+        "answer": {
+          "summary": [
+            {
+              "kind": "text",
+              "text": "自然搜索下，Ridgeline 系列各产品的购买会话如下。"
+            }
+          ],
+          "facts": [
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 2P Backpacking Tent purchasing sessions (Organic Search), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "3",
+                "href": "/products/prd_ridgeline_2p_tent?range=30&channel=Organic+Search",
+                "title": "Ridgeline 2P Backpacking Tent purchasing sessions (Organic Search), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline Rain Shell purchasing sessions (Organic Search), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "2",
+                "href": "/products/prd_ridgeline_rain_shell?range=30&channel=Organic+Search",
+                "title": "Ridgeline Rain Shell purchasing sessions (Organic Search), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 3P Backpacking Tent purchasing sessions (Organic Search), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "0",
+                "href": "/products/prd_ridgeline_3p_tent?range=30&channel=Organic+Search",
+                "title": "Ridgeline 3P Backpacking Tent purchasing sessions (Organic Search), 2026-08-02 — 2026-08-31"
+              }
+            ]
+          ],
+          "findings": [],
+          "gaps": [],
+          "source": "model",
+          "citedRefIds": [
+            "products:2026-08-02..2026-08-31:Organic Search:prd_ridgeline_2p_tent:purchase_sessions",
+            "products:2026-08-02..2026-08-31:Organic Search:prd_ridgeline_rain_shell:purchase_sessions",
+            "products:2026-08-02..2026-08-31:Organic Search:prd_ridgeline_3p_tent:purchase_sessions"
+          ]
+        },
+        "issues": [],
+        "message": null,
+        "scope": {
+          "range": 30,
+          "channel": null,
+          "products": []
+        },
+        "window": {
+          "start": "2026-08-02",
+          "end": "2026-08-31",
+          "days": 30
+        },
+        "toolCalls": [
+          {
+            "id": "call_pyh5W5YLaPO7JHgBEeKCmcUF",
+            "name": "get_product_performance",
+            "input": {
+              "range": 30,
+              "channel": "Organic Search",
+              "products": [
+                "Ridgeline"
+              ],
+              "limit": 20
+            },
+            "status": "ok",
+            "summary": "0 findings, 12 citable figures, 0 gaps."
+          }
+        ],
+        "toolGaps": [],
+        "refusedActions": [],
+        "noActionTaken": false,
+        "citations": {
+          "refs": [
+            {
+              "refId": "products:2026-08-02..2026-08-31:Organic Search:prd_ridgeline_2p_tent:purchase_sessions",
+              "label": "Ridgeline 2P Backpacking Tent purchasing sessions",
+              "value": 3,
+              "unit": "count",
+              "channel": "Organic Search",
+              "productId": "prd_ridgeline_2p_tent",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_ridgeline_2p_tent?range=30&channel=Organic+Search"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:Organic Search:prd_ridgeline_rain_shell:purchase_sessions",
+              "label": "Ridgeline Rain Shell purchasing sessions",
+              "value": 2,
+              "unit": "count",
+              "channel": "Organic Search",
+              "productId": "prd_ridgeline_rain_shell",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_ridgeline_rain_shell?range=30&channel=Organic+Search"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:Organic Search:prd_ridgeline_3p_tent:purchase_sessions",
+              "label": "Ridgeline 3P Backpacking Tent purchasing sessions",
+              "value": 0,
+              "unit": "count",
+              "channel": "Organic Search",
+              "productId": "prd_ridgeline_3p_tent",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_ridgeline_3p_tent?range=30&channel=Organic+Search"
+            }
+          ],
+          "comparisons": [],
+          "audits": []
+        },
+        "provenance": {
+          "dataSources": [
+            "fixture:traffic (NorthTrail demo data, 2026-06-03..2026-08-31, UTC)",
+            "seed:catalogue"
+          ],
+          "ruleVersions": [
+            "agent-priority-1.0.0"
+          ]
+        },
+        "usage": {
+          "promptTokens": 5265,
+          "completionTokens": 189
+        },
+        "failedChecks": [],
+        "notes": [],
+        "model": "openai:gpt-5.6-terra"
+      }
+    }
+  ]
+}

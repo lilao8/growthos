@@ -1,4 +1,5 @@
 import type { ModelClient } from './model';
+import type { AgentLimits } from './orchestrator';
 import { createOpenAIModel } from './openai-model';
 import { createDemoModel } from './scripted-model';
 
@@ -12,7 +13,7 @@ import { createDemoModel } from './scripted-model';
  */
 
 export type LiveModel =
-  | { ok: true; model: ModelClient }
+  | { ok: true; model: ModelClient; limits: Partial<AgentLimits> }
   | { ok: false; status: 503; error: 'live-disabled' | 'model-not-configured'; message: string };
 
 export function resolveLiveModel(env: Readonly<Record<string, string | undefined>>): LiveModel {
@@ -24,7 +25,8 @@ export function resolveLiveModel(env: Readonly<Record<string, string | undefined
       message: 'Live analysis is not enabled in this deployment.',
     };
   }
-  if (env['AGENT_MODEL_PROVIDER'] === 'scripted') return { ok: true, model: createDemoModel() };
+  const limits = limitsFromEnv(env);
+  if (env['AGENT_MODEL_PROVIDER'] === 'scripted') return { ok: true, model: createDemoModel(), limits };
   if (env['AGENT_MODEL_PROVIDER'] === 'openai') {
     const apiKey = env['OPENAI_API_KEY'] ?? '';
     const model = env['AGENT_MODEL'] ?? '';
@@ -38,7 +40,12 @@ export function resolveLiveModel(env: Readonly<Record<string, string | undefined
         message: `OpenAI is selected but ${missing.join(' and ')} ${missing.length === 1 ? 'is' : 'are'} not set.`,
       };
     }
-    return { ok: true, model: createOpenAIModel({ apiKey, model }) };
+    const reasoningEffort = env['AGENT_REASONING_EFFORT'] ?? '';
+    return {
+      ok: true,
+      model: createOpenAIModel(reasoningEffort === '' ? { apiKey, model } : { apiKey, model, reasoningEffort }),
+      limits,
+    };
   }
   return {
     ok: false,
@@ -46,4 +53,25 @@ export function resolveLiveModel(env: Readonly<Record<string, string | undefined
     error: 'model-not-configured',
     message: 'No model provider is configured for live analysis.',
   };
+}
+
+/**
+ * Per-deployment overrides of the model budget and the turn timeout. An
+ * account with a low tokens-per-minute limit needs smaller requests and room
+ * to wait out a rate limit; the defaults stay as decided (D5). Anything that
+ * is not a positive whole number is ignored.
+ */
+export function limitsFromEnv(env: Readonly<Record<string, string | undefined>>): Partial<AgentLimits> {
+  const read = (name: string): number | undefined => {
+    const value = Number(env[name]);
+    return Number.isInteger(value) && value > 0 ? value : undefined;
+  };
+  const limits: Partial<AgentLimits> = {};
+  const input = read('AGENT_MAX_INPUT_CHARS');
+  const tool = read('AGENT_MAX_TOOL_RESULT_CHARS');
+  const timeout = read('AGENT_TURN_TIMEOUT_MS');
+  if (input !== undefined) limits.maxInputChars = input;
+  if (tool !== undefined) limits.maxToolResultChars = tool;
+  if (timeout !== undefined) limits.turnTimeoutMs = timeout;
+  return limits;
 }

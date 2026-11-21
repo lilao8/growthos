@@ -403,6 +403,18 @@ describe('get_product_performance', () => {
     expect(purchases?.unit).toBe('count');
   });
 
+  it('falls back to a name match when a key is not an id or SKU', async () => {
+    const outcome = ok<ProductPerformanceData>(await runTool('get_product_performance', { products: ['Ridgeline'] }, context()));
+    expect(outcome.data.notFound).toEqual([]);
+    expect(outcome.data.rows.length).toBeGreaterThan(1);
+    expect(outcome.data.rows.every((row) => row.title.includes('Ridgeline'))).toBe(true);
+  });
+
+  it('prefers the exact SKU over a name match', async () => {
+    const outcome = ok<ProductPerformanceData>(await runTool('get_product_performance', { products: ['NT-TENT-RDG2'] }, context()));
+    expect(outcome.data.rows.map((row) => row.productId)).toEqual(['prd_ridgeline_2p_tent']);
+  });
+
   it('is empty, not an error, when nothing matches', async () => {
     const outcome = await runTool('get_product_performance', { products: ['NT-999'] }, context());
     expect(outcome.status).toBe('empty');

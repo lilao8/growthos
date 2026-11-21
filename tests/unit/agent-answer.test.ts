@@ -255,6 +255,7 @@ describe('prose', () => {
     'fell', 'fall', 'falls', 'falling', 'rise', 'rises', 'rising', 'declined', 'decreased', 'increased', 'grew', 'grow', 'grows',
     'worsened', 'improved', 'weaker', 'stronger', 'down from', 'up from', 'than last', 'previous period', 'last month',
     '下降', '下滑', '增长', '环比', '上月', '变弱', '前期', '不及从前', '不如以前', '比之前',
+    '表现走弱', '走强', '恶化', '好转', '回升', 'weakening', 'deteriorated', 'recovered', 'slipped', 'surged',
   ])('treats "%s" in prose as a change claim', (word) => {
     expect(codes(validateAnswer(answer([], `Meta conversion ${word} here.`), bare()))).toEqual(['change-in-prose']);
   });

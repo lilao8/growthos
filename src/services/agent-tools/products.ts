@@ -29,7 +29,7 @@ export const productPerformanceInput = z.strictObject({
     .array(z.string().min(1).max(80))
     .max(MAX_PRODUCTS)
     .default([])
-    .describe('Product ids or SKUs to look up. Empty = the top products by revenue.'),
+    .describe('Product ids, SKUs or names to look up; a name matches every product whose title, SKU or keyword contains it. Empty = the top products by revenue.'),
   query: z
     .string()
     .max(80)
@@ -119,13 +119,16 @@ export const productPerformanceTool: AgentTool<ProductPerformanceInput, ProductP
     if (input.products.length > 0) {
       selected = [];
       for (const key of input.products) {
-        const row = catalogue.find(
+        // An exact id or SKU wins; otherwise a name, SKU or keyword that
+        // contains the key ("Ridgeline" names a product line, not a SKU).
+        const exact = catalogue.find(
           (candidate) =>
             candidate.product.id === key ||
             candidate.product.sku.toLowerCase() === key.toLowerCase(),
         );
-        if (row === undefined) notFound.push(key);
-        else if (!selected.includes(row)) selected.push(row);
+        const rows = exact === undefined ? catalogue.filter((candidate) => matches(candidate.product, key)) : [exact];
+        if (rows.length === 0) notFound.push(key);
+        for (const row of rows) if (!selected.includes(row)) selected.push(row);
       }
     } else if (input.query !== null) {
       const query = input.query;

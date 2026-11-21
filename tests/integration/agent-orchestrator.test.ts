@@ -459,9 +459,21 @@ describe('refused actions', () => {
     expect((result.answer?.summary ?? []).map((segment) => segment.text).join('')).toContain('No action was taken: mark_recommendation_done does not exist');
   });
 
+  it('shows "not executed" when asked to act, even if the model neither tries nor claims anything', async () => {
+    const model = createScriptedModel('declines', () => ({
+      type: 'final',
+      content: JSON.stringify({ summary: '我只能分析，无法将建议标记为完成。', facts: [], findings: [], gaps: [] }),
+    }));
+    const { result } = await ask('把第一条建议标记为完成', DEFAULT_SCOPE, { model });
+    expect(result.toolCalls).toEqual([]);
+    expect(result.noActionTaken).toBe(true);
+    expect((result.answer?.summary ?? []).map((segment) => segment.text).join('')).toContain('No action was taken');
+  });
+
   it('does not treat a question about change as a request to change something', async () => {
     const { result } = await ask('How did conversion change over the last 30 days?');
     expect(result.refusedActions).toEqual([]);
+    expect(result.noActionTaken).toBe(false);
     expect(result.toolCalls[0]?.name).toBe('get_channel_performance');
   });
 });

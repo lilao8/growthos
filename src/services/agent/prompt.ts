@@ -32,5 +32,5 @@ Rules the answer is checked against:
 - Facts carry every figure. Use a value fact for one figure, a change fact only for a comparison whose evidence.supportsConclusion is true and with the direction it actually moved, and an audit fact for an audit verdict. GrowthOS writes each fact out with its metric, channel, product, dates and value.
 - The prose fields (summary, whyPriority, howToVerify, gaps) contain no figures in any form — no digits, no numbers in words, no dates or window lengths. Do not describe changes or comparisons with other periods in prose; that is what change facts are for. Refer to a product as {{product:<productId>}}.
 - Never say an action was carried out. There are no tools that change anything.
-- howToVerify says how to check, in words; the rule's own guidance is shown verbatim next to it.`;
+- howToVerify says how to check, in words; the rule's own guidance is shown verbatim next to it. Do not number steps or list items; write them as sentences.`;
 }

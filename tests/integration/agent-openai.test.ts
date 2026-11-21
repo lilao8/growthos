@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { createOpenAIModel, fromWireResponse, OPENAI_CHAT_URL, toWireMessages } from '@/services/agent/openai-model';
-import { resolveLiveModel } from '@/services/agent/live-config';
+import { createOpenAIModel, fromWireResponse, OPENAI_CHAT_URL, retryDelayMs, toWireMessages } from '@/services/agent/openai-model';
+import { limitsFromEnv, resolveLiveModel } from '@/services/agent/live-config';
 import { forModel, messageChars, runAgentTurn, TOOL_SPECS } from '@/services/agent/orchestrator';
 import { createScriptedModel, currentQuestion, resultsSince } from '@/services/agent/scripted-model';
 import type { AgentMessage } from '@/services/agent/model';
@@ -68,6 +68,15 @@ describe('request mapping', () => {
     expect(model.id).toBe('openai:gpt-test');
   });
 
+  it('sends reasoning_effort only when it is configured', async () => {
+    const off = stub({ choices: [{ message: { content: 'x' } }] });
+    await createOpenAIModel({ apiKey: KEY, model: 'm', fetcher: off.fetcher }).next({ messages: conversation, tools: [] }, new AbortController().signal);
+    expect('reasoning_effort' in off.calls[0]!.body).toBe(false);
+    const on = stub({ choices: [{ message: { content: 'x' } }] });
+    await createOpenAIModel({ apiKey: KEY, model: 'm', reasoningEffort: 'none', fetcher: on.fetcher }).next({ messages: conversation, tools: [] }, new AbortController().signal);
+    expect(on.calls[0]!.body['reasoning_effort']).toBe('none');
+  });
+
   it('passes the cancellation signal to the network request', async () => {
     const { fetcher, calls } = stub({ choices: [{ message: { content: 'x' } }] });
     const controller = new AbortController();
@@ -105,16 +114,27 @@ describe('response mapping', () => {
 
 describe('errors', () => {
   it.each([
-    [401, { error: { message: 'Incorrect API key provided: sk-tes***' } }, 'OpenAI answered 401: Incorrect API key provided: sk-tes***. Check OPENAI_API_KEY.'],
+    // Even a masked key prefix from the provider is removed.
+    [401, { error: { message: 'Incorrect API key provided: sk-tes***' } }, 'OpenAI answered 401: Incorrect API key provided: sk-…***. Check OPENAI_API_KEY.'],
     [429, { error: { message: 'Rate limit reached' } }, 'OpenAI answered 429: Rate limit reached. Rate limit or quota reached.'],
     [500, 'not json', 'OpenAI answered 500.'],
+    [429, { error: { message: 'You have no credits remaining. Add credits to continue.' } }, 'OpenAI answered 429: You have no credits remaining. Add credits to continue. Rate limit or quota reached.'],
   ])('reports HTTP %i without the key', async (status, body, message) => {
     const { fetcher } = stub(body, status);
-    const model = createOpenAIModel({ apiKey: KEY, model: 'm', fetcher });
+    // A rate-limit 429 is retried first; no real waiting in tests.
+    const model = createOpenAIModel({ apiKey: KEY, model: 'm', fetcher, sleep: async () => {} });
     const error = await model.next({ messages: conversation, tools: [] }, new AbortController().signal).catch((cause: Error) => cause);
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toBe(message);
     expect((error as Error).message).not.toContain(KEY);
+  });
+
+  it('removes the organisation id and anything key-shaped from provider text', async () => {
+    const { fetcher } = stub({ error: { message: 'Request too large for gpt-5.6-terra in organization org-AbC123xyz on tokens per min (TPM). Key sk-live_abc123.' } }, 400);
+    const error = await createOpenAIModel({ apiKey: KEY, model: 'm', fetcher }).next({ messages: conversation, tools: [] }, new AbortController().signal).catch((cause: Error) => cause);
+    expect((error as Error).message).toContain('organization org-… on tokens per min');
+    expect((error as Error).message).toContain('Key sk-…');
+    expect((error as Error).message).not.toMatch(/org-AbC|sk-live/);
   });
 
   it('turns a provider failure into a failed turn, not an invented answer', async () => {
@@ -126,6 +146,80 @@ describe('errors', () => {
     expect(result.status).toBe('failed');
     expect(result.message).toContain('OpenAI answered 503: down');
     expect(JSON.stringify(result)).not.toContain(KEY);
+  });
+});
+
+describe('rate limits', () => {
+  function sequence(responses: Array<{ status: number; body: unknown; headers?: Record<string, string> }>) {
+    let index = 0;
+    const fetcher: typeof fetch = async () => {
+      const next = responses[Math.min(index, responses.length - 1)]!;
+      index += 1;
+      return new Response(JSON.stringify(next.body), { status: next.status, headers: next.headers ?? {} });
+    };
+    return { fetcher, calls: () => index };
+  }
+  const tpm = { status: 429, body: { error: { message: 'Rate limit reached for tokens per min (TPM).', code: 'rate_limit_exceeded' } } };
+  const ok = { status: 200, body: { choices: [{ message: { content: 'done' } }] } };
+
+  it('waits as asked and retries a per-minute rate limit', async () => {
+    const waits: number[] = [];
+    const { fetcher, calls } = sequence([{ ...tpm, headers: { 'retry-after-ms': '1500' } }, ok]);
+    const model = createOpenAIModel({ apiKey: KEY, model: 'm', fetcher, sleep: async (ms) => void waits.push(ms) });
+    expect(await model.next({ messages: conversation, tools: [] }, new AbortController().signal)).toEqual({ type: 'final', content: 'done' });
+    expect(calls()).toBe(2);
+    expect(waits).toEqual([1500]);
+  });
+
+  it('caps the wait, reads retry-after in seconds, and gives up after the retries', async () => {
+    const waits: number[] = [];
+    const { fetcher, calls } = sequence([{ ...tpm, headers: { 'retry-after': '90' } }]);
+    const model = createOpenAIModel({ apiKey: KEY, model: 'm', fetcher, maxRetries: 2, maxRetryWaitMs: 20_000, sleep: async (ms) => void waits.push(ms) });
+    const error = await model.next({ messages: conversation, tools: [] }, new AbortController().signal).catch((cause: Error) => cause);
+    expect((error as Error).message).toContain('OpenAI answered 429');
+    expect(calls()).toBe(3);
+    expect(waits).toEqual([20_000, 20_000]);
+  });
+
+  it('does not retry an exhausted quota', async () => {
+    const { fetcher, calls } = sequence([{ status: 429, body: { error: { message: 'You have no credits remaining.', code: 'insufficient_quota' } } }, ok]);
+    const model = createOpenAIModel({ apiKey: KEY, model: 'm', fetcher, sleep: async () => {} });
+    await expect(model.next({ messages: conversation, tools: [] }, new AbortController().signal)).rejects.toThrow('no credits');
+    expect(calls()).toBe(1);
+  });
+
+  it('stops waiting when the turn is cancelled', async () => {
+    const { fetcher, calls } = sequence([{ ...tpm, headers: { 'retry-after-ms': '60000' } }, ok]);
+    const controller = new AbortController();
+    const model = createOpenAIModel({ apiKey: KEY, model: 'm', fetcher });
+    const pending = model.next({ messages: conversation, tools: [] }, controller.signal);
+    controller.abort();
+    await expect(pending).rejects.toThrow('aborted');
+    expect(calls()).toBe(1);
+  });
+
+  it('reads retry delays from headers, falling back when there are none', () => {
+    expect(retryDelayMs(new Headers({ 'retry-after-ms': '250' }), 5000)).toBe(250);
+    expect(retryDelayMs(new Headers({ 'retry-after': '3' }), 5000)).toBe(3000);
+    expect(retryDelayMs(new Headers({ 'retry-after': 'soon' }), 5000)).toBe(5000);
+    expect(retryDelayMs(new Headers(), 5000)).toBe(5000);
+  });
+});
+
+describe('limits from the environment', () => {
+  it('takes positive whole numbers and ignores anything else', () => {
+    expect(limitsFromEnv({})).toEqual({});
+    expect(limitsFromEnv({ AGENT_MAX_INPUT_CHARS: '30000', AGENT_MAX_TOOL_RESULT_CHARS: '8000', AGENT_TURN_TIMEOUT_MS: '150000' })).toEqual({
+      maxInputChars: 30000,
+      maxToolResultChars: 8000,
+      turnTimeoutMs: 150000,
+    });
+    expect(limitsFromEnv({ AGENT_MAX_INPUT_CHARS: '-5', AGENT_MAX_TOOL_RESULT_CHARS: '1.5', AGENT_TURN_TIMEOUT_MS: 'fast' })).toEqual({});
+  });
+
+  it('hands the limits to the live model configuration', () => {
+    const live = resolveLiveModel({ AGENT_LIVE_ENABLED: 'true', AGENT_MODEL_PROVIDER: 'scripted', AGENT_MAX_INPUT_CHARS: '30000' });
+    expect(live.ok && live.limits).toEqual({ maxInputChars: 30000 });
   });
 });
 

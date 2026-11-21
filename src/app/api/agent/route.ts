@@ -98,6 +98,7 @@ export async function POST(request: Request): Promise<Response> {
           parsed.input,
           {
             model: live.model,
+            limits: live.limits,
             traffic: createFixtureTrafficRepository(),
             state: { source: 'browser-local', value: parsed.state },
             now: () => new Date().toISOString(),
