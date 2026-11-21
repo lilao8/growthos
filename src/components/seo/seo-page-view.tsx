@@ -28,9 +28,12 @@ function ruleTitle(ruleId: string): string {
 export function SeoPageView({
   pageId,
   mode,
+  preview = false,
 }: {
   pageId: string;
   mode: DemoDataMode | null;
+  /** Read-only preview of the page as it is now; nothing is saved. */
+  preview?: boolean;
 }) {
   const deps = useMemo<SeoAuditDeps>(
     () => ({ state: resolveStateRepository(mode) }),
@@ -44,13 +47,13 @@ export function SeoPageView({
 
   useEffect(() => {
     let cancelled = false;
-    void loadSeoPage(deps, pageId).then((next) => {
+    void loadSeoPage(deps, pageId, { preview }).then((next) => {
       if (!cancelled) setState(next);
     });
     return () => {
       cancelled = true;
     };
-  }, [deps, pageId, attempt]);
+  }, [deps, pageId, preview, attempt]);
 
   const runAudit = useCallback(async () => {
     setRunning(true);
@@ -102,6 +105,7 @@ export function SeoPageView({
   }
 
   const { snapshot, product, audit, tally } = state.row;
+  const previewInfo = state.preview;
   const title = product?.title ?? snapshot.url;
 
   return (
@@ -119,7 +123,11 @@ export function SeoPageView({
             data-testid="run-page-audit"
             className="rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-60"
           >
-            {running ? 'Running…' : audit === null ? 'Run audit' : 'Re-run audit'}
+            {running
+              ? 'Running…'
+              : audit === null || previewInfo?.computedBecause === 'not-audited'
+                ? 'Run audit'
+                : 'Re-run audit'}
           </button>
           <div className="flex flex-wrap justify-end gap-3 text-sm">
             <Link
@@ -159,6 +167,21 @@ export function SeoPageView({
         </Card>
       ) : (
         <>
+          {previewInfo !== null && (
+            <p
+              role="status"
+              data-testid="audit-preview-notice"
+              className="rounded-md border border-[var(--color-accent)] bg-[var(--color-surface-muted)] px-4 py-3 text-sm"
+            >
+              Preview, not saved.{' '}
+              {previewInfo.computedBecause === 'stale'
+                ? 'The saved audit describes older content, so this result was computed from the page as it is now.'
+                : 'This page has no saved audit, so this result was computed from the page as it is now.'}{' '}
+              It uses the same rules ({audit.ruleVersion}) a saved audit would.
+              Nothing in your browser storage has changed; run the audit to save it.
+            </p>
+          )}
+
           {audit.stale && (
             <p
               role="status"
@@ -173,10 +196,14 @@ export function SeoPageView({
           <Card>
             <CardHeader
               title="Result"
-              description={`Rule set ${audit.ruleVersion} · audited ${audit.auditedAt}`}
+              description={
+                previewInfo !== null
+                  ? `Rule set ${audit.ruleVersion} · preview computed just now, not saved`
+                  : `Rule set ${audit.ruleVersion} · audited ${audit.auditedAt}`
+              }
             >
-              <Badge tone={audit.stale ? 'muted' : 'neutral'}>
-                {audit.stale ? 'Stale' : 'Current'}
+              <Badge tone={audit.stale || previewInfo !== null ? 'muted' : 'neutral'}>
+                {previewInfo !== null ? 'Preview' : audit.stale ? 'Stale' : 'Current'}
               </Badge>
             </CardHeader>
             <CardBody className="flex flex-col gap-4">

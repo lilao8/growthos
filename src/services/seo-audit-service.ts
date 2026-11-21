@@ -1,4 +1,5 @@
 import { readAudit, upsertAudit } from '@/domain/audit-lookup';
+import { currentAudit } from '@/domain/audit-preview';
 import {
   addTallies,
   averageScore,
@@ -63,8 +64,25 @@ export type SeoOverviewState =
   | { status: 'empty'; portfolio: SeoPortfolio }
   | { status: 'error'; message: string };
 
+/**
+ * Set when the page is shown as a read-only preview: the audit below was
+ * computed from the current snapshot just now and has not been saved.
+ */
+export interface AuditPreview {
+  computedBecause: 'not-audited' | 'stale';
+}
+
+export interface PageLoadOptions {
+  /**
+   * Show the audit for the page as it is now. A current stored audit is shown
+   * as usual; otherwise the engine runs without saving. Used by agent
+   * evidence links, so a cited check can be read without changing anything.
+   */
+  preview?: boolean;
+}
+
 export type SeoPageState =
-  | { status: 'ready'; row: SeoPageRow }
+  | { status: 'ready'; row: SeoPageRow; preview: AuditPreview | null }
   | { status: 'not-found' }
   | { status: 'error'; message: string };
 
@@ -192,6 +210,7 @@ export async function loadSeoOverview(
 export async function loadSeoPage(
   deps: SeoAuditDeps,
   pageId: string,
+  options: PageLoadOptions = {},
 ): Promise<SeoPageState> {
   let state: DemoState;
   try {
@@ -208,7 +227,26 @@ export async function loadSeoPage(
   );
   if (snapshot === undefined) return { status: 'not-found' };
 
-  return { status: 'ready', row: buildRow(state, snapshot) };
+  const row = buildRow(state, snapshot);
+  if (options.preview !== true) return { status: 'ready', row, preview: null };
+
+  const now = deps.now ?? (() => new Date().toISOString());
+  const current = currentAudit({
+    kind: 'seo',
+    snapshot,
+    primaryKeyword: keywordFor(row.product),
+    brand: '',
+    stored: state.auditResults,
+    now: now(),
+  });
+  if (current.computedBecause === null) {
+    return { status: 'ready', row, preview: null };
+  }
+  return {
+    status: 'ready',
+    row: { ...row, audit: current.audit, tally: tallyChecks(current.audit.checks) },
+    preview: { computedBecause: current.computedBecause },
+  };
 }
 
 async function persistAudits(

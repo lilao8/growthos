@@ -131,4 +131,57 @@
 
 ---
 
+## 7. 复核修正（Codex 复核 `b66730e` 后）
+
+复核提出 3 个阻塞问题和 2 条建议。逐条对照代码核实后，5 条都成立，而且都不涉及产品范围、数据口径或工具权限的变化，所以直接修复。
+
+| # | 复核意见 | 核实 | 修正 |
+|---|---|---|---|
+| B1 | 审计链接可能打开「未审计」或旧结果，要手动重跑才能核对 | 成立：`computed-on-request` 的链接指向普通审计页 | 新增纯函数 `src/domain/audit-preview.ts` 的 `currentAudit()`，Agent 工具和审计页共用这一个函数。SEO/GEO 审计页支持 `?preview=1`：已存且当前的审计照常显示；否则用当前快照现场计算并显示「Preview, not saved」，原因区分 not-audited 和 stale，不写入任何存储。审计链接统一带 `?preview=1`。不带这个参数时页面行为不变 |
+| B2 | 部分关键数字在链接页面上找不到；CAC 告警缺少它所比较的全站 AOV 引用 | 成立：商品页不显示购买会话数；CAC 发现没有引用 AOV；环比结果没有给比较双方的引用 | 商品详情页新增「Sessions that bought this product」，并改写口径说明。渠道工具新增全站 `average_order_value` 和各渠道 `ad_spend` 引用；CAC 发现引用 AOV，ROAS 发现引用广告花费。渠道和漏斗的每个比较项都带 `currentRefId` / `previousRefId`。Analytics 渠道表给转化率和广告花费单元格加了 testid |
+| B3 | 样本不足的漏斗步骤仍会进入排序 | 成立：漏斗引擎标为低置信的步骤被映射成 `limited`，降档后仍然参与排序 | 低于该步骤自身 `minimumSessions` 的步骤改为 `insufficient`，从发现列表移出，改作 `below-minimum-sessions` 缺口返回。缺口里保留原始会话数和门槛，并附 `refIds`，数字仍可核对 |
+| S1 | 切换漏斗渠道时，新标签会先出现在旧数字上方 | 成立 | Funnel 和 Analytics 的加载结果按「范围｜渠道｜截止日」打标签，结果与当前筛选不一致时显示加载状态 |
+| S2 | 未知入参被静默丢弃（传 `sku` 会变成全站漏斗） | 成立：用的是 `z.object` | 四个工具改用 `z.strictObject`，未知字段返回 `invalid-input` 并列出字段名 |
+
+关于审计是否按流量降档：采纳 Codex 的建议，保留两层判断。规则是否命中只看页面内容；修复的先后再考虑流量。审计工具新增 `priorityWindow` 字段，标明排序所用的流量窗口（默认 30 天，Recommendations 页是 90 天）。
+
+### 7.1 新增测试
+
+- 单元测试 +7：`audit-preview.test.ts`（6 个：未审计、当前、过期、改关键词、GEO 忽略关键词、不同种类）；`parsePreviewParam`（1 个）。
+- 集成测试 +15：
+  - `audit-preview.test.ts`（6 个）：预览与工具引用逐条一致；`save` 调用次数为 0，状态前后深度相等；审计当前时不显示预览；过期页反映修改；GEO 同样成立；页面不存在时返回 not-found。
+  - `agent-tools.test.ts`（+9 个）：4 个工具都拒绝未知字段；CAC 发现引用 AOV、ROAS 发现引用广告花费；渠道比较双方引用均可解析，前一期截止于 08-01；漏斗比较双方引用均可解析；AI Referral 低于门槛的步骤（含结账步骤）不出现在发现和排序里，缺口带原始数字；全站结账步骤仍保留为发现。
+- E2E +5 个 × 3 个浏览器：
+  - 渠道工具返回的 57 个引用，在 `/analytics?range=30` 上逐个找到相同的数字；
+  - SEO 和 GEO 的预览各一条：点开链接即可核对引用的检查（状态和 evidence）和分数，localStorage 前后逐字节相同，刷新后仍是预览；
+  - 在预览页保存审计后，预览提示消失，分数不变；
+  - 不带 preview 参数时仍显示未审计；
+  - `?demo=slow` 下切换到 Email 时，加载期间页面上没有任何漏斗数字，加载完成后标签与 Email 的数字一致。
+  - 另外，商品 E2E 增加了对购买会话、转化率和收入的核对。
+
+### 7.2 变异测试（单文件）
+
+| 文件 | 得分 |
+|---|---|
+| `audit-preview.ts` | 100%（第一轮有 4 个存活变异，来自冗余的关键词三元表达式和不可达的 null 检查，已简化掉） |
+| `agent/links.ts` | 100% |
+| `agent/refs.ts` | 100% |
+| `url-params.ts` | 85.71%（4 个存活变异，均为等价变异，见第 3 节） |
+
+### 7.3 修正后的门禁（本机，Node v24.18.0）
+
+| 命令 | 结果 |
+|---|---|
+| `npm ci` | PASS |
+| `npm run lint` | PASS |
+| `npm run typecheck` | PASS |
+| `npm run test -- --run` | PASS：32 个文件，**623 个测试** |
+| `npm run test:integration -- --run` | PASS：18 个文件，**359 个测试** |
+| `npm run test:e2e` | PASS：**813 个测试**，3 个浏览器，1.4 分钟 |
+| `npm run build` | PASS |
+
+过程中有 1 次失败：新写的 GEO 预览 E2E 一开始选了 Ridgeline 帐篷，而这个商品在演示数据里没有任何 GEO 发现，断言「至少有一条引用」因此失败。改用有 GEO 发现的 Basecamp Tarp 后通过。这是测试样本选错了，不是功能缺陷。
+
+---
+
 **本阶段完成。已停止，等待确认下一 Dispatch。**

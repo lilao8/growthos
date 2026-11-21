@@ -1,17 +1,20 @@
 import { z } from 'zod';
 import { comparableWindows } from '@/domain/agent/windows';
-import { compareValues, type MetricComparison } from '@/domain/agent/comparison';
+import { compareValues } from '@/domain/agent/comparison';
 import { funnelHref } from '@/domain/agent/links';
 import { makeRef, refId, type MetricRef, type RefScope } from '@/domain/agent/refs';
 import { DEMO_AS_OF, DEMO_WINDOW, type DateWindow, type DemoRangeDays } from '@/domain/demo-window';
 import type { FunnelReport } from '@/domain/funnel/funnel-metrics';
-import type { FunnelRecommendation } from '@/domain/funnel/recommendations';
+import {
+  DEFAULT_FUNNEL_CONFIG,
+  type FunnelRecommendation,
+} from '@/domain/funnel/recommendations';
 import { funnelRecommendations as funnelTasks } from '@/domain/recommendations/aggregate';
 import { ANALYTICS_THRESHOLDS } from '@/domain/recommendations/config';
 import type { Channel } from '@/domain/types';
 import { loadFunnel } from '@/services/funnel-service';
 import { channelSchema, messageFrom, rangeSchema, scopedId, TRAFFIC_SOURCE } from './shared';
-import type { AgentFinding, AgentTool, Gap, ToolOutcome } from './types';
+import type { AgentFinding, AgentTool, ComparedMetric, Gap, ToolOutcome } from './types';
 
 /**
  * Conversion funnel, site-wide or for one channel.
@@ -23,7 +26,7 @@ import type { AgentFinding, AgentTool, Gap, ToolOutcome } from './types';
  * refused with a pointer to the product conversion figures instead.
  */
 
-export const funnelInput = z.object({
+export const funnelInput = z.strictObject({
   range: rangeSchema,
   channel: channelSchema,
   compare: z.boolean().default(true).describe('Also return the preceding window of the same length.'),
@@ -37,7 +40,7 @@ export type FunnelInput = z.infer<typeof funnelInput>;
 
 export interface StageComparison {
   label: string;
-  conversion: MetricComparison;
+  conversion: ComparedMetric;
 }
 
 export interface FunnelData {
@@ -47,7 +50,7 @@ export interface FunnelData {
   report: FunnelReport;
   previous: FunnelReport | null;
   comparisons: StageComparison[];
-  overallConversion: MetricComparison | null;
+  overallConversion: ComparedMetric | null;
 }
 
 const TOOL = 'funnel';
@@ -156,12 +159,24 @@ export const funnelTool: AgentTool<FunnelInput, FunnelData> = {
       );
     }
 
+    const currentScope: RefScope = { tool: TOOL, window, channel: input.channel, productId: null };
+    const previousScope: RefScope | null =
+      previousReport === null
+        ? null
+        : { tool: TOOL, window: previousReport.window, channel: input.channel, productId: null };
+    const compared = (metric: string, current: number | null, prior: number | null): ComparedMetric => ({
+      ...compareValues(current, prior),
+      currentRefId: refId(currentScope, metric),
+      previousRefId: previousScope === null ? null : refId(previousScope, metric),
+    });
+
     const comparisons: StageComparison[] =
       previousReport === null
         ? []
         : report.transitions.map((transition, index) => ({
             label: transition.label,
-            conversion: compareValues(
+            conversion: compared(
+              `conversion:${transition.from}->${transition.to}`,
               transition.conversion,
               previousReport.transitions[index]?.conversion ?? null,
             ),
@@ -185,30 +200,44 @@ export const funnelTool: AgentTool<FunnelInput, FunnelData> = {
     }
 
     const advice = adviceByStep(current.view.recommendations);
-    const findings: AgentFinding[] = funnelTasks(current.view.recommendations).map((item) => {
+    const candidates: AgentFinding[] = funnelTasks(current.view.recommendations).map((item) => {
       const step = advice.get(item.ruleId);
-      const scope: RefScope = { tool: TOOL, window, channel: input.channel, productId: null };
       return {
         id: scopedId(item.id, { ...window, channel: input.channel }),
         source: item.source,
         ruleId: item.ruleId,
         title: input.channel === null ? item.title : `${input.channel}: ${item.title}`,
         priority: item.priority,
-        // The funnel engine already flags a step whose entering sample is
-        // below its own minimum; that flag is the evidence judgement.
-        strength: step?.confidence === 'low' ? 'limited' : 'sufficient',
+        // The funnel engine flags a step whose entering sample is below that
+        // step's own minimum. Below it the rate is not evidence for a
+        // conclusion, so the step is insufficient, not merely limited.
+        strength: step?.confidence === 'low' ? 'insufficient' : 'sufficient',
         affectedSessions: step?.sampleSessions ?? null,
         observed: item.reason,
         howToVerify: item.suggestedAction,
         ruleVersion: item.ruleVersion,
         refIds: [
-          refId(scope, `conversion:${item.ruleId}`),
-          refId(scope, `drop_off:${item.ruleId}`),
-          refId(scope, `stage:${step?.from ?? ''}`),
+          refId(currentScope, `conversion:${item.ruleId}`),
+          refId(currentScope, `drop_off:${item.ruleId}`),
+          refId(currentScope, `stage:${step?.from ?? ''}`),
         ],
         href,
       };
     });
+
+    // Insufficient steps keep their numbers (as refs) but leave the findings:
+    // they become data gaps, so nothing downstream can rank them.
+    const findings = candidates.filter((finding) => finding.strength !== 'insufficient');
+    for (const finding of candidates) {
+      if (finding.strength !== 'insufficient') continue;
+      const step = advice.get(finding.ruleId);
+      const minimum = DEFAULT_FUNNEL_CONFIG.thresholds[finding.ruleId]?.minimumSessions;
+      gaps.push({
+        code: 'below-minimum-sessions',
+        message: `${step?.transitionLabel ?? finding.ruleId}${input.channel === null ? '' : ` (${input.channel})`}: only ${step?.sampleSessions ?? 0} sessions entered this step, below the ${minimum ?? 'configured'} this project needs before reading its rate. The figures are reported, but no conclusion is drawn from them; a longer window or more traffic would be needed to check it.`,
+        refIds: finding.refIds,
+      });
+    }
 
     const data: FunnelData = {
       range: input.range,
@@ -220,7 +249,7 @@ export const funnelTool: AgentTool<FunnelInput, FunnelData> = {
       overallConversion:
         previousReport === null
           ? null
-          : compareValues(report.overallConversion, previousReport.overallConversion),
+          : compared('overall_conversion', report.overallConversion, previousReport.overallConversion),
     };
     const meta = {
       window,

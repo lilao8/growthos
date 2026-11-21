@@ -263,6 +263,11 @@ export function ProductDetailView({
                 testId="detail-organic-sessions"
               />
               <DetailRow
+                label="Sessions that bought this product"
+                value={formatInteger(metrics.purchaseSessions)}
+                testId="detail-purchase-sessions"
+              />
+              <DetailRow
                 label="Conversion rate"
                 value={
                   metrics.conversionRate === null
@@ -282,8 +287,8 @@ export function ProductDetailView({
               />
             </dl>
             <p className="mt-3 text-xs text-[var(--color-ink-muted)]">
-              Demo data. Conversion rate uses this product&apos;s own viewing
-              sessions as the denominator, so product rates overlap and cannot be
+              Demo data. Conversion rate is sessions that bought this product ÷
+              sessions that viewed it, so product rates overlap and cannot be
               summed.
             </p>
           </CardBody>

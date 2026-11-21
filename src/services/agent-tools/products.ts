@@ -22,7 +22,7 @@ import type { AgentTool, Gap, ProvidedState, ToolOutcome } from './types';
 
 const MAX_PRODUCTS = 20;
 
-export const productPerformanceInput = z.object({
+export const productPerformanceInput = z.strictObject({
   range: rangeSchema,
   channel: channelSchema,
   products: z

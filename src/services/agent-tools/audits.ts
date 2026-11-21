@@ -1,8 +1,7 @@
 import { z } from 'zod';
 import { auditHref } from '@/domain/agent/links';
-import { readAudit } from '@/domain/audit-lookup';
+import { currentAudit } from '@/domain/audit-preview';
 import { DEMO_AS_OF, type DateWindow, type DemoRangeDays } from '@/domain/demo-window';
-import { runGeoAudit } from '@/domain/geo-audit/engine';
 import { computeProductMetrics } from '@/domain/product-metrics';
 import {
   geoRecommendations,
@@ -10,15 +9,10 @@ import {
   type AuditedPage,
 } from '@/domain/recommendations/aggregate';
 import { trafficBands } from '@/domain/recommendations/config';
-import { runSeoAudit } from '@/domain/seo-audit/engine';
 import {
   SEVERITIES,
   type AuditKind,
-  type AuditResult,
-  type PageSnapshot,
-  type Product,
   type Severity,
-  type StoredAuditResult,
 } from '@/domain/types';
 import { DEMO_BRAND } from '@/fixtures/demo-catalogue';
 import { windowForRange } from '@/services/analytics-service';
@@ -48,7 +42,7 @@ import type {
 
 const AUDIT_KINDS = ['seo', 'geo'] as const;
 
-export const auditFindingsInput = z.object({
+export const auditFindingsInput = z.strictObject({
   kind: z.enum(['seo', 'geo', 'both']).default('both'),
   range: rangeSchema.describe('Window used to weight findings by page traffic. Default 30.'),
   products: z
@@ -77,39 +71,14 @@ export interface PageAuditSummary {
 
 export interface AuditFindingsData {
   range: DemoRangeDays;
+  /**
+   * Whether a rule fires depends only on the page; how urgent the fix is also
+   * weighs page traffic, measured over this window. The Recommendations page
+   * uses 90 days, so its ordering can differ — this says which one applied.
+   */
+  priorityWindow: DateWindow;
   pages: PageAuditSummary[];
   notFound: string[];
-}
-
-interface ResolvedAudit {
-  audit: AuditResult;
-  origin: AuditOrigin;
-  computedBecause: PageAuditSummary['computedBecause'];
-}
-
-function resolveAudit(
-  kind: AuditKind,
-  snapshot: PageSnapshot,
-  product: Product | null,
-  storedResults: readonly StoredAuditResult[],
-  now: string,
-): ResolvedAudit {
-  const keyword = kind === 'seo' ? (product?.primaryKeyword ?? '') : '';
-  const existing = readAudit(storedResults, snapshot, keyword, kind);
-  if (existing !== null && !existing.stale) {
-    return { audit: existing, origin: 'stored', computedBecause: null };
-  }
-  const fresh =
-    kind === 'seo'
-      ? runSeoAudit({ snapshot, primaryKeyword: keyword, now })
-      : runGeoAudit({ snapshot, brand: DEMO_BRAND, now });
-  const audit = readAudit([fresh], snapshot, keyword, kind);
-  if (audit === null) throw new Error('An audit that was just run could not be read back.');
-  return {
-    audit,
-    origin: 'computed-on-request',
-    computedBecause: existing === null ? 'not-audited' : 'stale',
-  };
 }
 
 function severityRank(severity: Severity): number {
@@ -176,7 +145,14 @@ export const auditFindingsTool: AgentTool<AuditFindingsInput, AuditFindingsData>
       if (wanted !== null && (product === null || !wanted.has(product.id))) continue;
 
       for (const kind of kinds) {
-        const resolved = resolveAudit(kind, snapshot, product, state.auditResults, now);
+        const resolved = currentAudit({
+          kind,
+          snapshot,
+          primaryKeyword: product?.primaryKeyword ?? '',
+          brand: DEMO_BRAND,
+          stored: state.auditResults,
+          now,
+        });
         const { audit } = resolved;
         const href = auditHref(kind, snapshot.id);
         const title = product?.title ?? snapshot.url;
@@ -257,7 +233,7 @@ export const auditFindingsTool: AgentTool<AuditFindingsInput, AuditFindingsData>
       });
     }
 
-    const data: AuditFindingsData = { range: input.range, pages, notFound };
+    const data: AuditFindingsData = { range: input.range, priorityWindow: window, pages, notFound };
     const meta = {
       window,
       previousWindow: null,

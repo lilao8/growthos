@@ -19,6 +19,7 @@ export const METRIC_DEFINITIONS = {
   conversion_rate: 'Purchasing sessions ÷ sessions (at most one order per session).',
   average_order_value: 'Revenue ÷ orders.',
   cac: 'Acquisition spend ÷ new customers; independent of order count.',
+  ad_spend: 'Media spend attributed to the channel in the window.',
   roas: 'Paid-attributed revenue ÷ ad spend; N/A for channels without ad spend.',
   stage_sessions: 'Distinct sessions that reached this funnel stage, in order.',
   stage_conversion: 'Sessions at the next stage ÷ sessions at this stage.',

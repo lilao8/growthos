@@ -9,6 +9,8 @@ import {
 import { runGeoAudit } from '@/domain/geo-audit/engine';
 import { GEO_RULE_VERSION, readinessBand } from '@/domain/geo-audit/config';
 import { DEMO_BRAND } from '@/fixtures/demo-catalogue';
+import { currentAudit } from '@/domain/audit-preview';
+import type { AuditPreview, PageLoadOptions } from './seo-audit-service';
 import type { AuditCheck, AuditResult, PageSnapshot, Product } from '@/domain/types';
 import type { DemoState, DemoStateRepository } from '@/repositories/types';
 
@@ -66,7 +68,7 @@ export type GeoOverviewState =
   | { status: 'error'; message: string };
 
 export type GeoPageState =
-  | { status: 'ready'; row: GeoPageRow }
+  | { status: 'ready'; row: GeoPageRow; preview: AuditPreview | null }
   | { status: 'not-found' }
   | { status: 'error'; message: string };
 
@@ -178,6 +180,7 @@ export async function loadGeoOverview(
 export async function loadGeoPage(
   deps: GeoAuditDeps,
   pageId: string,
+  options: PageLoadOptions = {},
 ): Promise<GeoPageState> {
   let state: DemoState;
   try {
@@ -194,7 +197,31 @@ export async function loadGeoPage(
   );
   if (snapshot === undefined) return { status: 'not-found' };
 
-  return { status: 'ready', row: buildRow(state, snapshot) };
+  const row = buildRow(state, snapshot);
+  if (options.preview !== true) return { status: 'ready', row, preview: null };
+
+  const now = deps.now ?? (() => new Date().toISOString());
+  const current = currentAudit({
+    kind: 'geo',
+    snapshot,
+    primaryKeyword: '',
+    brand: deps.brand ?? DEMO_BRAND,
+    stored: state.auditResults,
+    now: now(),
+  });
+  if (current.computedBecause === null) {
+    return { status: 'ready', row, preview: null };
+  }
+  return {
+    status: 'ready',
+    row: {
+      ...row,
+      audit: current.audit,
+      tally: tallyChecks(current.audit.checks),
+      readiness: readinessBand(current.audit.score),
+    },
+    preview: { computedBecause: current.computedBecause },
+  };
 }
 
 async function persistAudits(

@@ -1,5 +1,6 @@
 import { SeoPageView } from '@/components/seo/seo-page-view';
 import { parseDemoDataMode } from '@/services/demo-data-source';
+import { firstParam, parsePreviewParam, PREVIEW_PARAM } from '@/domain/url-params';
 
 interface SeoDetailPageProps {
   params: Promise<{ pageId: string }>;
@@ -14,5 +15,7 @@ export default async function SeoDetailPage({
   const raw = query['demo'];
   const mode = parseDemoDataMode(typeof raw === 'string' ? raw : null);
 
-  return <SeoPageView pageId={pageId} mode={mode} />;
+  const preview = parsePreviewParam(firstParam(query[PREVIEW_PARAM]));
+
+  return <SeoPageView pageId={pageId} mode={mode} preview={preview} />;
 }

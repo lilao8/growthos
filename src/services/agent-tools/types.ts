@@ -1,6 +1,8 @@
 import type { z } from 'zod';
+import type { AuditOrigin } from '@/domain/audit-preview';
 import type { DateWindow } from '@/domain/demo-window';
 import type { EvidenceStrength } from '@/domain/agent/priority';
+import type { MetricComparison } from '@/domain/agent/comparison';
 import type { MetricRef } from '@/domain/agent/refs';
 import type {
   AuditKind,
@@ -50,6 +52,8 @@ export interface Gap {
     | 'no-state'
     | 'not-audited';
   message: string;
+  /** Raw figures behind the gap, still citable even though nothing is concluded. */
+  refIds?: string[];
 }
 
 export interface AuditRef {
@@ -69,7 +73,7 @@ export interface AuditRef {
   href: string;
 }
 
-export type AuditOrigin = 'stored' | 'computed-on-request';
+export type { AuditOrigin };
 
 export interface AgentFinding {
   /** Scoped so the same rule on two scopes is two findings. */
@@ -89,6 +93,16 @@ export interface AgentFinding {
   /** Refs (metric or audit) this finding rests on. */
   refIds: string[];
   href: string;
+}
+
+/**
+ * A two-period comparison that cites both of its sides, so a claim like
+ * "fell from X to Y" can be checked against two refs, each with its own link.
+ */
+export interface ComparedMetric extends MetricComparison {
+  currentRefId: string;
+  /** null when there is no previous figure to cite. */
+  previousRefId: string | null;
 }
 
 export interface ToolMeta {

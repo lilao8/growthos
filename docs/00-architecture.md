@@ -369,3 +369,4 @@ npm run build
 - **审计数据来源（D2）。** 工具读调用方提供的浏览器本地状态：已存且未 stale 的审计原样使用（`origin: 'stored'`）；没审计过或已 stale 的页面，用该浏览器的快照现场跑同一版本的引擎（`computed-on-request`），不写回。`parseLocalState` 用 `demoStateSchema` 校验、限制 256 KB，不匹配就报错，不静默回退到种子。
 - **证据链接（D3）。** Analytics 读 `?range=&end=`，Funnel 读 `?range=&channel=&end=` 并新增渠道筛选，商品详情读 `?range=&channel=`。页面与链接构造共用 `url-params.ts` 的参数名和解析器；`end` 只在整个窗口落在数据内时才接受，并在页面上标注为对比窗口。切换范围或渠道时用 `history.replaceState` 同步 URL，保留 `demo` 等其他参数。不带参数时三页的默认行为与之前完全相同。
 - **指标引用。** 工具返回的关键数字带确定性的 `refId`（`工具:起..止:渠道:商品:指标`）和指标口径键；审计发现带 `AuditRef`（规则、状态、严重度、evidence、规则版本、指纹、来源）。Dispatch 19 的回答校验只认这些 ref。
+- **复核修正。** 审计证据统一走 `src/domain/audit-preview.ts` 的 `currentAudit()`：Agent 工具与 SEO/GEO 审计页的 `?preview=1` 只读预览共用它，引用和链接页面是同一个函数在同一个快照上算出来的，预览不写存储。低于漏斗步骤自身样本下限的发现改为缺口（附原始数字的 refIds），不进入排序。比较结果带双方 refId。工具入参用 `z.strictObject`。Funnel/Analytics 视图的结果按筛选条件打标签，避免新标签配旧数字。

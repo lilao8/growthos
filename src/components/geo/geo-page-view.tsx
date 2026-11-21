@@ -36,9 +36,12 @@ function ruleMeta(ruleId: string): { title: string; signal: string } {
 export function GeoPageView({
   pageId,
   mode,
+  preview = false,
 }: {
   pageId: string;
   mode: DemoDataMode | null;
+  /** Read-only preview of the page as it is now; nothing is saved. */
+  preview?: boolean;
 }) {
   const deps = useMemo<GeoAuditDeps>(
     () => ({ state: resolveStateRepository(mode) }),
@@ -52,13 +55,13 @@ export function GeoPageView({
 
   useEffect(() => {
     let cancelled = false;
-    void loadGeoPage(deps, pageId).then((next) => {
+    void loadGeoPage(deps, pageId, { preview }).then((next) => {
       if (!cancelled) setState(next);
     });
     return () => {
       cancelled = true;
     };
-  }, [deps, pageId, attempt]);
+  }, [deps, pageId, preview, attempt]);
 
   const runAudit = useCallback(async () => {
     setRunning(true);
@@ -110,6 +113,7 @@ export function GeoPageView({
   }
 
   const { snapshot, product, audit, tally, readiness } = state.row;
+  const previewInfo = state.preview;
   const title = product?.title ?? snapshot.url;
 
   return (
@@ -129,7 +133,7 @@ export function GeoPageView({
           >
             {running
               ? 'Running…'
-              : audit === null
+              : audit === null || previewInfo?.computedBecause === 'not-audited'
                 ? 'Run GEO audit'
                 : 'Re-run GEO audit'}
           </button>
@@ -181,6 +185,21 @@ export function GeoPageView({
         </>
       ) : (
         <>
+          {previewInfo !== null && (
+            <p
+              role="status"
+              data-testid="geo-audit-preview-notice"
+              className="rounded-md border border-[var(--color-accent)] bg-[var(--color-surface-muted)] px-4 py-3 text-sm"
+            >
+              Preview, not saved.{' '}
+              {previewInfo.computedBecause === 'stale'
+                ? 'The saved audit describes older content, so this result was computed from the page as it is now.'
+                : 'This page has no saved audit, so this result was computed from the page as it is now.'}{' '}
+              It uses the same rules ({audit.ruleVersion}) a saved audit would.
+              Nothing in your browser storage has changed; run the audit to save it.
+            </p>
+          )}
+
           {audit.stale && (
             <p
               role="status"
@@ -195,10 +214,14 @@ export function GeoPageView({
           <Card>
             <CardHeader
               title="Result"
-              description={`Rule set ${audit.ruleVersion} · audited ${audit.auditedAt}`}
+              description={
+                previewInfo !== null
+                  ? `Rule set ${audit.ruleVersion} · preview computed just now, not saved`
+                  : `Rule set ${audit.ruleVersion} · audited ${audit.auditedAt}`
+              }
             >
-              <Badge tone={audit.stale ? 'muted' : 'neutral'}>
-                {audit.stale ? 'Stale' : 'Current'}
+              <Badge tone={audit.stale || previewInfo !== null ? 'muted' : 'neutral'}>
+                {previewInfo !== null ? 'Preview' : audit.stale ? 'Stale' : 'Current'}
               </Badge>
             </CardHeader>
             <CardBody className="flex flex-col gap-4">

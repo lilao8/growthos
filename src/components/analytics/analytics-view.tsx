@@ -79,12 +79,17 @@ export function AnalyticsView({
   const [range, setRange] = useState<AnalyticsRange>(initialRange);
   const [end, setEnd] = useState<IsoDate>(initialEnd);
   const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<AnalyticsState | null>(null);
+  // Tagged with the window it was computed for, so a range switch shows
+  // loading rather than the previous window's numbers under the new label.
+  const [loaded, setLoaded] = useState<{ key: string; state: AnalyticsState } | null>(null);
+  const requestKey = `${range}|${end}`;
+  const state = loaded !== null && loaded.key === requestKey ? loaded.state : null;
 
   useEffect(() => {
     let cancelled = false;
+    const key = `${range}|${end}`;
     void loadAnalytics(deps, range, end).then((next) => {
-      if (!cancelled) setState(next);
+      if (!cancelled) setLoaded({ key, state: next });
     });
     return () => {
       cancelled = true;
@@ -367,11 +372,19 @@ export function AnalyticsView({
                         {formatCents(row.revenueCents)}
                       </span>
                     </TD>
-                    <TD numeric>{formatPercent(row.conversionRate)}</TD>
+                    <TD numeric>
+                      <span data-testid={`cvr-${row.channel}`}>
+                        {formatPercent(row.conversionRate)}
+                      </span>
+                    </TD>
                     <TD numeric>
                       {formatMoneyMetric(row.averageOrderValueCents)}
                     </TD>
-                    <TD numeric>{formatCents(row.adSpendCents)}</TD>
+                    <TD numeric>
+                      <span data-testid={`ad-spend-${row.channel}`}>
+                        {formatCents(row.adSpendCents)}
+                      </span>
+                    </TD>
                     <TD numeric>
                       <span data-testid={`cac-${row.channel}`}>
                         {formatMoneyMetric(row.cacCents)}

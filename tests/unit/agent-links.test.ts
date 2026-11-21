@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { analyticsHref, auditHref, funnelHref, productHref } from '@/domain/agent/links';
 import { makeRef, refId } from '@/domain/agent/refs';
-import { parseChannelParam, parseEndParam, parseRangeParam, firstParam } from '@/domain/url-params';
+import {
+  firstParam,
+  parseChannelParam,
+  parseEndParam,
+  parsePreviewParam,
+  parseRangeParam,
+} from '@/domain/url-params';
 import { buildWindow } from '@/domain/demo-window';
 
 describe('evidence links', () => {
@@ -10,8 +16,8 @@ describe('evidence links', () => {
     expect(funnelHref(30, null)).toBe('/funnel?range=30');
     expect(funnelHref(7, 'Organic Search')).toBe('/funnel?range=7&channel=Organic+Search');
     expect(productHref('prd_tent', 90)).toBe('/products/prd_tent?range=90');
-    expect(auditHref('seo', 'snap_1')).toBe('/seo/snap_1');
-    expect(auditHref('geo', 'snap 1')).toBe('/geo/snap%201');
+    expect(auditHref('seo', 'snap_1')).toBe('/seo/snap_1?preview=1');
+    expect(auditHref('geo', 'snap 1')).toBe('/geo/snap%201?preview=1');
   });
 
   it('adds an end date only when it differs from the demo end', () => {
@@ -42,6 +48,14 @@ describe('url params', () => {
     expect(parseChannelParam(undefined)).toBeNull();
     expect(parseChannelParam('Organic search')).toBeNull();
     expect(parseChannelParam('Email')).toBe('Email');
+  });
+
+  it('turns the audit preview on only for exactly 1', () => {
+    expect(parsePreviewParam('1')).toBe(true);
+    expect(parsePreviewParam('true')).toBe(false);
+    expect(parsePreviewParam('')).toBe(false);
+    expect(parsePreviewParam(null)).toBe(false);
+    expect(parsePreviewParam(undefined)).toBe(false);
   });
 
   it('takes only a single string value', () => {

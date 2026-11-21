@@ -70,12 +70,18 @@ export function FunnelView({
   const [channel, setChannel] = useState<Channel | null>(initialChannel);
   const [end, setEnd] = useState<IsoDate>(initialEnd);
   const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<FunnelState | null>(null);
+  // Results are tagged with the filters they were computed for. Until the
+  // result for the current filters arrives the page shows loading, so a new
+  // channel label is never shown above the previous channel's numbers.
+  const [loaded, setLoaded] = useState<{ key: string; state: FunnelState } | null>(null);
+  const requestKey = `${range}|${channel ?? ''}|${end}`;
+  const state = loaded !== null && loaded.key === requestKey ? loaded.state : null;
 
   useEffect(() => {
     let cancelled = false;
+    const key = `${range}|${channel ?? ''}|${end}`;
     void loadFunnel(deps, range, { channel, end }).then((next) => {
-      if (!cancelled) setState(next);
+      if (!cancelled) setLoaded({ key, state: next });
     });
     return () => {
       cancelled = true;

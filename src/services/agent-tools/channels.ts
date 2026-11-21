@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { comparableWindows } from '@/domain/agent/windows';
-import { compareValues, type MetricComparison } from '@/domain/agent/comparison';
+import { compareValues } from '@/domain/agent/comparison';
 import { evidenceStrength } from '@/domain/agent/priority';
 import { analyticsHref } from '@/domain/agent/links';
 import { makeRef, refId, type MetricRef, type RefScope } from '@/domain/agent/refs';
@@ -11,7 +11,7 @@ import type { AnalyticsTotals, ChannelRow } from '@/domain/analytics/channel-met
 import type { Channel } from '@/domain/types';
 import { loadAnalytics } from '@/services/analytics-service';
 import { channelSchema, messageFrom, rangeSchema, scopedId, TRAFFIC_SOURCE } from './shared';
-import type { AgentFinding, AgentTool, Gap, ToolOutcome } from './types';
+import type { AgentFinding, AgentTool, ComparedMetric, Gap, ToolOutcome } from './types';
 
 /**
  * Channel performance: the Analytics page's channel table for one window, the
@@ -20,7 +20,7 @@ import type { AgentFinding, AgentTool, Gap, ToolOutcome } from './types';
  * function the page calls, so the link and the tool cannot disagree.
  */
 
-export const channelPerformanceInput = z.object({
+export const channelPerformanceInput = z.strictObject({
   range: rangeSchema,
   channel: channelSchema,
   compare: z
@@ -33,10 +33,10 @@ export type ChannelPerformanceInput = z.infer<typeof channelPerformanceInput>;
 
 export interface ChannelComparison {
   channel: Channel;
-  sessions: MetricComparison;
-  orders: MetricComparison;
-  revenueCents: MetricComparison;
-  conversionRate: MetricComparison;
+  sessions: ComparedMetric;
+  orders: ComparedMetric;
+  revenueCents: ComparedMetric;
+  conversionRate: ComparedMetric;
 }
 
 export interface ChannelPerformanceData {
@@ -63,6 +63,7 @@ function rowRefs(
     makeRef(scope, 'conversion_rate', { label: `${row.channel} conversion rate`, value: row.conversionRate, unit: 'ratio', definition: 'conversion_rate', href }),
     makeRef(scope, 'roas', { label: `${row.channel} ROAS`, value: row.roas, unit: 'multiple', definition: 'roas', href }),
     makeRef(scope, 'cac', { label: `${row.channel} CAC`, value: row.cacCents, unit: 'cents', definition: 'cac', href }),
+    makeRef(scope, 'ad_spend', { label: `${row.channel} ad spend`, value: row.adSpendCents, unit: 'cents', definition: 'ad_spend', href }),
   ];
 }
 
@@ -73,6 +74,7 @@ function totalRefs(totals: AnalyticsTotals, href: string): MetricRef[] {
     makeRef(scope, 'orders', { label: 'Site orders', value: totals.orders, unit: 'count', definition: 'orders', href }),
     makeRef(scope, 'revenue', { label: 'Site revenue', value: totals.revenueCents, unit: 'cents', definition: 'revenue', href }),
     makeRef(scope, 'conversion_rate', { label: 'Site conversion rate', value: totals.conversionRate, unit: 'ratio', definition: 'conversion_rate', href }),
+    makeRef(scope, 'average_order_value', { label: 'Site average order value', value: totals.averageOrderValueCents, unit: 'cents', definition: 'average_order_value', href }),
   ];
 }
 
@@ -80,10 +82,16 @@ function refFor(window: DateWindow, channel: Channel, metric: string): string {
   return refId({ tool: TOOL, window, channel, productId: null }, metric);
 }
 
+/** Channel figures each rule reads. */
 const RULE_METRICS: Record<string, string[]> = {
   'high-traffic-low-conversion': ['sessions', 'orders', 'conversion_rate'],
-  'roas-below-target': ['revenue', 'roas'],
+  'roas-below-target': ['ad_spend', 'revenue', 'roas'],
   'cac-above-aov-share': ['cac', 'orders'],
+};
+
+/** Site figures a rule compares the channel against. */
+const RULE_SITE_METRICS: Record<string, string[]> = {
+  'cac-above-aov-share': ['average_order_value'],
 };
 
 export const channelPerformanceTool: AgentTool<ChannelPerformanceInput, ChannelPerformanceData> = {
@@ -135,12 +143,24 @@ export const channelPerformanceTool: AgentTool<ChannelPerformanceInput, ChannelP
         ? []
         : channels.map((row) => {
             const before = previousChannels.find((candidate) => candidate.channel === row.channel);
+            const compared = (
+              metric: string,
+              current: number | null,
+              prior: number | null,
+            ): ComparedMetric => ({
+              ...compareValues(current, prior),
+              currentRefId: refFor(window, row.channel, metric),
+              previousRefId:
+                previousView === null || before === undefined
+                  ? null
+                  : refFor(previousView.window, row.channel, metric),
+            });
             return {
               channel: row.channel,
-              sessions: compareValues(row.sessions, before?.sessions ?? null),
-              orders: compareValues(row.orders, before?.orders ?? null),
-              revenueCents: compareValues(row.revenueCents, before?.revenueCents ?? null),
-              conversionRate: compareValues(row.conversionRate, before?.conversionRate ?? null),
+              sessions: compared('sessions', row.sessions, before?.sessions ?? null),
+              orders: compared('orders', row.orders, before?.orders ?? null),
+              revenueCents: compared('revenue', row.revenueCents, before?.revenueCents ?? null),
+              conversionRate: compared('conversion_rate', row.conversionRate, before?.conversionRate ?? null),
             };
           });
 
@@ -186,7 +206,12 @@ export const channelPerformanceTool: AgentTool<ChannelPerformanceInput, ChannelP
         observed: item.reason,
         howToVerify: item.suggestedAction,
         ruleVersion: item.ruleVersion,
-        refIds: (RULE_METRICS[item.ruleId] ?? []).map((metric) => refFor(window, channel, metric)),
+        refIds: [
+          ...(RULE_METRICS[item.ruleId] ?? []).map((metric) => refFor(window, channel, metric)),
+          ...(RULE_SITE_METRICS[item.ruleId] ?? []).map((metric) =>
+            refId({ tool: TOOL, window, channel: null, productId: null }, metric),
+          ),
+        ],
         href,
       };
     });

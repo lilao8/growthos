@@ -1,6 +1,6 @@
 import { DEMO_AS_OF, type DemoRangeDays } from '../demo-window';
 import type { Channel, IsoDate } from '../types';
-import { CHANNEL_PARAM, END_PARAM, RANGE_PARAM } from '../url-params';
+import { CHANNEL_PARAM, END_PARAM, PREVIEW_PARAM, RANGE_PARAM } from '../url-params';
 
 /**
  * Evidence links.
@@ -58,6 +58,13 @@ export function productHref(
   });
 }
 
+/**
+ * Opens the audit page in read-only preview: a current saved audit is shown as
+ * is, otherwise the page shows the same engine's result for the page as it is
+ * now, without saving — so a cited check is readable in one click.
+ */
 export function auditHref(kind: 'seo' | 'geo', pageId: string): string {
-  return `/${kind}/${encodeURIComponent(pageId)}`;
+  return withQuery(`/${kind}/${encodeURIComponent(pageId)}`, {
+    [PREVIEW_PARAM]: '1',
+  });
 }

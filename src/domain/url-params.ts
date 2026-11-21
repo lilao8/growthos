@@ -70,3 +70,10 @@ export function parseEndParam(
   const window = buildWindow(range, text);
   return window.start >= coverage.start ? text : coverage.end;
 }
+
+export const PREVIEW_PARAM = 'preview';
+
+/** Only the exact value `1` turns the read-only audit preview on. */
+export function parsePreviewParam(value: string | null | undefined): boolean {
+  return value === '1';
+}

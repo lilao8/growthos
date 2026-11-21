@@ -18,6 +18,8 @@ import {
 import { createMemoryStateRepository } from '@/repositories/memory-state-repository';
 import { buildDemoSeedState } from '@/fixtures/demo-seed';
 import { CHANNELS } from '@/domain/types';
+import { DEFAULT_FUNNEL_CONFIG } from '@/domain/funnel/recommendations';
+import { rankFindings } from '@/domain/agent/priority';
 import type { DemoState } from '@/repositories/types';
 
 /**
@@ -78,6 +80,12 @@ describe('registry', () => {
       status: 'unknown-tool',
       name: 'mark_recommendation_done',
     });
+  });
+
+  it.each(AGENT_TOOL_NAMES)('%s rejects an unknown field instead of silently dropping it', async (name) => {
+    const outcome = await runTool(name, { sku: 'NT-TENT-RDG2' }, context());
+    expect(outcome.status).toBe('invalid-input');
+    if (outcome.status === 'invalid-input') expect(outcome.issues.join(' ')).toContain('sku');
   });
 
   it('rejects input outside the schema instead of guessing', async () => {
@@ -159,6 +167,32 @@ describe('get_channel_performance', () => {
     expectRefsResolve(outcome);
   });
 
+  it('cites the site AOV that the CAC rule compares against', async () => {
+    const outcome = ok<ChannelPerformanceData>(await runTool('get_channel_performance', {}, context()));
+    const cac = outcome.findings.filter((finding) => finding.ruleId === 'cac-above-aov-share');
+    expect(cac.length).toBeGreaterThan(0);
+    const aov = outcome.meta.refs.find((ref) => ref.refId === 'channels:2026-08-02..2026-08-31:all:all:average_order_value');
+    expect(aov?.value).toBe(outcome.data.totals.averageOrderValueCents);
+    for (const finding of cac) expect(finding.refIds).toContain(aov?.refId);
+    const roas = outcome.findings.filter((finding) => finding.ruleId === 'roas-below-target');
+    for (const finding of roas) expect(finding.refIds.some((id) => id.endsWith(':ad_spend'))).toBe(true);
+  });
+
+  it('cites both sides of every comparison, each resolving to a returned ref', async () => {
+    const outcome = ok<ChannelPerformanceData>(await runTool('get_channel_performance', {}, context()));
+    const byId = new Map(outcome.meta.refs.map((ref) => [ref.refId, ref]));
+    expect(outcome.data.comparisons.length).toBeGreaterThan(0);
+    for (const row of outcome.data.comparisons) {
+      for (const metric of [row.sessions, row.orders, row.revenueCents, row.conversionRate]) {
+        expect(byId.get(metric.currentRefId)?.value).toBe(metric.current);
+        expect(metric.previousRefId).not.toBeNull();
+        const previous = byId.get(metric.previousRefId ?? '');
+        expect(previous?.value).toBe(metric.previous);
+        expect(previous?.window.end).toBe('2026-08-01');
+      }
+    }
+  });
+
   it('reports an empty data set as empty, with N/A rates and no NaN or Infinity', async () => {
     const outcome = await runTool('get_channel_performance', {}, context({ traffic: createEmptyTrafficRepository() }));
     expect(outcome.status).toBe('empty');
@@ -213,6 +247,50 @@ describe('get_funnel', () => {
     for (const finding of organic.findings) expect(siteIds.has(finding.id)).toBe(false);
     expectRefsResolve(site);
     expectRefsResolve(organic);
+  });
+
+  it('cites both sides of each stage comparison', async () => {
+    const outcome = ok<FunnelData>(await runTool('get_funnel', {}, context()));
+    const byId = new Map(outcome.meta.refs.map((ref) => [ref.refId, ref]));
+    for (const row of outcome.data.comparisons) {
+      expect(byId.get(row.conversion.currentRefId)?.value).toBe(row.conversion.current);
+      expect(byId.get(row.conversion.previousRefId ?? '')?.value).toBe(row.conversion.previous);
+    }
+    const overall = outcome.data.overallConversion;
+    expect(byId.get(overall?.currentRefId ?? '')?.value).toBe(overall?.current);
+    expect(byId.get(overall?.previousRefId ?? '')?.value).toBe(overall?.previous);
+  });
+
+  it('turns steps below their sample minimum into gaps, never findings', async () => {
+    const outcome = await runTool('get_funnel', { channel: 'AI Referral' }, context());
+    if (outcome.status !== 'ok' && outcome.status !== 'empty') throw new Error(outcome.status);
+    const data = outcome.data as FunnelData;
+    const thin = data.report.transitions.filter((transition) => {
+      const minimum = DEFAULT_FUNNEL_CONFIG.thresholds[`${transition.from}->${transition.to}`]?.minimumSessions ?? 0;
+      return transition.fromSessions < minimum;
+    });
+    expect(thin.length).toBeGreaterThan(0);
+    const checkout = thin.find((transition) => transition.from === 'checkout');
+    expect(checkout).toBeDefined();
+
+    for (const transition of thin) {
+      const key = `${transition.from}->${transition.to}`;
+      expect(outcome.findings.some((finding) => finding.ruleId === key)).toBe(false);
+    }
+    expect(outcome.findings.every((finding) => finding.strength === 'sufficient')).toBe(true);
+    expect(rankFindings(outcome.findings).ranked.some((r) => r.finding.ruleId === 'checkout->purchase')).toBe(false);
+
+    const known = new Set(outcome.meta.refs.map((ref) => ref.refId));
+    const stepGaps = outcome.meta.gaps.filter((gap) => gap.code === 'below-minimum-sessions' && gap.refIds !== undefined);
+    expect(stepGaps.length).toBeGreaterThan(0);
+    const checkoutGap = stepGaps.find((gap) => gap.message.startsWith('Checkout → Purchase'));
+    expect(checkoutGap?.message).toContain(`only ${checkout?.fromSessions} sessions`);
+    for (const gap of stepGaps) for (const id of gap.refIds ?? []) expect(known).toContain(id);
+  });
+
+  it('keeps a step above its minimum as a finding on the site funnel', async () => {
+    const outcome = ok<FunnelData>(await runTool('get_funnel', {}, context()));
+    expect(outcome.findings.some((finding) => finding.ruleId === 'checkout->purchase')).toBe(true);
   });
 
   it('marks a small channel funnel as indicative', async () => {
@@ -290,6 +368,8 @@ describe('get_audit_findings', () => {
     const outcome = ok<AuditFindingsData>(await runTool('get_audit_findings', {}, context()));
     expect(outcome.data.pages).toHaveLength(34);
     expect(outcome.data.pages.every((page) => page.origin === 'computed-on-request' && page.computedBecause === 'not-audited')).toBe(true);
+    expect(outcome.data.pages.every((page) => page.href.endsWith('?preview=1'))).toBe(true);
+    expect(outcome.data.priorityWindow).toEqual(outcome.meta.window);
     expect(outcome.meta.gaps.map((gap) => gap.code)).toContain('not-audited');
     expect(outcome.meta.dataSources).toContain('seed:page-snapshots');
   });

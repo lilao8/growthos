@@ -41,6 +41,13 @@
 - 页面：`/analytics?range=&end=`、`/funnel?range=&channel=&end=`（新增渠道筛选）、`/products/[id]?range=&channel=`；切换时用 `history.replaceState` 同步 URL，保留其他参数（含 `demo`）。`end` 用于打开前一期的数字，只在整个窗口落在数据内时接受；商品页的 `channel` 用于打开按渠道过滤的商品数字。这两个参数是实现时为「链接能复现每个数字」补上的，原计划只写了 `range` 和 Funnel 的 `channel`。
 - 测试：unit（新 domain）、integration（工具 + fixture + 校验 + 只读）、e2e（证据链接复现数字）。
 
+## 复核后补充
+
+- SEO/GEO 审计页支持 `?preview=1` 只读预览，审计证据链接带这个参数，点开即可核对引用的检查，不写存储。
+- 低于漏斗步骤自身 `minimumSessions` 的发现只作为数据缺口返回（附原始数字引用），不进入排序。
+- 比较结果带比较双方的 refId；CAC 发现引用全站 AOV，ROAS 发现引用广告花费；商品页显示购买会话数。
+- 工具入参拒绝未知字段。
+
 ## 明确不做
 
 - 不接模型，不新增 `/agent` 页面或 API 路由。
