@@ -309,9 +309,12 @@ function TurnView({ turn, index }: { turn: Turn; index: number }) {
               {result.message} GrowthOS ranked the tool findings below directly.
             </p>
           )}
-          {result.refusedActions.length > 0 && (
+          {result.noActionTaken && (
             <p role="status" className="rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface-muted)] px-4 py-3 text-sm font-medium" data-testid="agent-refused">
-              No action was taken. {result.refusedActions.join(', ')} is not available: this agent can only read and analyse.
+              No action was taken.{' '}
+              {result.refusedActions.length > 0
+                ? `${result.refusedActions.join(', ')} is not available: this agent can only read and analyse.`
+                : 'This agent has no tool that changes anything, so nothing was changed.'}
             </p>
           )}
           {result.failedChecks.length > 0 && (

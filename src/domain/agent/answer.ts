@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { EvidenceStrength } from './priority';
+import { rankFindings, type EvidenceStrength } from './priority';
 import type { MetricUnit } from './refs';
 import type { Priority } from '../types';
 
@@ -85,6 +85,8 @@ export interface CitableAudit {
   status: string;
   evidence: string | null;
   productId: string | null;
+  /** Which page the verdict is about: the product's name, or the page URL. */
+  pageLabel: string;
   href: string;
 }
 
@@ -109,11 +111,6 @@ export interface AnswerContext {
   findings: ReadonlyMap<string, KnownFinding>;
   /** Product id → display name, for `{{product:<id>}}`. */
   products: ReadonlyMap<string, string>;
-  /**
-   * True when the model tried an action that does not exist this turn. Prose
-   * that claims an action was carried out is then refused.
-   */
-  actionRefused: boolean;
   /**
    * Figures from tool calls that raised no finding, in call order — what a
    * fallback answer shows when the question was a lookup, not a review.
@@ -142,7 +139,9 @@ export type AnswerIssueCode =
   | 'placeholder-in-prose'
   | 'unknown-product'
   | 'change-in-prose'
-  | 'action-claim';
+  | 'action-claim'
+  | 'findings-omitted'
+  | 'top-finding-omitted';
 
 export interface AnswerIssue {
   /** null = the summary or the gaps. */
@@ -169,13 +168,35 @@ const DIGIT = /\d+(?:[.,]\d+)*/g;
 
 /**
  * Figures written in words. Not exhaustive — the facts carry the figures —
- * but it closes the obvious routes: "百分之三", "三十次", "percent".
+ * but it closes the routes a business figure takes: a numeral next to a
+ * metric unit ("三笔订单", "three orders"), percentages ("百分之三",
+ * "percent"), and longer numerals ("三十次"). A lone numeral in ordinary
+ * speech ("再检查一次") is left alone.
  */
-const NUMBER_WORDS = /百分之|[零〇一二两三四五六七八九十百千万]{2,}(?:次|单|笔|倍|元|个会话|天|周)|\b(per ?cent|percent)\b/i;
+const CN_NUMERAL = '[零〇一二两三四五六七八九十百千万亿几]';
+const CN_METRIC_UNIT = '(?:笔|单|个?订单|个?会话|次会话|次购买|次访问|位(?:用户|顾客|客户|访客)?|件|美元|元|倍|个百分点)';
+const EN_NUMBER_WORD =
+  '(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|dozen|a few hundred|several hundred)';
+const EN_METRIC_UNIT = '(?:orders?|sessions?|purchases?|customers?|users?|visits?|visitors?|units?|dollars?|percent|clicks?|conversions?)';
+const NUMBER_WORDS = new RegExp(
+  [
+    '百分之',
+    `${CN_NUMERAL}+${CN_METRIC_UNIT}`,
+    `${CN_NUMERAL}{2,}(?:次|天|周|个月)`,
+    `\\b${EN_NUMBER_WORD}[- ]${EN_METRIC_UNIT}\\b`,
+    '\\bper ?cent\\b',
+  ].join('|'),
+  'i',
+);
 
-/** Claims that an action was carried out, refused when the turn refused one. */
+/**
+ * Claims that an action was carried out. There is no tool that changes
+ * anything, so any such claim is false, whether or not a tool was tried.
+ * Narrow on purpose: "sessions that completed checkout" or "已完成结账的会话"
+ * describe the data, not an action.
+ */
 const ACTION_CLAIMS =
-  /已(经)?[^。！？.!?]{0,20}?(标记|标为|改为|设为|完成|修改|删除|暂停|发送|关闭|更新|设置|处理)|\b(marked|completed|deleted|paused|sent|updated|applied|closed)\b|\bhas been (done|changed)\b/i;
+  /已(经)?(帮你|为你|替你)?(把|将)[^。！？.!?]{0,20}?(标记|标为|改为|设为|完成|修改|删除|暂停|发送|关闭|更新|设置|调整)|已(经)?(帮你|为你|替你)?(标记|标为|修改|删除|暂停|发送|关闭|更新|设置|调整)(了|为|成|好)?|\b(i|we)('ve| have)? (marked|updated|deleted|paused|sent|applied|closed|changed|adjusted|completed)\b|\b(has|have) been (marked|done|completed|updated|deleted|paused|sent|changed|applied|closed)\b|\bis now marked\b/i;
 
 interface ProseRules {
   /** Change words are allowed in advice ("check whether it improves"). */
@@ -215,11 +236,11 @@ function checkProse(raw: string, finding: number | null, context: AnswerContext,
       message: 'The prose writes a figure out in words. Figures come only from facts, which GrowthOS writes out.',
     });
   }
-  if (context.actionRefused && ACTION_CLAIMS.test(withoutProducts)) {
+  if (ACTION_CLAIMS.test(withoutProducts)) {
     issues.push({
       finding,
       code: 'action-claim',
-      message: 'The prose says an action was carried out, but no action exists and none was taken. Say only what the analysis found.',
+      message: 'The prose says an action was carried out. This agent has no tool that changes anything, so nothing was done. Say only what the analysis found.',
     });
   }
   if (!rules.allowChangeWords && CHANGE_WORDS.test(withoutProducts)) {
@@ -293,6 +314,19 @@ export function validateAnswer(answer: AgentAnswer, context: AnswerContext): Ans
   // Standalone facts are written out with their own scope, so only their
   // existence and any claimed change are checked.
   for (const fact of answer.facts) issues.push(...checkFact(fact, null, context, null));
+
+  // When the tools raised findings, the answer must show the ranked actions,
+  // led by the one GrowthOS ranks first. A lookup that raised none may answer
+  // with figures alone.
+  const rankable = [...context.findings.values()].filter((finding) => finding.strength !== 'insufficient');
+  if (rankable.length > 0) {
+    const top = rankFindings(rankable).ranked[0]?.finding;
+    if (answer.findings.length === 0) {
+      issues.push({ finding: null, code: 'findings-omitted', message: `The tools raised ${rankable.length > 1 ? 'findings' : 'a finding'} this turn, but the answer shows none. Include them as findings; GrowthOS orders them.` });
+    } else if (top !== undefined && !answer.findings.some((finding) => finding.basedOn === top.id)) {
+      issues.push({ finding: null, code: 'top-finding-omitted', message: `"${top.id}" is the highest-ranked finding this turn and must be included.` });
+    }
+  }
 
   const seen = new Set<string>();
   answer.findings.forEach((finding, index) => {

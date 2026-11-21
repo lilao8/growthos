@@ -36,10 +36,9 @@ function context(findings: KnownFinding[] = [], overrides: Partial<AnswerContext
     comparisons: new Map([
       [CVR, { currentRefId: CVR, previousRefId: CVR_PREV, current: 0.25, previous: 0.4, relativeChange: -0.375, direction: 'down', supportsConclusion: true }],
     ]),
-    audits: new Map([['aud', { refId: 'aud', ruleId: 'h1', status: 'error', evidence: '0 H1 elements', productId: 'prd_a', href: '/seo/snap_a?preview=1' }]]),
+    audits: new Map([['aud', { refId: 'aud', ruleId: 'h1', status: 'error', evidence: '0 H1 elements', productId: 'prd_a', pageLabel: 'Ridgeline 2P Backpacking Tent', href: '/seo/snap_a?preview=1' }]]),
     findings: new Map(findings.map((finding) => [finding.id, finding])),
     products: new Map([['prd_a', 'Ridgeline 2P Backpacking Tent']]),
-    actionRefused: false,
     figuresWithoutFindings: [],
     ...overrides,
   };
@@ -124,13 +123,27 @@ describe('renderFact', () => {
     expect(text(renderFact({ kind: 'change', refId: CVR, direction: 'down' }, { ...base, comparisons }))).toMatch(/2026-08-31\)$/);
   });
 
-  it('writes an audit verdict with its evidence, or bare when there is none', () => {
+  it('writes an audit verdict with the page it is about and its evidence, or bare when there is none', () => {
     expect(renderFact({ kind: 'audit', refId: 'aud' }, context())).toEqual([
-      { kind: 'link', text: 'h1: error (0 H1 elements)', href: '/seo/snap_a?preview=1', title: 'Open the audit evidence' },
+      { kind: 'text', text: 'Ridgeline 2P Backpacking Tent: ' },
+      { kind: 'link', text: 'h1: error (0 H1 elements)', href: '/seo/snap_a?preview=1', title: 'Open the audit evidence for Ridgeline 2P Backpacking Tent' },
     ]);
     const base = context();
     const audits = new Map([['aud', { ...base.audits.get('aud')!, evidence: null }]]);
-    expect(text(renderFact({ kind: 'audit', refId: 'aud' }, { ...base, audits }))).toBe('h1: error');
+    expect(text(renderFact({ kind: 'audit', refId: 'aud' }, { ...base, audits }))).toBe('Ridgeline 2P Backpacking Tent: h1: error');
+  });
+
+  it('marks a site-level page cited on a product card as background, not that product', () => {
+    const base = context();
+    const audits = new Map([['aud', { ...base.audits.get('aud')!, productId: null, pageLabel: 'page snap_home' }]]);
+    const ctx = { ...base, audits };
+    expect(text(renderFact({ kind: 'audit', refId: 'aud' }, ctx, { channel: null, productId: 'prd_a' }))).toBe(
+      'page snap_home (site-level page, not this product): h1: error (0 H1 elements)',
+    );
+    expect(text(renderFact({ kind: 'audit', refId: 'aud' }, ctx, { channel: null, productId: null }))).toBe('page snap_home: h1: error (0 H1 elements)');
+    expect(text(renderFact({ kind: 'audit', refId: 'aud' }, ctx))).toBe('page snap_home: h1: error (0 H1 elements)');
+    // A product's own verdict on its own card carries no background note.
+    expect(text(renderFact({ kind: 'audit', refId: 'aud' }, base, { channel: null, productId: 'prd_a' }))).toBe('Ridgeline 2P Backpacking Tent: h1: error (0 H1 elements)');
   });
 
   it('renders nothing for a fact it cannot resolve, rather than inventing a value', () => {

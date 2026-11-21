@@ -93,11 +93,14 @@ export interface AgentTurnResult {
   toolCalls: ToolCallRecord[];
   /** Gaps reported by the tools, in GrowthOS's own words, with links to the figures behind them. */
   toolGaps: ToolGap[];
-  /**
-   * Actions the model tried that do not exist. Written by GrowthOS, not the
-   * model, so an answer can never claim a change was made.
-   */
+  /** Actions the model tried that do not exist. */
   refusedActions: string[];
+  /**
+   * True when nothing may be read as having been done: the model tried an
+   * action, or claimed one in its answer. GrowthOS then writes the summary,
+   * so an answer can never say a change was made.
+   */
+  noActionTaken: boolean;
   /** Tool calls that failed, so a failure is never read as an empty result. */
   failedChecks: Array<{ name: string; message: string }>;
   /** Issues from the last validation, when the answer had to be repaired or replaced. */
@@ -269,6 +272,8 @@ export async function runAgentTurn(
   let issues: AnswerIssue[] = [];
   let repaired = false;
   let toolCallsUsed = 0;
+  /** Set when any answer this turn claimed an action was carried out. */
+  let actionClaimed = false;
   let limitAnnounced = false;
 
   const messages: AgentMessage[] = [{ role: 'system', content: systemPrompt(scope) }];
@@ -279,28 +284,30 @@ export async function runAgentTurn(
   messages.push({ role: 'user', content: input.question });
 
   const finish = (
-    result: Omit<AgentTurnResult, 'scope' | 'window' | 'toolCalls' | 'toolGaps' | 'notes' | 'model' | 'refusedActions' | 'failedChecks'>,
+    result: Omit<AgentTurnResult, 'scope' | 'window' | 'toolCalls' | 'toolGaps' | 'notes' | 'model' | 'refusedActions' | 'failedChecks' | 'noActionTaken'>,
   ): AgentTurnResult => {
     clearTimeout(turnTimer);
     deps.signal?.removeEventListener('abort', onOuterAbort);
     const refusedActions = [...new Set(toolCalls.filter((call) => call.status === 'unknown-tool').map((call) => call.name))];
-    // When an action was refused, GrowthOS writes the summary: whatever the
-    // model said, nothing was changed. The read-only analysis stays.
+    const noActionTaken = refusedActions.length > 0 || actionClaimed;
     const refusal = [
       {
         kind: 'text' as const,
-        text: `No action was taken: ${refusedActions.join(', ')} does not exist, because this agent can only read and analyse. Any findings below come from the data it read.`,
+        text:
+          refusedActions.length > 0
+            ? `No action was taken: ${refusedActions.join(', ')} does not exist, because this agent can only read and analyse. Any findings below come from the data it read.`
+            : 'No action was taken: this agent has no tool that changes anything, so nothing was changed. Any findings below come from the data it read.',
       },
     ];
-    // The system, not the model, reports what happened to a requested action;
-    // that report stands even when the model's answer was unusable.
-    const answer: RenderedAnswer | null =
-      refusedActions.length === 0
-        ? result.answer
-        : result.answer === null
-          ? { summary: refusal, facts: [], findings: [], gaps: [], source: 'fallback' }
-          : { ...result.answer, summary: refusal };
-    const status = refusedActions.length > 0 && result.status === 'failed' ? 'fallback' : result.status;
+    // The system, not the model, reports what happened to a requested action
+    // — tried through a tool or only claimed in prose — and that report stands
+    // even when the model's answer was unusable. The read-only analysis stays.
+    const answer: RenderedAnswer | null = !noActionTaken
+      ? result.answer
+      : result.answer === null
+        ? { summary: refusal, facts: [], findings: [], gaps: [], source: 'fallback' }
+        : { ...result.answer, summary: refusal };
+    const status = noActionTaken && result.status === 'failed' ? 'fallback' : result.status;
     const done: AgentTurnResult = {
       ...result,
       status,
@@ -310,6 +317,7 @@ export async function runAgentTurn(
       toolCalls,
       toolGaps: context.toolGaps(),
       refusedActions,
+      noActionTaken,
       failedChecks: toolCalls
         .filter((call) => call.status === 'error')
         .map((call) => ({ name: call.name, message: call.summary })),
@@ -375,7 +383,6 @@ export async function runAgentTurn(
       }
     }
     context.add(outcome);
-    if (outcome.status === 'unknown-tool') context.refuseAction();
     const record: ToolCallRecord = {
       id: call.id,
       name: call.name,
@@ -453,6 +460,7 @@ export async function runAgentTurn(
 
       const built = context.build();
       issues = validateAnswer(answer, built);
+    if (issues.some((issue) => issue.code === 'action-claim')) actionClaimed = true;
       if (issues.length === 0) {
         return finish({ status: 'answered', answer: renderAnswer(answer, built, 'model'), issues: [], message: null });
       }

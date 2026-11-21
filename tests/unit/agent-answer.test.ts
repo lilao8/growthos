@@ -44,7 +44,7 @@ function known(id: string, overrides: Partial<KnownFinding> = {}): KnownFinding 
 }
 
 function context(overrides: Partial<AnswerContext> = {}): AnswerContext {
-  const audit = (refId: string, productId: string | null) => ({ refId, ruleId: 'h1', status: 'error', evidence: '0 H1', productId, href: '/seo/x?preview=1' });
+  const audit = (refId: string, productId: string | null) => ({ refId, ruleId: 'h1', status: 'error', evidence: '0 H1', productId, pageLabel: productId ?? 'page snap_home', href: '/seo/x?preview=1' });
   return {
     refs: new Map([
       [META_CVR, ref(META_CVR, 'Meta', { unit: 'ratio' })],
@@ -73,10 +73,20 @@ function context(overrides: Partial<AnswerContext> = {}): AnswerContext {
       ['thin', known('thin', { strength: 'insufficient' })],
     ]),
     products: new Map([['prd_tent', 'Ridgeline 2P Backpacking Tent']]),
-    actionRefused: false,
     figuresWithoutFindings: [],
     ...overrides,
   };
+}
+
+/** A context whose only rankable finding is the one named, plus the thin one. */
+function only(id: string, overrides: Partial<AnswerContext> = {}): AnswerContext {
+  const all = context().findings;
+  return context({ findings: new Map([[id, all.get(id)!], ['thin', all.get('thin')!]]), ...overrides });
+}
+
+/** A context in which the tools raised no finding: a lookup. */
+function bare(overrides: Partial<AnswerContext> = {}): AnswerContext {
+  return context({ findings: new Map(), ...overrides });
 }
 
 function finding(overrides: Partial<AnswerFinding> = {}): AnswerFinding {
@@ -104,7 +114,7 @@ describe('facts inside findings', () => {
 
   it('accepts a figure whose id contains a space, such as an Organic Search figure', () => {
     const organic = finding({ basedOn: 'organic', facts: [{ kind: 'value', refId: ORGANIC_SESSIONS }] });
-    expect(validateAnswer(answer([organic]), context())).toEqual([]);
+    expect(validateAnswer(answer([organic]), only('organic'))).toEqual([]);
   });
 
   it('rejects a fact for a figure no tool returned', () => {
@@ -129,30 +139,30 @@ describe('facts inside findings', () => {
   });
 
   it('rejects an audit verdict no tool returned', () => {
-    expect(codes(validateAnswer(answer([finding({ basedOn: 'tent', facts: [{ kind: 'audit', refId: 'audits:nope' }] })]), context()))).toEqual(['unknown-audit']);
+    expect(codes(validateAnswer(answer([finding({ basedOn: 'tent', facts: [{ kind: 'audit', refId: 'audits:nope' }] })]), only('tent')))).toEqual(['unknown-audit']);
   });
 });
 
 describe('scope comes from the basis', () => {
   it("rejects another product's audit on a product finding (2P basis, 3P evidence)", () => {
     const mixed = finding({ basedOn: 'tent', facts: [{ kind: 'audit', refId: AUDIT_2P }, { kind: 'audit', refId: AUDIT_3P }] });
-    const result = validateAnswer(answer([mixed]), context());
+    const result = validateAnswer(answer([mixed]), only('tent'));
     expect(codes(result)).toEqual(['scope-mismatch']);
     expect(result[0]?.message).toContain('prd_tent3');
   });
 
   it('lets a product finding cite an audit verdict that belongs to no product', () => {
-    expect(validateAnswer(answer([finding({ basedOn: 'tent', facts: [{ kind: 'audit', refId: AUDIT_PAGE }] })]), context())).toEqual([]);
+    expect(validateAnswer(answer([finding({ basedOn: 'tent', facts: [{ kind: 'audit', refId: AUDIT_PAGE }] })]), only('tent'))).toEqual([]);
   });
 
   it('rejects a Meta figure in an Organic Search finding', () => {
     const wrong = finding({ basedOn: 'organic', facts: [{ kind: 'value', refId: META_FUNNEL }] });
-    expect(codes(validateAnswer(answer([wrong]), context()))).toEqual(['scope-mismatch']);
+    expect(codes(validateAnswer(answer([wrong]), only('organic')))).toEqual(['scope-mismatch']);
   });
 
   it('rejects a channel figure in a site-wide finding', () => {
     const wrong = finding({ basedOn: 'site', facts: [{ kind: 'value', refId: META_CVR }] });
-    const result = validateAnswer(answer([wrong]), context());
+    const result = validateAnswer(answer([wrong]), only('site'));
     expect(codes(result)).toEqual(['scope-mismatch']);
     expect(result[0]?.message).toContain('all channels');
   });
@@ -175,11 +185,11 @@ describe('scope comes from the basis', () => {
 
   it('does not let any funnel figure support a claim about one product', () => {
     const product = finding({ basedOn: 'tent', facts: [{ kind: 'value', refId: TENT_VIEWS }, { kind: 'value', refId: SITE_FUNNEL }] });
-    expect(codes(validateAnswer(answer([product]), context()))).toEqual(['funnel-for-product']);
+    expect(codes(validateAnswer(answer([product]), only('tent')))).toEqual(['funnel-for-product']);
   });
 
   it('rejects a product figure in a finding about no single product', () => {
-    expect(codes(validateAnswer(answer([finding({ basedOn: 'site', facts: [{ kind: 'value', refId: TENT_VIEWS }] })]), context()))).toEqual(['scope-mismatch']);
+    expect(codes(validateAnswer(answer([finding({ basedOn: 'site', facts: [{ kind: 'value', refId: TENT_VIEWS }] })]), only('site')))).toEqual(['scope-mismatch']);
   });
 
   it('judges channel scope from the structured scope, not from words: "Direct answer" is fine', () => {
@@ -189,16 +199,16 @@ describe('scope comes from the basis', () => {
 
 describe('standalone facts', () => {
   it('accepts a figure that answers a lookup without any finding', () => {
-    expect(validateAnswer(answer([], 'Here is the figure.', [], [{ kind: 'value', refId: TENT_VIEWS }]), context())).toEqual([]);
+    expect(validateAnswer(answer([], 'Here is the figure.', [], [{ kind: 'value', refId: TENT_VIEWS }]), bare())).toEqual([]);
   });
 
   it('accepts an audit verdict on its own, with no finding scope to check it against', () => {
-    expect(validateAnswer(answer([], 'S', [], [{ kind: 'audit', refId: AUDIT_3P }]), context())).toEqual([]);
+    expect(validateAnswer(answer([], 'S', [], [{ kind: 'audit', refId: AUDIT_3P }]), bare())).toEqual([]);
   });
 
   it('still rejects unknown figures and wrong directions there', () => {
     const facts: AnswerFact[] = [{ kind: 'value', refId: 'nope' }, { kind: 'change', refId: META_CVR, direction: 'up' }];
-    const result = validateAnswer(answer([], 'S', [], facts), context());
+    const result = validateAnswer(answer([], 'S', [], facts), bare());
     expect(codes(result)).toEqual(['unknown-ref', 'wrong-direction']);
     expect(result.every((issue) => issue.finding === null)).toBe(true);
   });
@@ -206,33 +216,39 @@ describe('standalone facts', () => {
 
 describe('prose', () => {
   it('rejects every digit in every prose field, including window lengths and dates', () => {
-    expect(codes(validateAnswer(answer([], 'Conversion was 0.54% on 372 sessions.'), context()))).toEqual(['raw-number', 'raw-number']);
-    expect(codes(validateAnswer(answer([], 'Over the last 30 days things look fine.'), context()))).toEqual(['raw-number']);
-    expect(codes(validateAnswer(answer([], 'From 2026-08-02 onward.'), context()))).toEqual(['raw-number', 'raw-number', 'raw-number']);
-    expect(codes(validateAnswer(answer([], 'S', ['About 999 sessions are missing.']), context()))).toEqual(['raw-number']);
+    expect(codes(validateAnswer(answer([], 'Conversion was 0.54% on 372 sessions.'), bare()))).toEqual(['raw-number', 'raw-number']);
+    expect(codes(validateAnswer(answer([], 'Over the last 30 days things look fine.'), bare()))).toEqual(['raw-number']);
+    expect(codes(validateAnswer(answer([], 'From 2026-08-02 onward.'), bare()))).toEqual(['raw-number', 'raw-number', 'raw-number']);
+    expect(codes(validateAnswer(answer([], 'S', ['About 999 sessions are missing.']), bare()))).toEqual(['raw-number']);
     expect(codes(validateAnswer(answer([finding({ whyPriority: 'Conversion is 30% here.' })]), context()))).toEqual(['raw-number']);
     expect(codes(validateAnswer(answer([finding({ howToVerify: 'Keep the title under 60 characters.' })]), context()))).toEqual(['raw-number']);
   });
 
   it('catches full-width digits and figures written in words', () => {
-    expect(codes(validateAnswer(answer([], '转化率约为３０％。'), context()))).toEqual(['raw-number']);
-    expect(codes(validateAnswer(answer([], '转化率只有百分之三。'), context()))).toEqual(['raw-number']);
-    expect(codes(validateAnswer(answer([], '本期有三十次购买。'), context()))).toEqual(['raw-number']);
-    expect(codes(validateAnswer(answer([], 'About three percent convert.'), context()))).toEqual(['raw-number']);
-    // A single numeral word in ordinary speech is not a figure.
-    expect(validateAnswer(answer([], '建议再检查一次落地页。'), context())).toEqual([]);
+    expect(codes(validateAnswer(answer([], '转化率约为３０％。'), bare()))).toEqual(['raw-number']);
+    expect(codes(validateAnswer(answer([], '转化率只有百分之三。'), bare()))).toEqual(['raw-number']);
+    expect(codes(validateAnswer(answer([], '本期有三十次购买。'), bare()))).toEqual(['raw-number']);
+    expect(codes(validateAnswer(answer([], 'About three percent convert.'), bare()))).toEqual(['raw-number']);
+    // A numeral next to a metric unit is a figure, in either language…
+    for (const text of ['本期只有三笔订单。', '大约两千个会话。', '共有五位顾客。', 'Only three orders came in.', 'About twenty-five sessions.', 'Roughly a few hundred visitors.']) {
+      expect(codes(validateAnswer(answer([], text), bare())), text).toEqual(['raw-number']);
+    }
+    // …while a lone numeral in ordinary speech is not.
+    for (const text of ['建议再检查一次落地页。', '先看一个渠道。', 'Check one page at a time.']) {
+      expect(validateAnswer(answer([], text), bare()), text).toEqual([]);
+    }
   });
 
   it('names a product only through its placeholder', () => {
-    expect(validateAnswer(answer([], 'Look at {{product:prd_tent}} first.'), context())).toEqual([]);
-    expect(codes(validateAnswer(answer([], 'Look at Ridgeline 2P first.'), context()))).toEqual(['raw-number']);
-    expect(codes(validateAnswer(answer([], 'Look at {{product:prd_ghost}}.'), context()))).toEqual(['unknown-product']);
+    expect(validateAnswer(answer([], 'Look at {{product:prd_tent}} first.'), bare())).toEqual([]);
+    expect(codes(validateAnswer(answer([], 'Look at Ridgeline 2P first.'), bare()))).toEqual(['raw-number']);
+    expect(codes(validateAnswer(answer([], 'Look at {{product:prd_ghost}}.'), bare()))).toEqual(['unknown-product']);
   });
 
   it('rejects any other placeholder in prose, and does not join the digits around it', () => {
-    expect(codes(validateAnswer(answer([], 'It is {{ref:x}}.'), context()))).toEqual(['placeholder-in-prose']);
-    expect(codes(validateAnswer(answer([], '1{{ref:x}}2'), context()))).toEqual(['placeholder-in-prose', 'raw-number', 'raw-number']);
-    expect(codes(validateAnswer(answer([], '1{{product:prd_tent}}2'), context()))).toEqual(['raw-number', 'raw-number']);
+    expect(codes(validateAnswer(answer([], 'It is {{ref:x}}.'), bare()))).toEqual(['placeholder-in-prose']);
+    expect(codes(validateAnswer(answer([], '1{{ref:x}}2'), bare()))).toEqual(['placeholder-in-prose', 'raw-number', 'raw-number']);
+    expect(codes(validateAnswer(answer([], '1{{product:prd_tent}}2'), bare()))).toEqual(['raw-number', 'raw-number']);
   });
 
   it.each([
@@ -240,34 +256,60 @@ describe('prose', () => {
     'worsened', 'improved', 'weaker', 'stronger', 'down from', 'up from', 'than last', 'previous period', 'last month',
     '下降', '下滑', '增长', '环比', '上月', '变弱', '前期', '不及从前', '不如以前', '比之前',
   ])('treats "%s" in prose as a change claim', (word) => {
-    expect(codes(validateAnswer(answer([], `Meta conversion ${word} here.`), context()))).toEqual(['change-in-prose']);
+    expect(codes(validateAnswer(answer([], `Meta conversion ${word} here.`), bare()))).toEqual(['change-in-prose']);
   });
 
   it('checks change claims in whyPriority and gaps, but lets advice talk about improving', () => {
     expect(codes(validateAnswer(answer([finding({ whyPriority: 'Conversion fell.' })]), context()))).toEqual(['change-in-prose']);
-    expect(codes(validateAnswer(answer([], 'S', ['Conversion fell.']), context()))).toEqual(['change-in-prose']);
+    expect(codes(validateAnswer(answer([], 'S', ['Conversion fell.']), bare()))).toEqual(['change-in-prose']);
     expect(validateAnswer(answer([finding({ howToVerify: 'Check whether conversion improves.' })]), context())).toEqual([]);
   });
 
   it('does not treat "drop-off" as a change claim', () => {
-    expect(validateAnswer(answer([], 'The largest drop-off is at checkout.'), context())).toEqual([]);
+    expect(validateAnswer(answer([], 'The largest drop-off is at checkout.'), bare())).toEqual([]);
   });
 
-  it('refuses claims that an action was done when the turn refused one, and only then', () => {
-    const refused = context({ actionRefused: true });
-    expect(codes(validateAnswer(answer([], '已把这条建议标记为完成。'), refused))).toEqual(['action-claim']);
-    expect(codes(validateAnswer(answer([], '已把这条建议标为完成。'), refused))).toEqual(['action-claim']);
-    expect(codes(validateAnswer(answer([], 'The recommendation has been marked done.'), refused))).toEqual(['action-claim']);
-    expect(codes(validateAnswer(answer([finding({ whyPriority: 'I updated the bid.' })]), refused))).toEqual(['action-claim']);
-    expect(validateAnswer(answer([], 'Nothing can be changed from here.'), refused)).toEqual([]);
-    expect(validateAnswer(answer([], '已把这条建议标记为完成。'), context())).toEqual([]);
+  it('refuses any claim that an action was carried out, with or without a tool call', () => {
+    for (const claim of ['已把这条建议标记为完成。', '已把这条建议标为完成。', '已经帮你暂停了这个广告组。', '已更新出价。', 'The recommendation has been marked done.', 'I have paused the campaign.', "We've updated the bid.", 'It is now marked complete.']) {
+      expect(codes(validateAnswer(answer([], claim), bare())), claim).toEqual(['action-claim']);
+    }
+    expect(codes(validateAnswer(answer([finding({ whyPriority: 'I updated the bid.' })]), context()))).toEqual(['action-claim']);
+  });
+
+  it('does not mistake a description of the data for an action', () => {
+    for (const text of ['已完成结账的会话流失最多。', 'Sessions that completed checkout are few.', 'Orders were completed by returning customers.', 'Nothing can be changed from here.']) {
+      expect(validateAnswer(answer([], text), bare()), text).toEqual([]);
+    }
+  });
+});
+
+describe('ranked findings are not dropped', () => {
+  it('requires findings when the tools raised any, and lets a lookup answer with figures alone', () => {
+    const factOnly = answer([], 'Here is one figure.', [], [{ kind: 'value', refId: META_CVR }]);
+    expect(codes(validateAnswer(factOnly, context()))).toEqual(['findings-omitted']);
+    expect(validateAnswer(factOnly, bare())).toEqual([]);
+  });
+
+  it('does not count a thin finding as one that must be shown', () => {
+    expect(validateAnswer(answer([], 'S'), bare({ findings: new Map([['thin', context().findings.get('thin')!]]) }))).toEqual([]);
+  });
+
+  it('requires the finding GrowthOS ranks first', () => {
+    const ctx = context({ findings: new Map([['meta', known('meta', { priority: 'Critical' })], ['meta2', known('meta2')]]) });
+    const result = validateAnswer(answer([finding({ basedOn: 'meta2' })]), ctx);
+    expect(codes(result)).toEqual(['top-finding-omitted']);
+    expect(result[0]?.message).toContain('"meta"');
+    expect(validateAnswer(answer([finding({ basedOn: 'meta' })]), ctx)).toEqual([]);
+    // The top finding alongside others is fine; only its absence is not.
+    expect(validateAnswer(answer([finding({ basedOn: 'meta2' }), finding({ basedOn: 'meta' })]), ctx)).toEqual([]);
   });
 });
 
 describe('basis', () => {
   it('requires each finding to rest on a returned, sufficient, unused tool finding', () => {
-    expect(codes(validateAnswer(answer([finding({ basedOn: 'invented' })]), context()))).toEqual(['unknown-basis']);
-    expect(codes(validateAnswer(answer([finding({ basedOn: 'thin' })]), context()))).toEqual(['insufficient-basis']);
+    expect(codes(validateAnswer(answer([finding({ basedOn: 'invented' })]), bare()))).toEqual(['unknown-basis']);
+    const thinOnly = bare({ findings: new Map([['thin', context().findings.get('thin')!]]) });
+    expect(codes(validateAnswer(answer([finding({ basedOn: 'thin' })]), thinOnly))).toEqual(['insufficient-basis']);
     expect(codes(validateAnswer(answer([finding(), finding()]), context()))).toEqual(['duplicate-basis']);
   });
 });

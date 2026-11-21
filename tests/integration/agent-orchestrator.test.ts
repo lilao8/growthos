@@ -72,6 +72,31 @@ function trafficFindings(answer: ReturnType<typeof answered>) {
   return answer.findings.filter((finding) => !/^\/(seo|geo)\//.test(finding.evidence[0]?.href ?? ''));
 }
 
+interface SeenFinding {
+  id: string;
+  priority: 'Critical' | 'High' | 'Medium' | 'Low';
+  strength: 'sufficient' | 'limited' | 'insufficient';
+  affectedSessions: number | null;
+  refIds: string[];
+}
+
+/** The tool finding GrowthOS ranks first among all results so far — the one an answer must include. */
+function topFinding(messages: readonly AgentMessage[]): { id: string; refIds: string[] } {
+  const all = messages
+    .filter((message) => message.role === 'tool')
+    .flatMap((message) => {
+      try {
+        const body = JSON.parse((message as { content: string }).content) as { findings?: SeenFinding[] };
+        return body.findings ?? [];
+      } catch {
+        return [];
+      }
+    });
+  const top = rankFindings(all).ranked[0]?.finding;
+  if (top === undefined) throw new Error('no finding');
+  return top;
+}
+
 function firstFinding(messages: readonly AgentMessage[]): { id: string; refIds: string[] } {
   const tool = messages.find((message) => message.role === 'tool');
   if (tool?.role !== 'tool') throw new Error('no tool result');
@@ -252,7 +277,7 @@ describe('answer validation', () => {
     let attempts = 0;
     const model = oneQueryModel((messages) => {
       attempts += 1;
-      const finding = firstFinding(messages);
+      const finding = topFinding(messages);
       const whyPriority = attempts === 1 ? 'Conversion is 0.54%.' : 'Paid traffic that is not converting.';
       return { summary: 'Check this.', facts: [], findings: [{ basedOn: finding.id, facts: [{ kind: 'value', refId: finding.refIds[0] ?? '' }], whyPriority, howToVerify: 'Compare pages.' }], gaps: [] };
     });
@@ -315,6 +340,23 @@ describe('a lookup with figures but no alert', () => {
     expect(result.status).toBe('fallback');
     const lines = answered(result).facts.map((fact) => fact.map((segment) => segment.text).join(''));
     expect(lines).toContain('Ridgeline 2P Backpacking Tent purchasing sessions (Organic Search), 2026-08-02 — 2026-08-31: 3');
+  });
+});
+
+describe('the review question keeps its ranked actions', () => {
+  it('does not accept an answer that reduces a review with findings to one figure', async () => {
+    const model = oneQueryModel((messages) => ({
+      summary: 'One figure covers it.',
+      facts: [{ kind: 'value', refId: firstFinding(messages).refIds[0] ?? '' }],
+      findings: [],
+      gaps: [],
+    }));
+    const { result } = await ask(MAIN, DEFAULT_SCOPE, { model });
+    expect(result.issues.map((issue) => issue.code)).toContain('findings-omitted');
+    expect(result.status).toBe('fallback');
+    const answer = answered(result);
+    expect(answer.findings.length).toBeGreaterThan(0);
+    expect(answer.findings.map((finding) => finding.rank)).toEqual(answer.findings.map((_, index) => index + 1));
   });
 });
 
@@ -397,6 +439,26 @@ describe('refused actions', () => {
     expect((result.answer?.summary ?? []).map((segment) => segment.text).join('')).toContain('No action was taken: mark_recommendation_done does not exist');
   });
 
+  it('shows "not executed" when the model claims success without trying any tool', async () => {
+    const model = createScriptedModel('claims-directly', () => ({
+      type: 'final',
+      content: JSON.stringify({ summary: '已把这条建议标记为完成。', facts: [], findings: [], gaps: [] }),
+    }));
+    const { result } = await ask('把第一条建议标记为完成', DEFAULT_SCOPE, { model });
+    expect(result.toolCalls).toEqual([]);
+    expect(result.refusedActions).toEqual([]);
+    expect(result.noActionTaken).toBe(true);
+    const summary = (result.answer?.summary ?? []).map((segment) => segment.text).join('');
+    expect(summary).toContain('No action was taken: this agent has no tool that changes anything');
+    expect(summary).not.toContain('已把');
+  });
+
+  it('shows "not executed" when a tool was refused and the model still claims success', async () => {
+    const { result } = await ask('把第一条建议标记为完成', DEFAULT_SCOPE, { model: claimingModel(['已把这条建议标为完成。']) });
+    expect(result.noActionTaken).toBe(true);
+    expect((result.answer?.summary ?? []).map((segment) => segment.text).join('')).toContain('No action was taken: mark_recommendation_done does not exist');
+  });
+
   it('does not treat a question about change as a request to change something', async () => {
     const { result } = await ask('How did conversion change over the last 30 days?');
     expect(result.refusedActions).toEqual([]);
@@ -467,7 +529,18 @@ describe('limits', () => {
     let n = 0;
     const model = createScriptedModel('greedy', (messages) => {
       const nudged = messages.some((message) => message.role === 'user' && message.content.startsWith('No more tool calls'));
-      if (nudged) return { type: 'final', content: JSON.stringify({ summary: 'Stopped at the limit.', facts: [], findings: [], gaps: [] }) };
+      if (nudged) {
+        const top = topFinding(messages);
+        return {
+          type: 'final',
+          content: JSON.stringify({
+            summary: 'Stopped at the limit.',
+            facts: [],
+            findings: [{ basedOn: top.id, facts: [{ kind: 'value', refId: top.refIds[0] ?? '' }], whyPriority: 'Ranked first by GrowthOS.', howToVerify: 'Open the evidence.' }],
+            gaps: [],
+          }),
+        };
+      }
       n += 1;
       return { type: 'tool_calls', calls: [{ id: `a${n}`, name: 'get_channel_performance', arguments: '{}' }, { id: `b${n}`, name: 'get_funnel', arguments: '{}' }, { id: `c${n}`, name: 'get_funnel', arguments: '{"channel":"Email"}' }] };
     });

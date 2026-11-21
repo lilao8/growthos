@@ -205,3 +205,35 @@ test('leaving the page while the agent works cancels the request', async ({ page
   expect(request.failure()).not.toBeNull();
   release();
 });
+
+test('a claimed action with no tool behind it is shown as not executed', async ({ page }) => {
+  const result = {
+    status: 'answered',
+    answer: {
+      summary: [{ kind: 'text', text: 'No action was taken: this agent has no tool that changes anything, so nothing was changed.' }],
+      facts: [],
+      findings: [],
+      gaps: [],
+      source: 'model',
+    },
+    scope: { range: 30, channel: null, products: [] },
+    window: { start: '2026-08-02', end: '2026-08-31', days: 30 },
+    toolCalls: [],
+    toolGaps: [],
+    refusedActions: [],
+    failedChecks: [],
+    noActionTaken: true,
+    issues: [{ finding: null, code: 'action-claim', message: 'claimed' }],
+    notes: [],
+    model: 'scripted:test',
+    message: null,
+  };
+  await page.route('**/api/agent', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/x-ndjson', body: `${JSON.stringify({ type: 'done', result })}\n` }),
+  );
+  await gotoReady(page, '/agent');
+  await page.getByTestId('agent-question').fill('把第一条建议标记为完成');
+  await page.getByTestId('agent-ask').click();
+  await expect(page.getByTestId('agent-refused')).toHaveText('No action was taken. This agent has no tool that changes anything, so nothing was changed.');
+  await expect(page.getByTestId('agent-summary')).not.toContainText('已把');
+});

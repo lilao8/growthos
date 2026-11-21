@@ -30,7 +30,6 @@ export class AnswerContextBuilder {
   private readonly gaps: ToolGap[] = [];
   private readonly products: Map<string, string>;
   private readonly figuresWithoutFindings: string[] = [];
-  private actionRefused = false;
 
   constructor(products: readonly Product[]) {
     this.products = new Map(products.map((product) => [product.id, product.title]));
@@ -58,6 +57,7 @@ export class AnswerContextBuilder {
         status: audit.status,
         evidence: audit.evidence,
         productId: audit.productId,
+        pageLabel: audit.productId === null ? `page ${audit.pageId}` : (this.products.get(audit.productId) ?? audit.productId),
         href: audit.href,
       });
     }
@@ -92,11 +92,6 @@ export class AnswerContextBuilder {
     collectComparisons(outcome.data, this.comparisons);
   }
 
-  /** The model asked for an action that does not exist. */
-  refuseAction(): void {
-    this.actionRefused = true;
-  }
-
   toolGaps(): ToolGap[] {
     return this.gaps.map((gap) => ({ message: gap.message, links: [...gap.links] }));
   }
@@ -108,7 +103,6 @@ export class AnswerContextBuilder {
       audits: new Map(this.audits),
       findings: new Map(this.findings),
       products: new Map(this.products),
-      actionRefused: this.actionRefused,
       figuresWithoutFindings: [...this.figuresWithoutFindings],
     };
   }

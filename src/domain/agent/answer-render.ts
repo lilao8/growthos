@@ -81,7 +81,13 @@ export function renderFact(fact: AnswerFact, context: AnswerContext, scope: Find
     const audit = context.audits.get(fact.refId);
     if (audit === undefined) return [];
     const evidence = audit.evidence === null ? '' : ` (${audit.evidence})`;
-    return [{ kind: 'link', text: `${audit.ruleId}: ${audit.status}${evidence}`, href: audit.href, title: 'Open the audit evidence' }];
+    // A verdict says which page it is about. A site page cited on a product
+    // card is background, not that product's own verdict, and says so.
+    const background = scope !== null && scope.productId !== null && audit.productId === null ? ' (site-level page, not this product)' : '';
+    return [
+      { kind: 'text', text: `${audit.pageLabel}${background}: ` },
+      { kind: 'link', text: `${audit.ruleId}: ${audit.status}${evidence}`, href: audit.href, title: `Open the audit evidence for ${audit.pageLabel}` },
+    ];
   }
   const ref = context.refs.get(fact.refId);
   if (ref === undefined) return [];
