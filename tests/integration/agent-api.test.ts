@@ -78,6 +78,14 @@ describe('request validation, before any model call', () => {
     expect((await response.json()).message).toContain('schemaVersion');
   });
 
+  it('refuses an oversized request while reading it, with 413', async () => {
+    vi.stubEnv('AGENT_LIVE_ENABLED', 'true');
+    vi.stubEnv('AGENT_MODEL_PROVIDER', 'scripted');
+    const response = await post(body({ question: 'x', padding: 'y'.repeat(330 * 1024) }));
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ error: 'request-too-large' });
+  });
+
   it('rejects oversized state by its measured size', () => {
     const result = parseAgentRequest(body(), 256 * 1024 + 1);
     expect(result.ok).toBe(false);
@@ -145,6 +153,38 @@ describe('askAgent (browser client)', () => {
     expect((await askAgent(body(), () => {}, { fetcher: streamOf([`${JSON.stringify({ type: 'answering' })}\n`]) })).kind).toBe('error');
     const failed = await askAgent(body(), () => {}, { fetcher: streamOf([`${JSON.stringify({ type: 'error', message: 'boom' })}\n`]) });
     expect(failed).toEqual({ kind: 'error', message: 'boom' });
+  });
+
+  it('leaves the analysing state with an error when the stream breaks mid-way', async () => {
+    const broken: typeof fetch = async () =>
+      new Response(
+        new ReadableStream({
+          pulls: 0,
+          pull(controller) {
+            // First read delivers a progress line; the next one fails, as a dropped connection does.
+            if (this.pulls === 0) controller.enqueue(new TextEncoder().encode(`${JSON.stringify({ type: 'answering' })}\n`));
+            else controller.error(new Error('socket hang up'));
+            this.pulls += 1;
+          },
+        } as UnderlyingDefaultSource<Uint8Array> & { pulls: number }),
+      );
+    const seen: string[] = [];
+    const result = await askAgent(body(), (event) => seen.push(event.type), { fetcher: broken });
+    expect(seen).toEqual(['answering']);
+    expect(result.kind).toBe('error');
+    if (result.kind === 'error') expect(result.message).toContain('interrupted');
+  });
+
+  it('sends only the most recent turns, so a long conversation keeps working', async () => {
+    let sent: { history: { question: string }[] } | null = null;
+    const capture: typeof fetch = async (_url, init) => {
+      sent = JSON.parse(String(init?.body)) as { history: { question: string }[] };
+      return Response.json({ error: 'live-disabled', message: 'off' }, { status: 503 });
+    };
+    const history = Array.from({ length: 15 }, (_, index) => ({ question: `q${index}`, answerSummary: 's' }));
+    await askAgent({ ...body(), history }, () => {}, { fetcher: capture });
+    expect(sent!.history.map((turn) => turn.question)).toEqual(history.slice(-10).map((turn) => turn.question));
+    expect(parseAgentRequest({ ...body(), history: sent!.history }, 1000).ok).toBe(true);
   });
 
   it('reports a network failure', async () => {

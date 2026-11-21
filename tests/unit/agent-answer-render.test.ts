@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AnswerContext, KnownFinding } from '@/domain/agent/answer';
-import { fallbackAnswer, formatValue, renderAnswer, renderText } from '@/domain/agent/answer-render';
+import type { AnswerContext, CitableRef, KnownFinding } from '@/domain/agent/answer';
+import { fallbackAnswer, formatValue, renderAnswer, renderFact, renderProse } from '@/domain/agent/answer-render';
 
 function known(id: string, overrides: Partial<KnownFinding> = {}): KnownFinding {
   return {
@@ -17,24 +17,33 @@ function known(id: string, overrides: Partial<KnownFinding> = {}): KnownFinding 
   };
 }
 
-const CVR = 'channels:w:Meta:all:conversion_rate';
-const ORDERS = 'channels:w:Meta:all:orders';
+const CVR = 'channels:2026-08-02..2026-08-31:Organic Search:all:conversion_rate';
+const CVR_PREV = 'channels:2026-07-03..2026-08-01:Organic Search:all:conversion_rate';
+const ORDERS = 'channels:2026-08-02..2026-08-31:Organic Search:all:orders';
 
-function context(findings: KnownFinding[]): AnswerContext {
+function ref(refId: string, overrides: Partial<CitableRef>): CitableRef {
+  return { refId, label: refId, value: 0, unit: 'count', channel: 'Organic Search', productId: null, window: { start: '2026-08-02', end: '2026-08-31' }, funnel: false, href: '/analytics?range=30', ...overrides };
+}
+
+function context(findings: KnownFinding[] = [], overrides: Partial<AnswerContext> = {}): AnswerContext {
   return {
     refs: new Map([
-      [CVR, { refId: CVR, label: 'Meta conversion rate', value: 0.0054, unit: 'ratio', channel: 'Meta', productId: null, href: '/analytics?range=30' }],
-      [ORDERS, { refId: ORDERS, label: 'Meta orders', value: 1234, unit: 'count', channel: 'Meta', productId: null, href: '/analytics?range=30' }],
+      [CVR, ref(CVR, { label: 'Organic Search conversion rate', value: 0.25, unit: 'ratio' })],
+      [CVR_PREV, ref(CVR_PREV, { label: 'Organic Search conversion rate', value: 0.4, unit: 'ratio', window: { start: '2026-07-03', end: '2026-08-01' }, href: '/analytics?range=30&end=2026-08-01' })],
+      [ORDERS, ref(ORDERS, { label: 'Organic Search orders', value: 1234 })],
     ]),
     comparisons: new Map([
-      [CVR, { currentRefId: CVR, previousRefId: 'prev', current: 0.25, previous: 0.4, relativeChange: -0.375, direction: 'down', supportsConclusion: true }],
+      [CVR, { currentRefId: CVR, previousRefId: CVR_PREV, current: 0.25, previous: 0.4, relativeChange: -0.375, direction: 'down', supportsConclusion: true }],
     ]),
-    audits: new Map([['aud', { refId: 'aud', ruleId: 'h1', status: 'error', evidence: '0 H1 elements', href: '/seo/snap_a?preview=1' }]]),
+    audits: new Map([['aud', { refId: 'aud', ruleId: 'h1', status: 'error', evidence: '0 H1 elements', productId: 'prd_a', href: '/seo/snap_a?preview=1' }]]),
     findings: new Map(findings.map((finding) => [finding.id, finding])),
-    namedPhrases: [],
-    allowedNumbers: new Set(),
+    products: new Map([['prd_a', 'Ridgeline 2P Backpacking Tent']]),
+    channels: [],
+    ...overrides,
   };
 }
+
+const text = (segments: { text: string }[]) => segments.map((segment) => segment.text).join('');
 
 describe('formatValue', () => {
   it('formats each unit the way the pages do', () => {
@@ -46,117 +55,140 @@ describe('formatValue', () => {
   });
 });
 
-describe('renderText', () => {
-  it('turns placeholders into linked figures and keeps the text around them', () => {
-    const segments = renderText(`Rate {{ref:${CVR}}} on {{ref:${ORDERS}}} orders.`, context([]));
+describe('renderFact', () => {
+  it('writes a value fact with its metric, channel and dates, and links the figure', () => {
+    const segments = renderFact({ kind: 'value', refId: ORDERS }, context());
+    expect(text(segments)).toBe('Organic Search orders, 2026-08-02 — 2026-08-31: 1,234');
     expect(segments).toEqual([
-      { kind: 'text', text: 'Rate ' },
-      { kind: 'figure', text: '0.54%', refId: CVR, href: '/analytics?range=30', label: 'Meta conversion rate' },
-      { kind: 'text', text: ' on ' },
-      { kind: 'figure', text: '1,234', refId: ORDERS, href: '/analytics?range=30', label: 'Meta orders' },
-      { kind: 'text', text: ' orders.' },
+      { kind: 'text', text: 'Organic Search orders, 2026-08-02 — 2026-08-31: ' },
+      { kind: 'link', text: '1,234', href: '/analytics?range=30', title: 'Organic Search orders, 2026-08-02 — 2026-08-31' },
     ]);
   });
 
-  it('renders a change as previous → current with the relative change', () => {
-    const [segment] = renderText(`{{change:${CVR}}}`, context([]));
-    expect(segment).toMatchObject({ kind: 'change', text: '40.00% → 25.00% (−37.5%)', previousRefId: 'prev' });
+  it('makes the channel scope explicit when the metric label does not carry it', () => {
+    const funnel = 'funnel:2026-08-02..2026-08-31:Meta:all:conversion:checkout->purchase';
+    const site = 'channels:2026-08-02..2026-08-31:all:all:sessions';
+    const product = 'products:2026-08-02..2026-08-31:all:prd_a:view_sessions';
+    const ctx = context([], {
+      refs: new Map([
+        [funnel, ref(funnel, { label: 'Checkout → Purchase conversion', channel: 'Meta', unit: 'ratio', value: 0.25, funnel: true })],
+        [site, ref(site, { label: 'Site sessions', channel: null, value: 10 })],
+        [product, ref(product, { label: 'Ridgeline 2P view sessions', channel: null, productId: 'prd_a', value: 5 })],
+      ]),
+    });
+    expect(text(renderFact({ kind: 'value', refId: funnel }, ctx))).toBe('Checkout → Purchase conversion (Meta), 2026-08-02 — 2026-08-31: 25.00%');
+    expect(text(renderFact({ kind: 'value', refId: site }, ctx))).toBe('Site sessions (all channels), 2026-08-02 — 2026-08-31: 10');
+    expect(text(renderFact({ kind: 'value', refId: product }, ctx))).toBe('Ridgeline 2P view sessions, 2026-08-02 — 2026-08-31: 5');
+  });
+
+  it('writes a change with both periods, each linked to its own window', () => {
+    const segments = renderFact({ kind: 'change', refId: CVR, direction: 'down' }, context());
+    expect(text(segments)).toBe(
+      'Organic Search conversion rate: 40.00% (2026-07-03 — 2026-08-01) → 25.00% (2026-08-02 — 2026-08-31), −37.5%',
+    );
+    expect(segments.map((segment) => segment.kind)).toEqual(['text', 'link', 'text', 'link', 'text']);
+    const links = segments.filter((segment) => segment.kind === 'link');
+    expect(links.map((link) => (link.kind === 'link' ? link.href : ''))).toEqual([
+      '/analytics?range=30&end=2026-08-01',
+      '/analytics?range=30',
+    ]);
   });
 
   it('signs a rise and a flat change, and omits the relative part when there is none', () => {
-    const ctx = context([]);
-    const comparisons = new Map(ctx.comparisons);
-    comparisons.set(CVR, { ...comparisons.get(CVR)!, current: 0.5, previous: 0.4, relativeChange: 0.25 });
-    expect(renderText(`{{change:${CVR}}}`, { ...ctx, comparisons })[0]?.text).toBe('40.00% → 50.00% (+25.0%)');
-    comparisons.set(CVR, { ...comparisons.get(CVR)!, current: 0.4, previous: 0.4, relativeChange: 0 });
-    expect(renderText(`{{change:${CVR}}}`, { ...ctx, comparisons })[0]?.text).toBe('40.00% → 40.00% (±0.0%)');
-    comparisons.set(CVR, { ...comparisons.get(CVR)!, current: 0.4, previous: 0, relativeChange: null });
-    expect(renderText(`{{change:${CVR}}}`, { ...ctx, comparisons })[0]?.text).toBe('0.00% → 40.00%');
+    const base = context();
+    const comparisons = new Map(base.comparisons);
+    const cvr = comparisons.get(CVR)!;
+    comparisons.set(CVR, { ...cvr, relativeChange: 0.25 });
+    expect(text(renderFact({ kind: 'change', refId: CVR, direction: 'up' }, { ...base, comparisons }))).toMatch(/, \+25\.0%$/);
+    comparisons.set(CVR, { ...cvr, relativeChange: 0 });
+    expect(text(renderFact({ kind: 'change', refId: CVR, direction: 'flat' }, { ...base, comparisons }))).toMatch(/, ±0\.0%$/);
+    comparisons.set(CVR, { ...cvr, relativeChange: null });
+    expect(text(renderFact({ kind: 'change', refId: CVR, direction: 'down' }, { ...base, comparisons }))).toMatch(/2026-08-31\)$/);
   });
 
-  it('leaves a change as text when either its comparison or its figure is missing', () => {
-    const ctx = context([]);
-    expect(renderText(`{{change:${ORDERS}}}`, ctx)).toEqual([{ kind: 'text', text: `{{change:${ORDERS}}}` }]);
-    const refs = new Map(ctx.refs);
-    refs.delete(CVR);
-    expect(renderText(`{{change:${CVR}}}`, { ...ctx, refs })).toEqual([{ kind: 'text', text: `{{change:${CVR}}}` }]);
+  it('writes an audit verdict with its evidence, or bare when there is none', () => {
+    expect(renderFact({ kind: 'audit', refId: 'aud' }, context())).toEqual([
+      { kind: 'link', text: 'h1: error (0 H1 elements)', href: '/seo/snap_a?preview=1', title: 'Open the audit evidence' },
+    ]);
+    const base = context();
+    const audits = new Map([['aud', { ...base.audits.get('aud')!, evidence: null }]]);
+    expect(text(renderFact({ kind: 'audit', refId: 'aud' }, { ...base, audits }))).toBe('h1: error');
   });
 
-  it('renders an audit verdict without evidence as the bare verdict', () => {
-    const ctx = context([]);
-    const audits = new Map([['aud', { ...ctx.audits.get('aud')!, evidence: null }]]);
-    expect(renderText('{{audit:aud}}', { ...ctx, audits })[0]?.text).toBe('h1: error');
+  it('renders nothing for a fact it cannot resolve, rather than inventing a value', () => {
+    expect(renderFact({ kind: 'value', refId: 'nope' }, context())).toEqual([]);
+    expect(renderFact({ kind: 'audit', refId: 'nope' }, context())).toEqual([]);
+    expect(renderFact({ kind: 'change', refId: ORDERS, direction: 'up' }, context())).toEqual([]);
+    const base = context();
+    const refs = new Map(base.refs);
+    refs.delete(CVR_PREV);
+    expect(renderFact({ kind: 'change', refId: CVR, direction: 'down' }, { ...base, refs })).toEqual([]);
+  });
+});
+
+describe('renderProse', () => {
+  it('replaces a product placeholder with the linked product name', () => {
+    expect(renderProse('Start with {{product:prd_a}} today.', context())).toEqual([
+      { kind: 'text', text: 'Start with ' },
+      { kind: 'link', text: 'Ridgeline 2P Backpacking Tent', href: '/products/prd_a', title: 'Ridgeline 2P Backpacking Tent' },
+      { kind: 'text', text: ' today.' },
+    ]);
   });
 
-  it('renders an audit verdict with its evidence and preview link', () => {
-    const [segment] = renderText('{{audit:aud}}', context([]));
-    expect(segment).toEqual({ kind: 'audit', text: 'h1: error (0 H1 elements)', refId: 'aud', href: '/seo/snap_a?preview=1' });
-  });
-
-  it('leaves an unknown placeholder visible as text rather than inventing a value', () => {
-    expect(renderText('{{ref:nope}}', context([]))).toEqual([{ kind: 'text', text: '{{ref:nope}}' }]);
+  it('leaves an unknown product placeholder visible', () => {
+    expect(renderProse('{{product:ghost}}', context())).toEqual([{ kind: 'text', text: '{{product:ghost}}' }]);
   });
 });
 
 describe('renderAnswer', () => {
-  it('orders findings by the agent ranking, not by the order the model wrote them', () => {
+  const finding = (basedOn: string, refId = ORDERS) => ({
+    basedOn,
+    facts: [{ kind: 'value' as const, refId }],
+    whyPriority: 'b',
+    howToVerify: 'c',
+    scope: { channel: 'Organic Search', productId: null },
+  });
+
+  it('orders findings by the agent ranking and titles them from the tool finding', () => {
     const ctx = context([known('low', { priority: 'Low' }), known('critical', { priority: 'Critical' })]);
-    const rendered = renderAnswer(
-      {
-        summary: 'S',
-        findings: [
-          { basedOn: 'low', title: 'Low one', observed: 'a', whyPriority: 'b', howToVerify: 'c', scope: { channel: null, productId: null } },
-          { basedOn: 'critical', title: 'Critical one', observed: 'a', whyPriority: 'b', howToVerify: 'c', scope: { channel: null, productId: null } },
-        ],
-        gaps: ['g'],
-      },
-      ctx,
-      'model',
-    );
-    expect(rendered.findings.map((finding) => finding.title)).toEqual(['Critical one', 'Low one']);
-    expect(rendered.findings.map((finding) => finding.rank)).toEqual([1, 2]);
+    const rendered = renderAnswer({ summary: 'S', findings: [finding('low'), finding('critical')], gaps: ['g'] }, ctx, 'model');
+    expect(rendered.findings.map((item) => item.title)).toEqual(['Title critical', 'Title low']);
+    expect(rendered.findings.map((item) => item.rank)).toEqual([1, 2]);
+    expect(rendered.findings[0]?.ruleGuidance).toBe('Check critical');
+    expect(rendered.findings[0]?.scope).toEqual({ channel: 'Organic Search', productId: null });
+    expect(rendered.findings[0]?.facts).toEqual([renderFact({ kind: 'value', refId: ORDERS }, ctx)]);
     expect(rendered.source).toBe('model');
     expect(rendered.gaps).toEqual([[{ kind: 'text', text: 'g' }]]);
   });
 
-  it('lists the finding page first, then each cited figure page once', () => {
-    const ctx = context([known('f', { refIds: [ORDERS, 'aud'] })]);
-    const rendered = renderAnswer(
-      { summary: 'S', findings: [{ basedOn: 'f', title: 'T', observed: `{{ref:${CVR}}}`, whyPriority: 'b', howToVerify: 'c', scope: { channel: 'Meta', productId: null } }], gaps: [] },
-      ctx,
-      'model',
-    );
+  it('drops a finding whose basis is unknown instead of failing', () => {
+    const rendered = renderAnswer({ summary: 'S', findings: [finding('ghost'), finding('f')], gaps: [] }, context([known('f')]), 'model');
+    expect(rendered.findings.map((item) => item.basedOn)).toEqual(['f']);
+  });
+
+  it('links the finding page, each cited figure and both periods of a change', () => {
+    const ctx = context([known('f', { refIds: ['aud'] })]);
+    const rendered = renderAnswer({ summary: 'S', findings: [finding('f', CVR)], gaps: [] }, ctx, 'model');
     expect(rendered.findings[0]?.evidence).toEqual([
       { href: '/page/f', label: 'Title f' },
-      { href: '/analytics?range=30', label: 'Meta conversion rate' },
+      { href: '/analytics?range=30', label: 'Organic Search conversion rate, 2026-08-02 — 2026-08-31' },
+      { href: '/analytics?range=30&end=2026-08-01', label: 'Organic Search conversion rate, 2026-07-03 — 2026-08-01' },
       { href: '/seo/snap_a?preview=1', label: 'h1' },
     ]);
   });
 
-  it('drops a finding whose basis is unknown instead of failing', () => {
-    const ctx = context([known('f')]);
-    const rendered = renderAnswer(
-      {
-        summary: 'S',
-        findings: [
-          { basedOn: 'ghost', title: 'G', observed: 'a', whyPriority: 'b', howToVerify: 'c', scope: { channel: null, productId: null } },
-          { basedOn: 'f', title: 'F', observed: 'a', whyPriority: 'b', howToVerify: 'c', scope: { channel: null, productId: null } },
-        ],
-        gaps: [],
-      },
-      ctx,
-      'model',
-    );
-    expect(rendered.findings.map((finding) => finding.basedOn)).toEqual(['f']);
+  it('labels each evidence link by what it shows, and keeps the first label for a shared page', () => {
+    const ctx = context([known('f', { href: '/analytics?range=30', title: 'Organic Search: conversion' })]);
+    const rendered = renderAnswer({ summary: 'S', findings: [finding('f', CVR)], gaps: [] }, ctx, 'model');
+    expect(rendered.findings[0]?.evidence).toEqual([
+      { href: '/analytics?range=30', label: 'Organic Search: conversion' },
+      { href: '/analytics?range=30&end=2026-08-01', label: 'Organic Search conversion rate, 2026-07-03 — 2026-08-01' },
+    ]);
   });
 
   it('shows the sample and the downgrade of a limited finding', () => {
     const ctx = context([known('f', { priority: 'Critical', strength: 'limited', affectedSessions: 372 })]);
-    const rendered = renderAnswer(
-      { summary: 'S', findings: [{ basedOn: 'f', title: 'T', observed: 'a', whyPriority: 'b', howToVerify: 'c', scope: { channel: null, productId: null } }], gaps: [] },
-      ctx,
-      'model',
-    );
+    const rendered = renderAnswer({ summary: 'S', findings: [finding('f')], gaps: [] }, ctx, 'model');
     expect(rendered.findings[0]).toMatchObject({ priority: 'Critical', effectivePriority: 'High', downgraded: true, affectedSessions: 372 });
   });
 });
@@ -169,15 +201,16 @@ describe('fallbackAnswer', () => {
       known('c', { priority: 'High' }),
       known('thin', { priority: 'Critical', strength: 'insufficient' }),
     ];
-    const rendered = fallbackAnswer(context(findings), ['gap one'], 'Model failed.', 2);
+    const rendered = fallbackAnswer(context(findings), 'Model failed.', 2);
     expect(rendered.source).toBe('fallback');
-    expect(rendered.findings.map((finding) => finding.basedOn)).toEqual(['b', 'c']);
+    expect(rendered.findings.map((item) => item.basedOn)).toEqual(['b', 'c']);
     expect(rendered.summary).toEqual([{ kind: 'text', text: 'Model failed.' }]);
-    expect(rendered.gaps).toEqual([[{ kind: 'text', text: 'gap one' }]]);
-    expect(rendered.findings[0]?.observed).toEqual([{ kind: 'text', text: 'Engine says b' }]);
-    expect(rendered.findings[0]?.whyPriority[0]?.text).toContain('rule severity Critical');
+    expect(rendered.findings[0]?.facts).toEqual([[{ kind: 'text', text: 'Engine says b' }]]);
     expect(rendered.findings[0]?.howToVerify).toEqual([{ kind: 'text', text: 'Check b' }]);
     expect(rendered.findings[0]?.evidence).toEqual([{ href: '/page/b', label: 'Title b' }]);
+    expect(rendered.findings[0]?.whyPriority[0]?.kind).toBe('text');
+    expect(rendered.findings[0]?.scope).toEqual({ channel: null, productId: null });
+    expect(rendered.gaps).toEqual([]);
   });
 
   it('states the sample, the downgrade, and an unknown sample in plain words', () => {
@@ -186,7 +219,6 @@ describe('fallbackAnswer', () => {
         known('limited', { priority: 'Critical', strength: 'limited', affectedSessions: 1234 }),
         known('unknown', { priority: 'Low', affectedSessions: null }),
       ]),
-      [],
       'R',
     );
     expect(rendered.findings[0]?.whyPriority[0]?.text).toBe(

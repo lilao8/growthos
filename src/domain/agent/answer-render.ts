@@ -1,9 +1,10 @@
-import { formatInteger, formatMoneyMetric, formatMultiple, formatPercent } from '../format';
+import { formatDateRange, formatInteger, formatMoneyMetric, formatMultiple, formatPercent } from '../format';
 import type { Priority } from '../types';
 import {
-  PLACEHOLDER,
+  PRODUCT_PLACEHOLDER,
   type AgentAnswer,
   type AnswerContext,
+  type AnswerFact,
   type AnswerFinding,
   type CitableRef,
   type KnownFinding,
@@ -12,17 +13,16 @@ import { rankFindings, type EvidenceStrength } from './priority';
 import type { MetricUnit } from './refs';
 
 /**
- * Rendering a validated answer: placeholders become formatted figures with
- * links, findings are ordered by the agent ranking, and a deterministic
- * fallback answer can be built from the tool findings alone when the model's
- * answer cannot be used.
+ * Rendering a validated answer. Every fact sentence is written here from the
+ * tool result — metric label (which names the channel or product), dates and
+ * value — so the model cannot put a figure in the wrong channel, window or
+ * direction. Findings are ordered by the agent ranking, and a deterministic
+ * fallback can be built from the tool findings alone.
  */
 
 export type Segment =
   | { kind: 'text'; text: string }
-  | { kind: 'figure'; text: string; refId: string; href: string; label: string }
-  | { kind: 'change'; text: string; refId: string; previousRefId: string | null; href: string; label: string }
-  | { kind: 'audit'; text: string; refId: string; href: string };
+  | { kind: 'link'; text: string; href: string; title: string };
 
 export function formatValue(value: number | null, unit: MetricUnit): string {
   switch (unit) {
@@ -37,58 +37,76 @@ export function formatValue(value: number | null, unit: MetricUnit): string {
   }
 }
 
-function changeText(ref: CitableRef, previous: number | null, current: number | null, relative: number | null): string {
-  const base = `${formatValue(previous, ref.unit)} → ${formatValue(current, ref.unit)}`;
-  if (relative === null) return base;
-  const sign = relative > 0 ? '+' : relative < 0 ? '−' : '±';
-  return `${base} (${sign}${formatPercent(Math.abs(relative), 1)})`;
+function period(ref: CitableRef): string {
+  return formatDateRange(ref.window.start, ref.window.end);
 }
 
-/** Splits text into plain runs and rendered placeholders. Unknown ids stay as text. */
-export function renderText(source: string, context: AnswerContext): Segment[] {
+/**
+ * The metric label with its channel scope made explicit. Channel figures
+ * already name their channel; funnel and site figures do not, and a funnel
+ * rate read without its scope is exactly how a Meta figure gets mistaken for
+ * an Organic Search one.
+ */
+function describe(ref: CitableRef): string {
+  if (ref.channel !== null) return ref.label.includes(ref.channel) ? ref.label : `${ref.label} (${ref.channel})`;
+  return ref.productId === null ? `${ref.label} (all channels)` : ref.label;
+}
+
+function figure(ref: CitableRef): Segment {
+  return { kind: 'link', text: formatValue(ref.value, ref.unit), href: ref.href, title: `${describe(ref)}, ${period(ref)}` };
+}
+
+function relativeText(relative: number | null): string {
+  if (relative === null) return '';
+  const sign = relative > 0 ? '+' : relative < 0 ? '−' : '±';
+  return `, ${sign}${formatPercent(Math.abs(relative), 1)}`;
+}
+
+/** The previous-period figure a comparison points at, when both exist. */
+function previousRef(currentRefId: string, context: AnswerContext): CitableRef | undefined {
+  const previousRefId = context.comparisons.get(currentRefId)?.previousRefId ?? null;
+  return previousRefId === null ? undefined : context.refs.get(previousRefId);
+}
+
+/** One fact, written out. Validated input only; an unresolvable fact renders as nothing. */
+export function renderFact(fact: AnswerFact, context: AnswerContext): Segment[] {
+  if (fact.kind === 'audit') {
+    const audit = context.audits.get(fact.refId);
+    if (audit === undefined) return [];
+    const evidence = audit.evidence === null ? '' : ` (${audit.evidence})`;
+    return [{ kind: 'link', text: `${audit.ruleId}: ${audit.status}${evidence}`, href: audit.href, title: 'Open the audit evidence' }];
+  }
+  const ref = context.refs.get(fact.refId);
+  if (ref === undefined) return [];
+  if (fact.kind === 'value') {
+    return [{ kind: 'text', text: `${describe(ref)}, ${period(ref)}: ` }, figure(ref)];
+  }
+  const comparison = context.comparisons.get(fact.refId);
+  const previous = previousRef(fact.refId, context);
+  if (comparison === undefined || previous === undefined) return [];
+  return [
+    { kind: 'text', text: `${describe(ref)}: ` },
+    figure(previous),
+    { kind: 'text', text: ` (${period(previous)}) → ` },
+    figure(ref),
+    { kind: 'text', text: ` (${period(ref)})${relativeText(comparison.relativeChange)}` },
+  ];
+}
+
+/** Prose with `{{product:<id>}}` replaced by the product's name, linked to its page. */
+export function renderProse(source: string, context: AnswerContext): Segment[] {
   const segments: Segment[] = [];
   let cursor = 0;
-  for (const match of source.matchAll(PLACEHOLDER)) {
-    const index = match.index;
-    if (index > cursor) segments.push({ kind: 'text', text: source.slice(cursor, index) });
-    cursor = index + match[0].length;
-    const kind = match[1];
-    const id = match[2] ?? '';
-    if (kind === 'ref') {
-      const ref = context.refs.get(id);
-      segments.push(
-        ref === undefined
-          ? { kind: 'text', text: match[0] }
-          : { kind: 'figure', text: formatValue(ref.value, ref.unit), refId: id, href: ref.href, label: ref.label },
-      );
-    } else if (kind === 'change') {
-      const comparison = context.comparisons.get(id);
-      const ref = context.refs.get(id);
-      segments.push(
-        comparison === undefined || ref === undefined
-          ? { kind: 'text', text: match[0] }
-          : {
-              kind: 'change',
-              text: changeText(ref, comparison.previous, comparison.current, comparison.relativeChange),
-              refId: id,
-              previousRefId: comparison.previousRefId,
-              href: ref.href,
-              label: ref.label,
-            },
-      );
-    } else {
-      const audit = context.audits.get(id);
-      segments.push(
-        audit === undefined
-          ? { kind: 'text', text: match[0] }
-          : {
-              kind: 'audit',
-              text: `${audit.ruleId}: ${audit.status}${audit.evidence === null ? '' : ` (${audit.evidence})`}`,
-              refId: id,
-              href: audit.href,
-            },
-        );
-    }
+  for (const match of source.matchAll(PRODUCT_PLACEHOLDER)) {
+    if (match.index > cursor) segments.push({ kind: 'text', text: source.slice(cursor, match.index) });
+    cursor = match.index + match[0].length;
+    const productId = match[1] ?? '';
+    const name = context.products.get(productId);
+    segments.push(
+      name === undefined
+        ? { kind: 'text', text: match[0] }
+        : { kind: 'link', text: name, href: `/products/${encodeURIComponent(productId)}`, title: name },
+    );
   }
   if (cursor < source.length) segments.push({ kind: 'text', text: source.slice(cursor) });
   return segments;
@@ -97,16 +115,20 @@ export function renderText(source: string, context: AnswerContext): Segment[] {
 export interface RenderedFinding {
   rank: number;
   basedOn: string;
+  /** From the tool finding, never from the model. */
   title: string;
-  observed: Segment[];
+  facts: Segment[][];
   whyPriority: Segment[];
   howToVerify: Segment[];
+  /** The rule's own guidance, verbatim, thresholds included. */
+  ruleGuidance: string;
+  scope: { channel: string | null; productId: string | null };
   priority: Priority;
   effectivePriority: Priority;
   downgraded: boolean;
   strength: EvidenceStrength;
   affectedSessions: number | null;
-  /** The finding's own page plus every figure it cites, de-duplicated. */
+  /** The finding's own page first, then each cited figure's page, de-duplicated. */
   evidence: Array<{ label: string; href: string }>;
 }
 
@@ -118,31 +140,27 @@ export interface RenderedAnswer {
   source: 'model' | 'fallback';
 }
 
-/** The finding's own page first, then each cited figure's page, de-duplicated by link. */
-function linksFor(
-  basis: KnownFinding,
-  citedIds: readonly string[],
-  context: AnswerContext,
-): Array<{ label: string; href: string }> {
+function linksFor(basis: KnownFinding, citedIds: readonly string[], context: AnswerContext): Array<{ label: string; href: string }> {
   const links = new Map<string, string>([[basis.href, basis.title]]);
+  const add = (href: string, label: string): void => {
+    if (!links.has(href)) links.set(href, label);
+  };
   for (const id of [...citedIds, ...basis.refIds]) {
     const ref = context.refs.get(id);
-    if (ref !== undefined && !links.has(ref.href)) links.set(ref.href, ref.label);
+    if (ref !== undefined) {
+      add(ref.href, `${describe(ref)}, ${period(ref)}`);
+      const previous = previousRef(id, context);
+      if (previous !== undefined) add(previous.href, `${describe(previous)}, ${period(previous)}`);
+    }
     const audit = context.audits.get(id);
-    if (audit !== undefined && !links.has(audit.href)) links.set(audit.href, audit.ruleId);
+    if (audit !== undefined) add(audit.href, audit.ruleId);
   }
   return [...links.entries()].map(([href, label]) => ({ href, label }));
 }
 
-function citedIn(finding: AnswerFinding): string[] {
-  return [finding.observed, finding.whyPriority].flatMap((part) =>
-    [...part.matchAll(PLACEHOLDER)].map((match) => match[2] ?? ''),
-  );
-}
-
 /**
  * Orders a validated answer by the agent ranking of the findings it rests on.
- * Callers must validate first: a finding whose basis is unknown is dropped.
+ * Callers validate first; a finding whose basis is unknown is dropped.
  */
 export function renderAnswer(answer: AgentAnswer, context: AnswerContext, source: 'model' | 'fallback'): RenderedAnswer {
   const byBasis = new Map(answer.findings.map((finding) => [finding.basedOn, finding]));
@@ -152,46 +170,42 @@ export function renderAnswer(answer: AgentAnswer, context: AnswerContext, source
   const ranking = rankFindings(bases);
 
   const findings: RenderedFinding[] = ranking.ranked.flatMap((entry) => {
-    const finding = byBasis.get(entry.finding.id);
+    const finding: AnswerFinding | undefined = byBasis.get(entry.finding.id);
     if (finding === undefined) return [];
     return [
       {
         rank: entry.rank,
         basedOn: entry.finding.id,
-        title: finding.title,
-        observed: renderText(finding.observed, context),
-        whyPriority: renderText(finding.whyPriority, context),
-        howToVerify: renderText(finding.howToVerify, context),
+        title: entry.finding.title,
+        facts: finding.facts.map((fact) => renderFact(fact, context)),
+        whyPriority: renderProse(finding.whyPriority, context),
+        howToVerify: renderProse(finding.howToVerify, context),
+        ruleGuidance: entry.finding.howToVerify,
+        scope: finding.scope,
         priority: entry.finding.priority,
         effectivePriority: entry.effectivePriority,
         downgraded: entry.downgraded,
         strength: entry.finding.strength,
         affectedSessions: entry.finding.affectedSessions,
-        evidence: linksFor(entry.finding, citedIn(finding), context),
+        evidence: linksFor(entry.finding, finding.facts.map((fact) => fact.refId), context),
       },
     ];
   });
 
   return {
-    summary: renderText(answer.summary, context),
+    summary: renderProse(answer.summary, context),
     findings,
-    gaps: answer.gaps.map((gap) => renderText(gap, context)),
+    gaps: answer.gaps.map((gap) => renderProse(gap, context)),
     source,
   };
 }
 
 /**
  * The answer GrowthOS gives on its own when the model's cannot be used: the
- * top ranked tool findings in the engines' own words, and the tools' gaps.
- * Every sentence here was written by GrowthOS from the data, so it needs no
- * placeholders.
+ * top ranked tool findings in the engines' own words. Every sentence here was
+ * written by GrowthOS from the data.
  */
-export function fallbackAnswer(
-  context: AnswerContext,
-  gaps: readonly string[],
-  reason: string,
-  limit = 5,
-): RenderedAnswer {
+export function fallbackAnswer(context: AnswerContext, reason: string, limit = 5): RenderedAnswer {
   const ranking = rankFindings([...context.findings.values()]);
   const findings: RenderedFinding[] = ranking.ranked.slice(0, limit).map((entry) => {
     const basis = entry.finding;
@@ -200,7 +214,7 @@ export function fallbackAnswer(
       rank: entry.rank,
       basedOn: basis.id,
       title: basis.title,
-      observed: [{ kind: 'text', text: basis.observed }],
+      facts: [[{ kind: 'text', text: basis.observed }]],
       whyPriority: [
         {
           kind: 'text',
@@ -208,6 +222,8 @@ export function fallbackAnswer(
         },
       ],
       howToVerify: [{ kind: 'text', text: basis.howToVerify }],
+      ruleGuidance: basis.howToVerify,
+      scope: { channel: null, productId: null },
       priority: basis.priority,
       effectivePriority: entry.effectivePriority,
       downgraded: entry.downgraded,
@@ -216,10 +232,5 @@ export function fallbackAnswer(
       evidence: linksFor(basis, [], context),
     };
   });
-  return {
-    summary: [{ kind: 'text', text: reason }],
-    findings,
-    gaps: gaps.map((gap) => [{ kind: 'text', text: gap }]),
-    source: 'fallback',
-  };
+  return { summary: [{ kind: 'text', text: reason }], findings, gaps: [], source: 'fallback' };
 }

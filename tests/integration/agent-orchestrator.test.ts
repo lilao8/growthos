@@ -102,17 +102,28 @@ describe('the main question', () => {
       answer.findings.map((finding) => ({ id: finding.basedOn, priority: finding.priority, strength: finding.strength, affectedSessions: finding.affectedSessions })),
     );
     expect(answer.findings.map((finding) => finding.basedOn)).toEqual(ranked.ranked.map((entry) => entry.finding.id));
-    const figures = answer.findings.flatMap((finding) => finding.observed).filter((segment) => segment.kind !== 'text');
+    const figures = answer.findings.flatMap((finding) => finding.facts.flat()).filter((segment) => segment.kind === 'link');
     expect(figures.length).toBeGreaterThan(0);
-    for (const figure of figures) expect(figure.href).toMatch(/^\/(analytics|funnel|products|seo|geo)/);
+    for (const figure of figures) expect(figure.kind === 'link' && figure.href).toMatch(/^\/(analytics|funnel|products|seo|geo)/);
+    // Every finding has at least one written-out fact, and no raw placeholder survives anywhere.
+    for (const finding of answer.findings) expect(finding.facts.every((fact) => fact.length > 0)).toBe(true);
+    expect(JSON.stringify(answer)).not.toContain('{{');
     for (const finding of answer.findings) expect(finding.evidence.length).toBeGreaterThan(0);
   });
 
-  it('shows limited evidence with its sample size', async () => {
-    const answer = answered((await ask(MAIN)).result);
-    const limited = answer.findings.filter((finding) => finding.strength === 'limited');
-    expect(limited.length).toBeGreaterThan(0);
-    for (const finding of limited) expect(finding.affectedSessions).not.toBeNull();
+  it('shows a limited finding with its sample size and its downgrade', async () => {
+    // The channel tool's findings are on Meta, which has few orders.
+    const model = oneQueryModel((messages) => {
+      const finding = firstFinding(messages);
+      return {
+        summary: 'One thing to check.',
+        findings: [{ basedOn: finding.id, facts: [{ kind: 'value', refId: finding.refIds[0] ?? '' }], whyPriority: 'Paid traffic that is not converting.', howToVerify: 'Compare pages.', scope: { channel: 'Meta', productId: null } }],
+        gaps: [],
+      };
+    });
+    const answer = answered((await ask(MAIN, DEFAULT_SCOPE, { model })).result);
+    expect(answer.findings[0]).toMatchObject({ strength: 'limited', downgraded: true });
+    expect(answer.findings[0]?.affectedSessions).toBeGreaterThan(0);
   });
 });
 
@@ -126,7 +137,18 @@ describe('scope across turns', () => {
     const data = result.toolCalls.filter((call) => call.name !== 'set_analysis_scope');
     expect(data.length).toBeGreaterThan(0);
     for (const call of data) expect(call.input).toMatchObject({ range: 30, channel: 'Organic Search' });
-    expect(answered(result).findings.every((finding) => finding.title.startsWith('Organic Search'))).toBe(true);
+    const answer = answered(result);
+    expect(answer.findings.length).toBeGreaterThan(0);
+    for (const finding of answer.findings) {
+      expect(finding.title.startsWith('Organic Search')).toBe(true);
+      expect(finding.scope.channel).toBe('Organic Search');
+      // The figures are written out and linked to the Organic Search funnel for the same dates.
+      const links = finding.facts.flat().filter((segment) => segment.kind === 'link');
+      expect(links.length).toBeGreaterThan(0);
+      for (const link of links) expect(link.kind === 'link' && link.href).toBe('/funnel?range=30&channel=Organic+Search');
+      expect(finding.facts.flat().map((segment) => segment.text).join('')).toContain('2026-08-02 — 2026-08-31');
+    }
+    expect(JSON.stringify(answer)).not.toContain('{{');
   });
 
   it('keeps a 7-day range on a channel follow-up', async () => {
@@ -164,8 +186,9 @@ describe('enough data and not enough data', () => {
     // falls below its sample minimum and becomes a gap with its raw figures…
     expect(titles(full)).toContain('Checkout → Purchase: investigate the drop-off');
     expect(titles(sparse)).not.toContain('Checkout → Purchase: investigate the drop-off');
-    expect(sparse.toolGaps.some((gap) => gap.startsWith('Checkout → Purchase: only'))).toBe(true);
-    expect(sparse.toolGaps.filter((gap) => gap.includes('below the 300')).length).toBe(8);
+    const checkoutGap = sparse.toolGaps.find((gap) => gap.message.startsWith('Checkout → Purchase: only'));
+    expect(checkoutGap?.links.length).toBeGreaterThan(0);
+    expect(sparse.toolGaps.filter((gap) => gap.message.includes('below the 300')).length).toBe(8);
     // …while a step that still clears its minimum is kept as a confirmed finding.
     expect(titles(sparse)).toEqual(['Product View → Add to Cart: investigate the drop-off']);
     expect(titles(sparse).length).toBeLessThan(titles(full).length);
@@ -175,7 +198,7 @@ describe('enough data and not enough data', () => {
     const { result } = await ask(MAIN, DEFAULT_SCOPE, { traffic: createEmptyTrafficRepository() });
     // Nothing is concluded from traffic that does not exist…
     expect(trafficFindings(answered(result))).toEqual([]);
-    expect(result.toolGaps.some((gap) => gap.includes('no sessions'))).toBe(true);
+    expect(result.toolGaps.some((gap) => gap.message.includes('no sessions'))).toBe(true);
     // …while page-content audit findings still stand, with no sessions behind them.
     for (const finding of answered(result).findings) expect(finding.affectedSessions).toBe(0);
   });
@@ -186,16 +209,19 @@ describe('enough data and not enough data', () => {
     ]);
     const { result } = await ask(MAIN, DEFAULT_SCOPE, { model });
     expect(result.toolCalls[0]?.status).toBe('empty');
-    expect(result.toolGaps.some((gap) => gap.includes('NT-999'))).toBe(true);
+    expect(result.toolGaps.some((gap) => gap.message.includes('NT-999'))).toBe(true);
   });
 });
 
 describe('failures', () => {
-  it('reports tool failures and still answers', async () => {
+  it('reports tool failures as failures, not as an empty result', async () => {
     const { result } = await ask(MAIN, DEFAULT_SCOPE, { traffic: createFailingTrafficRepository('source down') });
     expect(result.toolCalls.every((call) => call.status === 'error')).toBe(true);
     expect(result.status).toBe('answered');
     expect(answered(result).findings).toEqual([]);
+    expect(result.failedChecks.map((check) => check.name)).toEqual(result.toolCalls.map((call) => call.name));
+    expect(result.failedChecks[0]?.message).toContain('source down');
+    expect(result.toolGaps).toEqual([]);
   });
 
   it('cannot write: a write request finds no tool, and the visitor state is untouched', async () => {
@@ -204,6 +230,8 @@ describe('failures', () => {
     const { result } = await ask('把第一条建议标记为完成', DEFAULT_SCOPE, { state: { source: 'browser-local', value } });
     expect(result.toolCalls.map((call) => call.status)).toEqual(['unknown-tool']);
     expect(answered(result).findings).toEqual([]);
+    // GrowthOS, not the model, records that nothing was done.
+    expect(result.refusedActions).toEqual(['mark_recommendation_done']);
     expect(value).toEqual(before);
   });
 
@@ -224,8 +252,8 @@ describe('answer validation', () => {
     const model = oneQueryModel((messages) => {
       attempts += 1;
       const finding = firstFinding(messages);
-      const observed = attempts === 1 ? 'Conversion is 0.54%.' : `Conversion is {{ref:${finding.refIds[0] ?? ''}}}.`;
-      return { summary: 'Check this.', findings: [{ basedOn: finding.id, title: 'T', observed, whyPriority: 'Paid traffic.', howToVerify: 'Compare pages.', scope: { channel: 'Meta', productId: null } }], gaps: [] };
+      const whyPriority = attempts === 1 ? 'Conversion is 0.54%.' : 'Paid traffic that is not converting.';
+      return { summary: 'Check this.', findings: [{ basedOn: finding.id, facts: [{ kind: 'value', refId: finding.refIds[0] ?? '' }], whyPriority, howToVerify: 'Compare pages.', scope: { channel: 'Meta', productId: null } }], gaps: [] };
     });
     const { result, events } = await ask(MAIN, DEFAULT_SCOPE, { model });
     expect(attempts).toBe(2);
@@ -236,13 +264,13 @@ describe('answer validation', () => {
   it('falls back to GrowthOS ranking when the answer still fails after one correction', async () => {
     const model = oneQueryModel((messages) => ({
       summary: 'Meta conversion fell sharply.',
-      findings: [{ basedOn: firstFinding(messages).id, title: 'T', observed: 'It is {{ref:channels:invented}}.', whyPriority: 'x', howToVerify: 'y', scope: { channel: null, productId: null } }],
+      findings: [{ basedOn: firstFinding(messages).id, facts: [{ kind: 'value', refId: 'channels:invented' }], whyPriority: 'x', howToVerify: 'y', scope: { channel: null, productId: null } }],
       gaps: [],
     }));
     const { result } = await ask(MAIN, DEFAULT_SCOPE, { model });
     expect(result.status).toBe('fallback');
     expect(result.answer?.source).toBe('fallback');
-    expect(result.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(['unknown-ref', 'change-without-comparison']));
+    expect(result.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(['unknown-ref', 'change-in-prose']));
     expect(result.answer?.findings.length).toBeGreaterThan(0);
   });
 
@@ -255,6 +283,47 @@ describe('answer validation', () => {
     const { result } = await ask(MAIN, DEFAULT_SCOPE, { model: broken });
     expect(result.status).toBe('fallback');
     expect(result.issues[0]?.code).toBe('invalid-json');
+  });
+});
+
+describe('cancellation', () => {
+  it('never calls the model for a request that is already cancelled', async () => {
+    let calls = 0;
+    const model = createScriptedModel('counted', () => {
+      calls += 1;
+      return { type: 'final', content: '{}' };
+    });
+    const controller = new AbortController();
+    controller.abort();
+    const { result } = await ask(MAIN, DEFAULT_SCOPE, { model, signal: controller.signal });
+    expect(calls).toBe(0);
+    expect(result.status).toBe('failed');
+  });
+
+  it('starts no further tool call in a batch once the turn is cancelled', async () => {
+    const controller = new AbortController();
+    const traffic: TrafficRepository = {
+      async load() {
+        controller.abort();
+        return createFixtureTrafficRepository().load();
+      },
+    };
+    const model = createScriptedModel('batch', (messages) => {
+      const question = currentQuestion(messages);
+      if (resultsSince(messages, question.index).length === 0) {
+        return {
+          type: 'tool_calls',
+          calls: [
+            { id: 'a', name: 'get_channel_performance', arguments: '{}' },
+            { id: 'b', name: 'get_funnel', arguments: '{}' },
+            { id: 'c', name: 'get_audit_findings', arguments: '{}' },
+          ],
+        };
+      }
+      return { type: 'final', content: JSON.stringify({ summary: 'Done.', findings: [], gaps: [] }) };
+    });
+    const { result } = await ask(MAIN, DEFAULT_SCOPE, { model, traffic, signal: controller.signal });
+    expect(result.toolCalls.map((call) => call.status)).toEqual(['error', 'cancelled', 'cancelled']);
   });
 });
 

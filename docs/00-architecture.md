@@ -380,3 +380,4 @@ npm run build
 - **编排在 `src/services/agent/`。** `ModelClient` 是唯一的模型接缝；循环负责调用上限（8）、单工具超时（5s）、整轮超时（60s）、模型步数上限（12），全部在代码里强制，不依赖提示词。
 - **`/api/agent`。** POST + NDJSON 流式事件。`AGENT_LIVE_ENABLED` 必须恰好为 `"true"`，否则 503；provider 由 `AGENT_MODEL_PROVIDER` 选择（本阶段只有 `scripted`）。请求体 zod 严格校验，浏览器状态经 `parseLocalState`，不合格 400 且不调用模型。
 - **替身模型。** `createDemoModel()` 根据工具结果决定下一步，供本地演示与 E2E；id 为 `scripted:demo`，界面标注 Scripted stand-in model。
+- **复核修订：事实结构化。** 回答的 `facts` 为 `value` / `change`（带方向）/ `audit`，事实句由 `renderFact()` 用工具结果写出：指标、渠道范围、起止日期、值；变化写出两期，各自链接到自己的窗口。文本字段不允许出现数字和变化措辞，商品只能写成 `{{product:<id>}}`。校验新增 `wrong-direction` 和 `scope-mismatch`。结果新增 `failedChecks`、`refusedActions`，工具缺口带证据链接。客户端捕获流中断；编排循环在每次模型或工具调用前检查取消信号；`/api/agent` 边读请求体边限制在 320 KB 以内。

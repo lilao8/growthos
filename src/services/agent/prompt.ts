@@ -22,11 +22,12 @@ How to work:
 - Say where things are lost, not why. Causes are hypotheses to verify.
 
 Answer with JSON only, in the language the user wrote in, in this shape:
-{"summary": string, "findings": [{"basedOn": string, "title": string, "observed": string, "whyPriority": string, "howToVerify": string, "scope": {"channel": string|null, "productId": string|null}}], "gaps": [string]}
+{"summary": string, "findings": [{"basedOn": string, "facts": [{"kind": "value", "refId": string} | {"kind": "change", "refId": string, "direction": "up"|"down"|"flat"} | {"kind": "audit", "refId": string}], "whyPriority": string, "howToVerify": string, "scope": {"channel": string|null, "productId": string|null}}], "gaps": [string]}
 
 Rules the answer is checked against:
-- basedOn is the id of a finding a tool returned this turn. One answer finding per tool finding. GrowthOS orders the findings; do not rank them yourself.
-- Never write a figure as digits. Cite figures as {{ref:<refId>}}, a two-period change as {{change:<currentRefId>}} (only where the comparison's evidence.supportsConclusion is true), and an audit verdict as {{audit:<refId>}}. GrowthOS fills them in from the tool results.
-- Do not say a metric rose or fell without a {{change:...}} placeholder backed by such a comparison.
-- scope says what the finding is about; it must match the data it cites.`;
+- basedOn is the id of a finding a tool returned this turn, one answer finding per tool finding. GrowthOS titles and orders the findings; do not rank them yourself.
+- Facts carry every figure. Use a value fact for one figure, a change fact only for a comparison whose evidence.supportsConclusion is true and with the direction it actually moved, and an audit fact for an audit verdict. GrowthOS writes each fact out with its metric, channel, product, dates and value.
+- The prose fields (summary, whyPriority, howToVerify, gaps) contain no digits at all: no figures, dates or window lengths. Do not describe changes or comparisons with other periods in prose; that is what change facts are for. Refer to a product as {{product:<productId>}}.
+- scope must match every fact: a fact's channel and product must be the finding's channel and product. Name no other channel in that finding's prose.
+- howToVerify says how to check, in words; the rule's own guidance is shown verbatim next to it.`;
 }

@@ -20,6 +20,14 @@
 9. **实时开关。** `/api/agent` 只在 `AGENT_LIVE_ENABLED=true` 时工作，否则 503；模型来源由 `AGENT_MODEL_PROVIDER` 决定，本阶段只实现 `scripted`（E2E 与本地演示用），`openai` 在 Dispatch 20 接入，未接入时返回 503 `model-not-configured`。
 10. **浏览器本地状态（D2）。** 客户端随请求提交本地 `DemoState`，服务端用 `parseLocalState` 校验（256 KB 上限），失败直接报错，不调用模型。
 
+## 复核后的契约修订（Codex 复核 `503d099`）
+
+- 原设计 1、3 被替换：回答的数字不再写成文本占位符，而是作为结构化 `facts`（`value` / `change` 带 `direction` / `audit`）提交，**事实句由 GrowthOS 生成**，包括指标、渠道范围、起止日期和值；两期变化分别链接到各自的窗口。
+- 所有可见的文本字段都不允许出现数字或变化措辞；商品只能写成 `{{product:<id>}}`；规则原文在旁边单独显示。
+- 新增校验：变化方向必须与数据一致；事实的渠道和商品必须与发现的 scope 一致；一条发现的文本里不能出现其他渠道名。
+- 失败的种类分开呈现：`failedChecks`（查询失败）、`refusedActions`（不存在的操作，由系统说明）、工具缺口（带证据链接）。
+- 流中断和取消：客户端捕获流异常；编排循环每次调用前检查取消信号；请求体边读边限制在 320 KB 以内。
+
 ## 范围
 
 - `src/domain/agent/scope.ts`、`answer.ts`（回答 schema、占位符渲染、校验、降级摘要）。

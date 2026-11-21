@@ -1,5 +1,5 @@
 import { runAgentTurn, type AgentEvent } from '@/services/agent/orchestrator';
-import { parseAgentRequest } from '@/services/agent/request';
+import { MAX_REQUEST_BYTES, parseAgentRequest } from '@/services/agent/request';
 import { resolveLiveModel } from '@/services/agent/live-config';
 import { createFixtureTrafficRepository } from '@/repositories/traffic-repository';
 
@@ -13,6 +13,36 @@ import { createFixtureTrafficRepository } from '@/repositories/traffic-repositor
 
 export const maxDuration = 60;
 
+/**
+ * Reads the body, stopping as soon as it passes the limit, so an oversized
+ * request is refused without being held in memory. null = too large.
+ */
+async function readCapped(request: Request, limit: number): Promise<string | null> {
+  const declared = Number(request.headers.get('content-length') ?? '0');
+  if (declared > limit) return null;
+  if (request.body === null) return '';
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 function jsonError(status: number, error: string, message: string): Response {
   return Response.json({ error, message }, { status });
 }
@@ -21,10 +51,12 @@ export async function POST(request: Request): Promise<Response> {
   const live = resolveLiveModel(process.env);
   if (!live.ok) return jsonError(live.status, live.error, live.message);
 
-  let text: string;
+  const text = await readCapped(request, MAX_REQUEST_BYTES);
+  if (text === null) {
+    return jsonError(413, 'request-too-large', `The request is larger than ${MAX_REQUEST_BYTES} bytes.`);
+  }
   let body: unknown;
   try {
-    text = await request.text();
     body = JSON.parse(text) as unknown;
   } catch {
     return jsonError(400, 'invalid-request', 'The request body is not valid JSON.');
@@ -40,9 +72,17 @@ export async function POST(request: Request): Promise<Response> {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (event: AgentEvent): void => {
-        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      let open = true;
+      const write = (line: string): void => {
+        if (!open) return;
+        try {
+          controller.enqueue(encoder.encode(`${line}\n`));
+        } catch {
+          // The client went away; the turn is cancelled through request.signal.
+          open = false;
+        }
       };
+      const send = (event: AgentEvent): void => write(JSON.stringify(event));
       try {
         await runAgentTurn(
           parsed.input,
@@ -56,13 +96,9 @@ export async function POST(request: Request): Promise<Response> {
           send,
         );
       } catch (cause) {
-        controller.enqueue(
-          encoder.encode(
-            `${JSON.stringify({ type: 'error', message: cause instanceof Error ? cause.message : 'The analysis failed.' })}\n`,
-          ),
-        );
+        write(JSON.stringify({ type: 'error', message: cause instanceof Error ? cause.message : 'The analysis failed.' }));
       } finally {
-        controller.close();
+        if (open) controller.close();
       }
     },
   });

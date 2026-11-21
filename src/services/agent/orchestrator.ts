@@ -11,7 +11,7 @@ import type { DateWindow } from '@/domain/demo-window';
 import { AGENT_TOOLS, runTool, type RunToolOutcome } from '@/services/agent-tools/registry';
 import type { ProvidedState } from '@/services/agent-tools/types';
 import type { TrafficRepository } from '@/repositories/traffic-repository';
-import { AnswerContextBuilder } from './answer-context';
+import { AnswerContextBuilder, type ToolGap } from './answer-context';
 import type { AgentMessage, ModelClient, ToolCall, ToolSpec } from './model';
 import { systemPrompt } from './prompt';
 import {
@@ -91,8 +91,15 @@ export interface AgentTurnResult {
   scope: ConversationScope;
   window: DateWindow;
   toolCalls: ToolCallRecord[];
-  /** Gaps reported by the tools, in GrowthOS's own words. */
-  toolGaps: string[];
+  /** Gaps reported by the tools, in GrowthOS's own words, with links to the figures behind them. */
+  toolGaps: ToolGap[];
+  /**
+   * Actions the model tried that do not exist. Written by GrowthOS, not the
+   * model, so an answer can never claim a change was made.
+   */
+  refusedActions: string[];
+  /** Tool calls that failed, so a failure is never read as an empty result. */
+  failedChecks: Array<{ name: string; message: string }>;
   /** Issues from the last validation, when the answer had to be repaired or replaced. */
   issues: AnswerIssue[];
   /** Limits hit, timeouts and similar, for the operator. */
@@ -184,9 +191,18 @@ function forModel(outcome: RunToolOutcome | { status: 'ok'; scope: ConversationS
       howToVerify: finding.howToVerify,
       refIds: finding.refIds,
     })),
-    refs: outcome.meta.refs.map((ref) => ({ refId: ref.refId, label: ref.label, value: ref.value, unit: ref.unit })),
+    refs: outcome.meta.refs.map((ref) => ({
+      refId: ref.refId,
+      label: ref.label,
+      value: ref.value,
+      unit: ref.unit,
+      channel: ref.channel,
+      productId: ref.productId,
+      window: ref.window,
+    })),
     auditRefs: outcome.meta.auditRefs.map((ref) => ({
       refId: ref.refId,
+      productId: ref.productId,
       ruleId: ref.ruleId,
       status: ref.status,
       severity: ref.severity,
@@ -242,10 +258,12 @@ export async function runAgentTurn(
   const turn = new AbortController();
   const turnTimer = setTimeout(() => turn.abort(), limits.turnTimeoutMs);
   const onOuterAbort = (): void => turn.abort();
+  // An already-aborted signal never fires 'abort' again, so check it now.
+  if (deps.signal?.aborted === true) turn.abort();
   deps.signal?.addEventListener('abort', onOuterAbort, { once: true });
 
   let scope = input.scope;
-  const context = new AnswerContextBuilder(deps.state.value.products, scope.range);
+  const context = new AnswerContextBuilder(deps.state.value.products);
   const toolCalls: ToolCallRecord[] = [];
   const notes: string[] = [];
   let issues: AnswerIssue[] = [];
@@ -260,7 +278,9 @@ export async function runAgentTurn(
   }
   messages.push({ role: 'user', content: input.question });
 
-  const finish = (result: Omit<AgentTurnResult, 'scope' | 'window' | 'toolCalls' | 'toolGaps' | 'notes' | 'model'>): AgentTurnResult => {
+  const finish = (
+    result: Omit<AgentTurnResult, 'scope' | 'window' | 'toolCalls' | 'toolGaps' | 'notes' | 'model' | 'refusedActions' | 'failedChecks'>,
+  ): AgentTurnResult => {
     clearTimeout(turnTimer);
     deps.signal?.removeEventListener('abort', onOuterAbort);
     const done: AgentTurnResult = {
@@ -269,6 +289,10 @@ export async function runAgentTurn(
       window: scopeWindow(scope),
       toolCalls,
       toolGaps: context.toolGaps(),
+      refusedActions: [...new Set(toolCalls.filter((call) => call.status === 'unknown-tool').map((call) => call.name))],
+      failedChecks: toolCalls
+        .filter((call) => call.status === 'error')
+        .map((call) => ({ name: call.name, message: call.summary })),
       notes,
       model: deps.model.id,
     };
@@ -283,7 +307,7 @@ export async function runAgentTurn(
     }
     return finish({
       status: 'fallback',
-      answer: fallbackAnswer(built, [], `${reason} The findings below are GrowthOS's own ranking of what the tools returned.`),
+      answer: fallbackAnswer(built, `${reason} The findings below are GrowthOS's own ranking of what the tools returned.`),
       issues,
       message: reason,
     });
@@ -364,6 +388,13 @@ export async function runAgentTurn(
     if (reply.type === 'tool_calls') {
       messages.push({ role: 'assistant', content: null, toolCalls: reply.calls });
       for (const call of reply.calls) {
+        // A cancelled or timed-out turn starts nothing new, even mid-batch.
+        if (turn.signal.aborted) {
+          const message = 'Not run: the request was cancelled or ran out of time.';
+          messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify({ status: 'cancelled', message }) });
+          toolCalls.push({ id: call.id, name: call.name, input: call.arguments, status: 'cancelled', summary: message });
+          continue;
+        }
         if (toolCallsUsed >= limits.maxToolCalls) {
           const refused = { status: 'limit-reached', message: `The limit of ${limits.maxToolCalls} tool calls per question has been reached.` };
           messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify(refused) });

@@ -1,4 +1,5 @@
-import { CHANNELS } from '@/domain/types';
+import { rankFindings, type EvidenceStrength } from '@/domain/agent/priority';
+import type { Priority } from '@/domain/types';
 import type { AgentMessage, ModelClient, ModelTurn, ToolCall, ToolSpec } from './model';
 import { SCOPE_TOOL_NAME } from './scope-tool';
 
@@ -67,18 +68,28 @@ interface SeenFinding {
   id: string;
   ruleId: string;
   title: string;
-  priority: string;
-  strength: string;
+  priority: Priority;
+  strength: EvidenceStrength;
   affectedSessions: number | null;
   howToVerify: string;
   refIds: string[];
 }
 
-function findingsIn(results: readonly ToolResult[]): SeenFinding[] {
+interface SeenRef {
+  refId: string;
+  channel: string | null;
+  productId: string | null;
+}
+
+function listIn<T>(results: readonly ToolResult[], key: string): T[] {
   return results.flatMap((result) => {
-    const list = result.body['findings'];
-    return Array.isArray(list) ? (list as SeenFinding[]) : [];
+    const list = result.body[key];
+    return Array.isArray(list) ? (list as T[]) : [];
   });
+}
+
+function findingsIn(results: readonly ToolResult[]): SeenFinding[] {
+  return listIn<SeenFinding>(results, 'findings');
 }
 
 // ---------------------------------------------------------------------------
@@ -95,33 +106,26 @@ const WRITE_REQUEST = /标记|删除|修改|暂停|发送|关闭|\b(mark|delete|
 const ORGANIC = /自然搜索|organic/i;
 const CJK = /[一-鿿]/;
 
-const PRIORITY_ORDER = ['Critical', 'High', 'Medium', 'Low'];
-
-function channelOf(title: string): string | null {
-  return CHANNELS.find((channel) => title.startsWith(`${channel}:`)) ?? null;
-}
-
 function finalAnswer(question: string, results: readonly ToolResult[], scopeNote: string): ModelTurn {
   const chinese = CJK.test(question);
-  const picked = [...findingsIn(results)]
-    .sort(
-      (a, b) =>
-        PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority) ||
-        (b.affectedSessions ?? -1) - (a.affectedSessions ?? -1),
-    )
-    .slice(0, 5);
+  const refs = new Map([...listIn<SeenRef>(results, 'refs'), ...listIn<SeenRef>(results, 'auditRefs')].map((ref) => [ref.refId, ref]));
+  // The same ranking GrowthOS applies, so the top five are the right five.
+  const picked = rankFindings(findingsIn(results)).ranked.slice(0, 5).map((entry) => entry.finding);
 
   const findings = picked.map((finding) => {
-    const cited = finding.refIds.slice(0, 3).map((id) => (id.startsWith('audits:') ? `{{audit:${id}}}` : `{{ref:${id}}}`));
+    const cited = finding.refIds.slice(0, 3);
+    const channel = cited.map((id) => refs.get(id)?.channel ?? null).find((value) => value !== null) ?? null;
+    const productId = cited.map((id) => refs.get(id)?.productId ?? null).find((value) => value !== null) ?? null;
     return {
       basedOn: finding.id,
-      title: finding.title,
-      observed: `${chinese ? '关键数字：' : 'Key figures: '}${cited.join(' · ')}`,
+      facts: cited.map((id) => (id.startsWith('audits:') ? { kind: 'audit', refId: id } : { kind: 'value', refId: id })),
       whyPriority: chinese
         ? `规则严重度为 ${finding.priority}，证据充分度为 ${finding.strength}。`
         : `Rule severity ${finding.priority}; evidence ${finding.strength}.`,
-      howToVerify: finding.howToVerify,
-      scope: { channel: channelOf(finding.title), productId: null },
+      howToVerify: chinese
+        ? '按下方的规则原文逐项核对，并在证据链接打开的页面上确认同一日期范围的数字。'
+        : 'Work through the rule guidance below, and confirm the figures for the same dates on the pages the evidence links open.',
+      scope: { channel, productId },
     };
   });
 
@@ -177,7 +181,8 @@ const demoStep: ScriptStep = (messages) => {
   if (!called.has('get_funnel')) {
     // Decides from what came back: a channel that converts badly gets its own funnel.
     const weak = findingsIn(results).find((finding) => finding.ruleId === 'high-traffic-low-conversion');
-    const channel = weak === undefined ? null : channelOf(weak.title);
+    const refs = listIn<SeenRef>(results, 'refs');
+    const channel = weak === undefined ? null : (refs.find((ref) => ref.refId === weak.refIds[0])?.channel ?? null);
     const calls = [call('get_funnel')];
     if (channel !== null) calls.push(call('get_funnel', { channel }));
     return { type: 'tool_calls', calls };

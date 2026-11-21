@@ -15,6 +15,8 @@ import type { AgentTurnInput } from './orchestrator';
 
 export const MAX_QUESTION_LENGTH = 500;
 export const MAX_HISTORY_TURNS = 10;
+/** The whole request: the browser state (256 KB at most) plus question, history and scope. */
+export const MAX_REQUEST_BYTES = 320 * 1024;
 
 const requestSchema = z.strictObject({
   question: z.string().trim().min(1).max(MAX_QUESTION_LENGTH),

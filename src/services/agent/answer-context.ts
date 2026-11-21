@@ -5,7 +5,7 @@ import type {
   CitableRef,
   KnownFinding,
 } from '@/domain/agent/answer';
-import { STAGE_LABELS } from '@/domain/funnel/funnel-metrics';
+import { formatDateRange } from '@/domain/format';
 import { CHANNELS, type Product } from '@/domain/types';
 import type { RunToolOutcome } from '@/services/agent-tools/registry';
 
@@ -16,24 +16,22 @@ import type { RunToolOutcome } from '@/services/agent-tools/registry';
  * boundary between "a tool returned this" and "the model said this".
  */
 
+/** A gap in GrowthOS's own words, with links to the raw figures behind it. */
+export interface ToolGap {
+  message: string;
+  links: Array<{ label: string; href: string }>;
+}
+
 export class AnswerContextBuilder {
   private readonly refs = new Map<string, CitableRef>();
   private readonly comparisons = new Map<string, CitableComparison>();
   private readonly audits = new Map<string, CitableAudit>();
   private readonly findings = new Map<string, KnownFinding>();
-  private readonly gaps: string[] = [];
-  private readonly phrases = new Set<string>();
-  /** The window lengths may be written as words ("last 30 days"). */
-  private readonly allowed = new Set<string>(['7', '30', '90']);
+  private readonly gaps: ToolGap[] = [];
+  private readonly products: Map<string, string>;
 
-  constructor(products: readonly Product[], range: number) {
-    for (const product of products) {
-      this.phrases.add(product.title);
-      this.phrases.add(product.sku);
-    }
-    for (const channel of CHANNELS) this.phrases.add(channel);
-    for (const label of Object.values(STAGE_LABELS)) this.phrases.add(label);
-    this.allowed.add(String(range));
+  constructor(products: readonly Product[]) {
+    this.products = new Map(products.map((product) => [product.id, product.title]));
   }
 
   add(outcome: RunToolOutcome): void {
@@ -46,6 +44,8 @@ export class AnswerContextBuilder {
         unit: ref.unit,
         channel: ref.channel,
         productId: ref.productId,
+        window: { start: ref.window.start, end: ref.window.end },
+        funnel: ref.refId.startsWith('funnel:'),
         href: ref.href,
       });
     }
@@ -55,6 +55,7 @@ export class AnswerContextBuilder {
         ruleId: audit.ruleId,
         status: audit.status,
         evidence: audit.evidence,
+        productId: audit.productId,
         href: audit.href,
       });
     }
@@ -70,16 +71,21 @@ export class AnswerContextBuilder {
         refIds: finding.refIds,
         href: finding.href,
       });
-      this.phrases.add(finding.title);
     }
     for (const gap of outcome.meta.gaps) {
-      if (!this.gaps.includes(gap.message)) this.gaps.push(gap.message);
+      if (this.gaps.some((existing) => existing.message === gap.message)) continue;
+      const links = (gap.refIds ?? [])
+        .map((id) => this.refs.get(id))
+        .filter((ref): ref is CitableRef => ref !== undefined)
+        .map((ref) => ({ label: `${ref.label}, ${formatDateRange(ref.window.start, ref.window.end)}`, href: ref.href }))
+        .filter((link, index, all) => all.findIndex((other) => other.href === link.href) === index);
+      this.gaps.push({ message: gap.message, links });
     }
     collectComparisons(outcome.data, this.comparisons);
   }
 
-  toolGaps(): string[] {
-    return [...this.gaps];
+  toolGaps(): ToolGap[] {
+    return this.gaps.map((gap) => ({ message: gap.message, links: [...gap.links] }));
   }
 
   build(): AnswerContext {
@@ -88,8 +94,8 @@ export class AnswerContextBuilder {
       comparisons: new Map(this.comparisons),
       audits: new Map(this.audits),
       findings: new Map(this.findings),
-      namedPhrases: [...this.phrases],
-      allowedNumbers: new Set(this.allowed),
+      products: new Map(this.products),
+      channels: [...CHANNELS],
     };
   }
 }

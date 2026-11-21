@@ -47,6 +47,8 @@ test('the main question gives ranked findings, each with figures that link to th
   await expect(findings.first()).toContainText('1.');
   await expect(findings.first()).toContainText('Observed');
   await expect(findings.first()).toContainText('How to verify');
+  await expect(findings.first().getByTestId('agent-rule-guidance')).toContainText('Rule guidance');
+  await expect(turn).not.toContainText('{{');
   await expect(turn.getByTestId('agent-turn-scope')).toContainText('Scripted stand-in model');
 
   // Every figure is a link with a destination.
@@ -81,6 +83,17 @@ test('a follow-up keeps the dates, narrows the channel and queries again; a new 
   await expect(page.getByTestId('agent-scope')).toContainText('Organic Search');
   await expect(page.getByTestId('agent-scope')).toContainText('30 days');
 
+  // The follow-up's figures are written out and link to the Organic Search pages for the same dates.
+  await expect(second).not.toContainText('{{');
+  const secondFindings = second.getByTestId('agent-finding');
+  expect(await secondFindings.count()).toBeGreaterThan(0);
+  await expect(secondFindings.first().getByTestId('agent-fact').first()).toContainText('2026-08-02 — 2026-08-31');
+  await expect(secondFindings.first().getByTestId('agent-fact').first()).toContainText('Organic Search');
+  await expect(secondFindings.first().getByTestId('agent-finding-sample')).toContainText('Scope: Organic Search');
+  const followUpLinks = await second.getByTestId('agent-figure').evaluateAll((links) => links.map((link) => link.getAttribute('href')));
+  expect(followUpLinks.length).toBeGreaterThan(0);
+  for (const href of followUpLinks) expect(href).toContain('channel=Organic+Search');
+
   await second.getByTestId('agent-tool-log').locator('summary').click();
   await expect(second.locator('[data-tool="set_analysis_scope"]')).toBeVisible();
   await expect(second.locator('[data-tool="get_funnel"] pre')).toContainText('"channel":"Organic Search"');
@@ -99,6 +112,7 @@ test('a write request changes nothing and says the agent is read-only', async ({
   const turn = page.getByTestId('agent-turn').first();
   await expect(turn.getByTestId('agent-summary')).toContainText('只能读取和分析数据', { timeout: 15_000 });
   await expect(turn.getByTestId('agent-finding')).toHaveCount(0);
+  await expect(turn.getByTestId('agent-refused')).toContainText('No action was taken');
   await turn.getByTestId('agent-tool-log').locator('summary').click();
   await expect(turn.locator('[data-tool="mark_recommendation_done"]')).toHaveAttribute('data-status', 'unknown-tool');
   expect(await storageSnapshot(page)).toBe(before);
@@ -119,4 +133,38 @@ test('an answered conversation, with its tool log open, has no detectable WCAG A
   await page.getByTestId('agent-tool-log').first().locator('summary').click();
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
   expect(results.violations.map((violation) => `${violation.id}: ${violation.nodes.length}`)).toEqual([]);
+});
+
+test('a turn that fails keeps the question and offers a retry that works', async ({ page }) => {
+  let calls = 0;
+  await page.route('**/api/agent', async (route) => {
+    calls += 1;
+    if (calls === 1) {
+      const failed = { type: 'done', result: { status: 'failed', message: 'The model could not be reached (test).', answer: null } };
+      await route.fulfill({ status: 200, contentType: 'application/x-ndjson', body: `${JSON.stringify(failed)}\n` });
+      return;
+    }
+    await route.continue();
+  });
+  await gotoReady(page, '/agent');
+  await page.getByTestId('agent-question').fill(MAIN);
+  await page.getByTestId('agent-ask').click();
+  await expect(page.getByTestId('state-error')).toContainText('could not be reached');
+  await expect(page.getByTestId('agent-question')).toHaveValue(MAIN);
+  await expect(page.getByTestId('agent-turn')).toHaveCount(0);
+  await page.getByRole('button', { name: /retry/i }).click();
+  await expect(page.getByTestId('agent-turn')).toHaveCount(1, { timeout: 15_000 });
+});
+
+test('a stream that breaks off leaves the analysing state with a retry', async ({ page }) => {
+  await page.route('**/api/agent', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/x-ndjson', body: `${JSON.stringify({ type: 'answering' })}\n` }),
+  );
+  await gotoReady(page, '/agent');
+  await page.getByTestId('agent-question').fill(MAIN);
+  await page.getByTestId('agent-ask').click();
+  await expect(page.getByTestId('state-error')).toBeVisible();
+  await expect(page.getByTestId('agent-progress')).toHaveCount(0);
+  await expect(page.getByTestId('agent-ask')).toBeEnabled();
+  await expect(page.getByTestId('agent-question')).toHaveValue(MAIN);
 });

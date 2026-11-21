@@ -6,24 +6,32 @@ import type { Priority } from '../types';
 /**
  * The answer contract between the model and GrowthOS.
  *
- * The model writes prose; GrowthOS owns every number in it. Figures appear as
- * placeholders — `{{ref:<refId>}}` for one figure, `{{change:<currentRefId>}}`
- * for a two-period change, `{{audit:<refId>}}` for an audit verdict — and are
- * rendered from tool results. This module checks that an answer keeps to that
- * contract. It is pure: the caller builds the context from the tool outcomes
- * of the turn.
+ * Facts are structured, not written. A finding lists the figures it rests on
+ * as `facts` — a ref id, a two-period change with the direction the model
+ * claims, or an audit verdict — and GrowthOS writes every fact sentence itself
+ * from the tool result: metric, channel, product, dates and value. The model's
+ * prose (summary, why it matters, how to verify, gaps) may contain no figures,
+ * no dates and no claims of change; it may name a product only through
+ * `{{product:<id>}}`. This module checks that contract. It is pure: the caller
+ * builds the context from the turn's tool outcomes.
  */
 
-const text = z.string().trim().min(1).max(1200);
+const prose = z.string().trim().min(1).max(1200);
+const id = z.string().min(1).max(300);
+
+export const factSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('value'), refId: id }),
+  z.strictObject({ kind: z.literal('change'), refId: id, direction: z.enum(['up', 'down', 'flat']) }),
+  z.strictObject({ kind: z.literal('audit'), refId: id }),
+]);
 
 export const answerFindingSchema = z.strictObject({
-  /** Id of the tool finding this rests on. Ordering comes from that finding. */
-  basedOn: z.string().min(1).max(300),
-  title: z.string().trim().min(1).max(200),
-  observed: text,
-  whyPriority: text,
-  howToVerify: text,
-  /** What the finding claims to be about. Checked against what it cites. */
+  /** Id of the tool finding this rests on. Title and ordering come from it. */
+  basedOn: id,
+  facts: z.array(factSchema).min(1).max(6),
+  whyPriority: prose,
+  howToVerify: prose,
+  /** What the finding is about. Checked against every fact it cites. */
   scope: z.strictObject({
     channel: z.string().max(40).nullable(),
     productId: z.string().max(80).nullable(),
@@ -31,12 +39,13 @@ export const answerFindingSchema = z.strictObject({
 });
 
 export const agentAnswerSchema = z.strictObject({
-  summary: text,
+  summary: prose,
   findings: z.array(answerFindingSchema).max(8),
   /** What is missing and how it could be checked. */
-  gaps: z.array(text).max(8),
+  gaps: z.array(prose).max(8),
 });
 
+export type AnswerFact = z.infer<typeof factSchema>;
 export type AnswerFinding = z.infer<typeof answerFindingSchema>;
 export type AgentAnswer = z.infer<typeof agentAnswerSchema>;
 
@@ -52,6 +61,9 @@ export interface CitableRef {
   /** null = all channels. */
   channel: string | null;
   productId: string | null;
+  window: { start: string; end: string };
+  /** True for funnel figures, which describe one population of sessions. */
+  funnel: boolean;
   href: string;
 }
 
@@ -70,6 +82,7 @@ export interface CitableAudit {
   ruleId: string;
   status: string;
   evidence: string | null;
+  productId: string | null;
   href: string;
 }
 
@@ -90,13 +103,10 @@ export interface AnswerContext {
   comparisons: ReadonlyMap<string, CitableComparison>;
   audits: ReadonlyMap<string, CitableAudit>;
   findings: ReadonlyMap<string, KnownFinding>;
-  /**
-   * Phrases removed before looking for stray numbers: product titles, SKUs,
-   * channel and stage names. "Traverse 35" is a name, not a figure.
-   */
-  namedPhrases: readonly string[];
-  /** Numbers that may appear as words, e.g. the window length in days. */
-  allowedNumbers: ReadonlySet<string>;
+  /** Product id → display name, for `{{product:<id>}}`. */
+  products: ReadonlyMap<string, string>;
+  /** Channel names, to check that prose stays within a finding's scope. */
+  channels: readonly string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -109,125 +119,165 @@ export type AnswerIssueCode =
   | 'unknown-change'
   | 'unknown-audit'
   | 'unsupported-change'
-  | 'raw-number'
-  | 'change-without-comparison'
+  | 'wrong-direction'
   | 'unknown-basis'
   | 'insufficient-basis'
   | 'duplicate-basis'
+  | 'scope-mismatch'
   | 'site-funnel-for-narrow-scope'
-  | 'funnel-for-product';
+  | 'funnel-for-product'
+  | 'raw-number'
+  | 'placeholder-in-prose'
+  | 'unknown-product'
+  | 'change-in-prose';
 
 export interface AnswerIssue {
-  /** null = the summary. */
+  /** null = the summary or the gaps. */
   finding: number | null;
   code: AnswerIssueCode;
   message: string;
 }
 
-export const PLACEHOLDER = /\{\{(ref|change|audit):([^{}\s]+)\}\}/g;
+/** The one placeholder prose may use. Product ids contain no spaces or braces. */
+export const PRODUCT_PLACEHOLDER = /\{\{product:([^{}\s]+)\}\}/g;
+const ANY_PLACEHOLDER = /\{\{[^{}]*\}\}/g;
 
 /**
- * Words that assert a change over time. Their presence in a claim requires a
- * change placeholder backed by a comparison that supports a conclusion.
- * "drop-off" is a funnel term, not a change, so bare "drop" is not listed.
+ * Words that assert a change over time or a comparison with another period.
+ * Changes belong in `change` facts, where the direction is checked against the
+ * data; prose that claims one is refused. This is a backstop, not a proof:
+ * a paraphrase the list does not know can still slip through, which is why the
+ * facts, not the prose, carry the figures.
  */
 const CHANGE_WORDS =
-  /\b(fell|falls?|falling|dropped|declin\w*|decreas\w*|rose|rises?|rising|increas\w*|grew|grow(s|ing)?|worsen\w*|improv\w*|down from|up from)\b|下降|下滑|下跌|减少|降低|上升|增长|提升|提高|增加|回落|走低|走高|变差|改善|环比/i;
+  /\b(fell|falls?|falling|dropped|declin\w*|decreas\w*|rose|rises?|rising|increas\w*|grew|grow(s|ing)?|worsen\w*|improv\w*|weaker|stronger|down from|up from|than (last|the previous|before)|previous (period|month|week)|last (month|week))\b|下降|下滑|下跌|减少|降低|上升|增长|提升|提高|增加|回落|走低|走高|变差|变弱|变强|改善|环比|同比|上月|上周|上期|前期|比之前/i;
 
-const ISO_DATE = /\d{4}-\d{2}-\d{2}/g;
-const NUMBER = /\d+(?:[.,]\d+)*/g;
+const DIGIT = /\d+(?:[.,]\d+)*/g;
 
-function placeholders(source: string): Array<{ kind: string; id: string }> {
-  return [...source.matchAll(PLACEHOLDER)].map((match) => ({
-    kind: match[1] ?? '',
-    id: match[2] ?? '',
-  }));
+interface ProseRules {
+  /** Change words are allowed in advice ("check whether it improves"). */
+  allowChangeWords: boolean;
+  /** When set, channel names in the text must be this channel. */
+  channel?: string | null;
 }
 
-function strayNumbers(source: string, context: AnswerContext): string[] {
-  let rest = source.replace(PLACEHOLDER, ' ').replace(ISO_DATE, ' ');
-  // Longest first, so "Ridgeline 2P Backpacking Tent" goes before "Ridgeline 2P".
-  const phrases = [...context.namedPhrases].sort((a, b) => b.length - a.length);
-  for (const phrase of phrases) {
-    if (phrase !== '') rest = rest.split(phrase).join(' ');
-  }
-  return [...rest.matchAll(NUMBER)]
-    .map((match) => match[0])
-    .filter((value) => !context.allowedNumbers.has(value));
-}
-
-function checkText(
-  source: string,
-  finding: number | null,
-  context: AnswerContext,
-  checkChange: boolean,
-  extraAllowed: ReadonlySet<string> = new Set(),
-): AnswerIssue[] {
+function checkProse(source: string, finding: number | null, context: AnswerContext, rules: ProseRules): AnswerIssue[] {
   const issues: AnswerIssue[] = [];
-  const found = placeholders(source);
 
-  for (const { kind, id } of found) {
-    if (kind === 'ref' && !context.refs.has(id)) {
-      issues.push({ finding, code: 'unknown-ref', message: `{{ref:${id}}} is not a figure any tool returned in this turn.` });
-    }
-    if (kind === 'audit' && !context.audits.has(id)) {
-      issues.push({ finding, code: 'unknown-audit', message: `{{audit:${id}}} is not an audit check any tool returned in this turn.` });
-    }
-    if (kind === 'change') {
-      const comparison = context.comparisons.get(id);
-      if (comparison === undefined) {
-        issues.push({ finding, code: 'unknown-change', message: `{{change:${id}}} is not a comparison any tool returned in this turn.` });
-      } else if (!comparison.supportsConclusion) {
-        issues.push({
-          finding,
-          code: 'unsupported-change',
-          message: `{{change:${id}}} rests on a sample too small in one of the periods to support a conclusion. State the two figures with {{ref:…}} and say the sample is too small instead.`,
-        });
-      }
+  for (const match of source.matchAll(PRODUCT_PLACEHOLDER)) {
+    const productId = match[1] ?? '';
+    if (!context.products.has(productId)) {
+      issues.push({ finding, code: 'unknown-product', message: `{{product:${productId}}} is not a product in the catalogue.` });
     }
   }
-
-  for (const value of strayNumbers(source, context).filter((number) => !extraAllowed.has(number))) {
+  const withoutProducts = source.replace(PRODUCT_PLACEHOLDER, ' ');
+  for (const match of withoutProducts.matchAll(ANY_PLACEHOLDER)) {
+    issues.push({
+      finding,
+      code: 'placeholder-in-prose',
+      message: `"${match[0]}" cannot be used in prose. Put figures, changes and audit verdicts in the finding's facts; GrowthOS writes them out.`,
+    });
+  }
+  for (const match of withoutProducts.replace(ANY_PLACEHOLDER, ' ').matchAll(DIGIT)) {
     issues.push({
       finding,
       code: 'raw-number',
-      message: `"${value}" is written as a number. Every figure must come from a tool result as {{ref:…}} or {{change:…}}.`,
+      message: `"${match[0]}" is a number in prose. Figures, dates and window lengths come only from facts, which GrowthOS writes out; refer to a product with {{product:<id>}}.`,
     });
   }
-
-  if (checkChange && CHANGE_WORDS.test(source)) {
-    const backed = found.some(
-      ({ kind, id }) => kind === 'change' && context.comparisons.get(id)?.supportsConclusion === true,
-    );
-    if (!backed) {
-      issues.push({
-        finding,
-        code: 'change-without-comparison',
-        message:
-          'The text describes a change over time but cites no comparison that supports one. Use {{change:…}} on a comparison whose sample supports a conclusion, or remove the claim.',
-      });
+  if (!rules.allowChangeWords && CHANGE_WORDS.test(withoutProducts)) {
+    issues.push({
+      finding,
+      code: 'change-in-prose',
+      message: 'The prose describes a change over time or a comparison with another period. State it as a change fact, whose direction GrowthOS checks against the data, and keep the prose free of it.',
+    });
+  }
+  if (rules.channel !== undefined) {
+    // Longest first and removed once found, so "AI Referral" is not also read as "Referral".
+    let rest = withoutProducts;
+    for (const channel of [...context.channels].sort((a, b) => b.length - a.length)) {
+      const pattern = new RegExp(`\\b${channel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+      if (!pattern.test(rest)) continue;
+      rest = rest.replace(pattern, ' ');
+      if (channel !== rules.channel) {
+        issues.push({
+          finding,
+          code: 'scope-mismatch',
+          message: `The text names ${channel}, but the finding is about ${rules.channel ?? 'all channels'}.`,
+        });
+      }
     }
   }
   return issues;
 }
 
-/** Funnel refs are the ones produced by the funnel tool. */
-function isFunnelRef(refId: string): boolean {
-  return refId.startsWith('funnel:');
+/** Every figure a finding rests on: its facts, and the refs its basis cites. */
+function citedRefs(finding: AnswerFinding, basis: KnownFinding | undefined, context: AnswerContext): CitableRef[] {
+  const ids = [
+    ...finding.facts.filter((fact) => fact.kind !== 'audit').map((fact) => fact.refId),
+    ...(basis?.refIds ?? []),
+  ];
+  return ids.map((refId) => context.refs.get(refId)).filter((ref): ref is CitableRef => ref !== undefined);
 }
 
-function citedRefIds(finding: AnswerFinding, basis: KnownFinding | undefined): string[] {
-  const inline = [finding.observed, finding.whyPriority]
-    .flatMap((part) => placeholders(part))
-    .filter(({ kind }) => kind === 'ref' || kind === 'change')
-    .map(({ id }) => id);
-  return [...inline, ...(basis?.refIds ?? [])];
+function checkFacts(finding: AnswerFinding, index: number, context: AnswerContext): AnswerIssue[] {
+  const issues: AnswerIssue[] = [];
+  for (const fact of finding.facts) {
+    if (fact.kind === 'audit') {
+      const audit = context.audits.get(fact.refId);
+      if (audit === undefined) {
+        issues.push({ finding: index, code: 'unknown-audit', message: `Audit fact "${fact.refId}" is not a check any tool returned in this turn.` });
+      } else if (audit.productId !== null && finding.scope.productId !== audit.productId) {
+        issues.push({ finding: index, code: 'scope-mismatch', message: `Audit fact "${fact.refId}" is about product ${audit.productId}, but the finding's scope says ${finding.scope.productId ?? 'no product'}.` });
+      }
+      continue;
+    }
+    if (!context.refs.has(fact.refId)) {
+      issues.push({ finding: index, code: 'unknown-ref', message: `Fact "${fact.refId}" is not a figure any tool returned in this turn.` });
+      continue;
+    }
+    if (fact.kind === 'change') {
+      const comparison = context.comparisons.get(fact.refId);
+      if (comparison === undefined) {
+        issues.push({ finding: index, code: 'unknown-change', message: `"${fact.refId}" has no comparison with a previous period. Use a value fact instead.` });
+      } else if (!comparison.supportsConclusion) {
+        issues.push({ finding: index, code: 'unsupported-change', message: `The comparison for "${fact.refId}" rests on a sample too small in one of the periods to support a conclusion. Cite the figures as value facts and report the small sample as a gap.` });
+      } else if (comparison.direction !== fact.direction) {
+        issues.push({ finding: index, code: 'wrong-direction', message: `"${fact.refId}" moved ${comparison.direction}, not ${fact.direction}.` });
+      }
+    }
+  }
+  return issues;
+}
+
+function checkScope(finding: AnswerFinding, index: number, basis: KnownFinding | undefined, context: AnswerContext): AnswerIssue[] {
+  const issues: AnswerIssue[] = [];
+  const refs = citedRefs(finding, basis, context);
+  const { channel, productId } = finding.scope;
+
+  for (const ref of refs) {
+    if (ref.channel !== null && ref.channel !== channel) {
+      issues.push({ finding: index, code: 'scope-mismatch', message: `"${ref.refId}" is a ${ref.channel} figure, but the finding is about ${channel ?? 'all channels'}.` });
+    }
+    if (ref.productId !== null && ref.productId !== productId) {
+      issues.push({ finding: index, code: 'scope-mismatch', message: `"${ref.refId}" is about product ${ref.productId}, but the finding is about ${productId ?? 'no single product'}.` });
+    }
+  }
+  const funnel = refs.filter((ref) => ref.funnel);
+  if (productId !== null && funnel.length > 0) {
+    issues.push({ finding: index, code: 'funnel-for-product', message: 'Funnel stages are not recorded per product, so no funnel figure can support a claim about one product.' });
+  }
+  if (channel !== null && funnel.some((ref) => ref.channel === null)) {
+    issues.push({ finding: index, code: 'site-funnel-for-narrow-scope', message: `The site-wide funnel cannot stand in for ${channel}. Query the funnel for that channel.` });
+  }
+  return issues;
 }
 
 export function validateAnswer(answer: AgentAnswer, context: AnswerContext): AnswerIssue[] {
-  const issues: AnswerIssue[] = [...checkText(answer.summary, null, context, true)];
-  const seen = new Set<string>();
+  const issues: AnswerIssue[] = [...checkProse(answer.summary, null, context, { allowChangeWords: false })];
+  for (const gap of answer.gaps) issues.push(...checkProse(gap, null, context, { allowChangeWords: false }));
 
+  const seen = new Set<string>();
   answer.findings.forEach((finding, index) => {
     const basis = context.findings.get(finding.basedOn);
     if (basis === undefined) {
@@ -240,33 +290,13 @@ export function validateAnswer(answer: AgentAnswer, context: AnswerContext): Ans
     }
     seen.add(finding.basedOn);
 
-    issues.push(...checkText(finding.observed, index, context, true));
-    issues.push(...checkText(finding.whyPriority, index, context, true));
-    // How to verify is advice ("check whether conversion improves"), so it
-    // may use change words. It may repeat numbers from the engine's own advice
-    // for this finding — thresholds such as "under 60 characters" — but may
-    // not introduce figures of its own.
-    const adviceNumbers = new Set([...(basis?.howToVerify ?? '').matchAll(NUMBER)].map((match) => match[0]));
-    issues.push(...checkText(finding.howToVerify, index, context, false, adviceNumbers));
-
-    const funnelRefs = citedRefIds(finding, basis)
-      .filter(isFunnelRef)
-      .map((id) => context.refs.get(id))
-      .filter((ref): ref is CitableRef => ref !== undefined);
-    if (finding.scope.productId !== null && funnelRefs.length > 0) {
-      issues.push({
-        finding: index,
-        code: 'funnel-for-product',
-        message: 'Funnel stages are not recorded per product, so no funnel figure can support a claim about one product.',
-      });
-    }
-    if (finding.scope.channel !== null && funnelRefs.some((ref) => ref.channel === null)) {
-      issues.push({
-        finding: index,
-        code: 'site-funnel-for-narrow-scope',
-        message: `The site-wide funnel cannot stand in for ${finding.scope.channel}. Query the funnel for that channel.`,
-      });
-    }
+    issues.push(...checkFacts(finding, index, context));
+    issues.push(...checkScope(finding, index, basis, context));
+    issues.push(...checkProse(finding.whyPriority, index, context, { allowChangeWords: false, channel: finding.scope.channel }));
+    // Advice may say "check whether conversion improves", but may not carry
+    // numbers: the rule's own guidance, thresholds included, is shown verbatim
+    // next to it.
+    issues.push(...checkProse(finding.howToVerify, index, context, { allowChangeWords: true, channel: finding.scope.channel }));
   });
 
   return issues;
@@ -275,7 +305,7 @@ export function validateAnswer(answer: AgentAnswer, context: AnswerContext): Ans
 /** Turns an issue list into the one repair request sent back to the model. */
 export function repairRequest(issues: readonly AnswerIssue[]): string {
   const lines = issues.map((issue) => {
-    const where = issue.finding === null ? 'summary' : `findings[${issue.finding}]`;
+    const where = issue.finding === null ? 'summary or gaps' : `findings[${issue.finding}]`;
     return `- ${where} (${issue.code}): ${issue.message}`;
   });
   return `Your answer did not pass validation. Fix every item and reply with the corrected JSON only.\n${lines.join('\n')}`;

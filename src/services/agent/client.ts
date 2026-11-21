@@ -1,6 +1,7 @@
 import type { ConversationScope } from '@/domain/agent/scope';
 import type { DemoState } from '@/repositories/types';
 import type { AgentEvent, AgentTurnResult, PriorTurn } from './orchestrator';
+import { MAX_HISTORY_TURNS } from './request';
 
 /**
  * Browser side of /api/agent: posts one question and reads the NDJSON event
@@ -34,7 +35,9 @@ export async function askAgent(
     response = await fetcher(options.endpoint ?? '/api/agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      // The server keeps no conversation and accepts a bounded history; only
+      // the most recent turns travel, so a long conversation never stops working.
+      body: JSON.stringify({ ...body, history: body.history.slice(-MAX_HISTORY_TURNS) }),
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
   } catch (cause) {
@@ -79,18 +82,25 @@ export async function askAgent(
     onEvent(value);
   };
 
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let newline = buffer.indexOf('\n');
-    while (newline >= 0) {
-      handle(buffer.slice(0, newline));
-      buffer = buffer.slice(newline + 1);
-      newline = buffer.indexOf('\n');
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let newline = buffer.indexOf('\n');
+      while (newline >= 0) {
+        handle(buffer.slice(0, newline));
+        buffer = buffer.slice(newline + 1);
+        newline = buffer.indexOf('\n');
+      }
     }
+    handle(buffer + decoder.decode());
+  } catch (cause) {
+    // A dropped connection or a cancelled request ends the stream with an
+    // error; the page must leave its "analysing" state and offer a retry.
+    const reason = cause instanceof Error ? cause.message : 'unknown error';
+    return { kind: 'error', message: `The connection was interrupted before the analysis finished (${reason}).` };
   }
-  handle(buffer + decoder.decode());
 
   if (final !== null) return { kind: 'done', result: final };
   return { kind: 'error', message: failure ?? 'The analysis ended without a result.' };

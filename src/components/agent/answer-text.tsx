@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import type { Segment } from '@/domain/agent/answer-render';
 
-/** Renders answer text: plain runs as text, every figure as a link to its source page. */
+/** Renders answer text: plain runs as text, every figure and name as a link to its source page. */
 export function AnswerText({ segments }: { segments: readonly Segment[] }) {
   return (
     <>
@@ -13,9 +13,8 @@ export function AnswerText({ segments }: { segments: readonly Segment[] }) {
           <Link
             key={index}
             href={segment.href as Route}
-            title={segment.kind === 'audit' ? 'Open the audit evidence' : segment.label}
+            title={segment.title}
             data-testid="agent-figure"
-            data-ref={segment.refId}
             className="font-medium tabular-nums underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
             {segment.text}

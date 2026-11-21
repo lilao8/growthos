@@ -104,7 +104,10 @@ export function AgentView({ mode }: { mode: DemoDataMode | null }) {
           if (event.type === 'scope') setScope(event.scope);
         },
       );
-      if (outcome.kind === 'done') {
+      if (outcome.kind === 'done' && outcome.result.status === 'failed') {
+        // Nothing usable came back: keep the question and offer a retry.
+        setStatus({ kind: 'error', question, message: outcome.result.message ?? 'The analysis could not produce an answer.' });
+      } else if (outcome.kind === 'done') {
         setScope(outcome.result.scope);
         setTurns((current) => [...current, { question, result: outcome.result }]);
         setStatus({ kind: 'idle' });
@@ -297,6 +300,25 @@ function TurnView({ turn, index }: { turn: Turn; index: number }) {
               {result.message} GrowthOS ranked the tool findings below directly.
             </p>
           )}
+          {result.refusedActions.length > 0 && (
+            <p role="status" className="rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface-muted)] px-4 py-3 text-sm font-medium" data-testid="agent-refused">
+              No action was taken. {result.refusedActions.join(', ')} is not available: this agent can only read and analyse.
+            </p>
+          )}
+          {result.failedChecks.length > 0 && (
+            <Card testId="agent-failed-checks">
+              <CardHeader title="Could not check" description="These lookups failed. A failure is not the same as no data; retry to fill them in." />
+              <CardBody>
+                <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
+                  {result.failedChecks.map((check, checkIndex) => (
+                    <li key={checkIndex}>
+                      {toolLabel(check.name)}: {check.message}
+                    </li>
+                  ))}
+                </ul>
+              </CardBody>
+            </Card>
+          )}
           <p className="text-sm" data-testid="agent-summary">
             <AnswerText segments={result.answer.summary} />
           </p>
@@ -309,10 +331,16 @@ function TurnView({ turn, index }: { turn: Turn; index: number }) {
                       <Badge tone={finding.effectivePriority === 'Critical' ? 'accent' : 'neutral'}>{finding.effectivePriority}</Badge>
                     </CardHeader>
                     <CardBody className="flex flex-col gap-2 text-sm">
-                      <p>
-                        <span className="font-medium">Observed: </span>
-                        <AnswerText segments={finding.observed} />
-                      </p>
+                      <div>
+                        <p className="font-medium">Observed</p>
+                        <ul className="mt-1 flex list-disc flex-col gap-1 pl-5" data-testid="agent-facts">
+                          {finding.facts.map((fact, factIndex) => (
+                            <li key={factIndex} data-testid="agent-fact">
+                              <AnswerText segments={fact} />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                       <p>
                         <span className="font-medium">Why first: </span>
                         <AnswerText segments={finding.whyPriority} />
@@ -321,9 +349,17 @@ function TurnView({ turn, index }: { turn: Turn; index: number }) {
                         <span className="font-medium">How to verify: </span>
                         <AnswerText segments={finding.howToVerify} />
                       </p>
+                      <p className="text-xs text-[var(--color-ink-muted)]" data-testid="agent-rule-guidance">
+                        Rule guidance: {finding.ruleGuidance}
+                      </p>
                       <p className="text-xs text-[var(--color-ink-muted)]" data-testid="agent-finding-sample">
-                        Evidence {finding.strength}
-                        {finding.affectedSessions === null ? '' : ` · ${formatInteger(finding.affectedSessions)} sessions affected`}
+                        Scope: {finding.scope.channel ?? 'All channels'}
+                        {finding.scope.productId === null ? '' : ` · product ${finding.scope.productId}`} · Evidence {finding.strength}
+                        {finding.affectedSessions === null
+                          ? ''
+                          : finding.affectedSessions === 0
+                            ? ' · no sessions in this window, so the current impact is limited'
+                            : ` · ${formatInteger(finding.affectedSessions)} sessions affected`}
                         {finding.downgraded ? ' · moved down one level because the sample is limited' : ''}
                       </p>
                       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-label="Evidence links">
@@ -352,7 +388,17 @@ function TurnView({ turn, index }: { turn: Turn; index: number }) {
                     </li>
                   ))}
                   {result.toolGaps.map((gap) => (
-                    <li key={gap}>{gap}</li>
+                    <li key={gap.message} data-testid="agent-tool-gap">
+                      {gap.message}
+                      {gap.links.map((link) => (
+                        <span key={link.href}>
+                          {' '}
+                          <Link href={link.href as Route} className="text-xs underline underline-offset-2">
+                            {link.label}
+                          </Link>
+                        </span>
+                      ))}
+                    </li>
                   ))}
                 </ul>
               </CardBody>
