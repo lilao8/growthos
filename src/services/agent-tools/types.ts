@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import type { AuditOrigin } from '@/domain/audit-preview';
 import type { DateWindow } from '@/domain/demo-window';
-import type { EvidenceStrength } from '@/domain/agent/priority';
+import type { ComparisonEvidence, EvidenceStrength } from '@/domain/agent/priority';
 import type { MetricComparison } from '@/domain/agent/comparison';
 import type { MetricRef } from '@/domain/agent/refs';
 import type {
@@ -46,6 +46,7 @@ export interface ToolContext {
 export interface Gap {
   code:
     | 'no-prior-window'
+    | 'previous-window-unavailable'
     | 'below-minimum-sessions'
     | 'zero-sessions'
     | 'product-not-found'
@@ -103,6 +104,12 @@ export interface ComparedMetric extends MetricComparison {
   currentRefId: string;
   /** null when there is no previous figure to cite. */
   previousRefId: string | null;
+  /**
+   * Whether both periods have enough sample for the change to be stated as a
+   * rise or fall. The raw figures are kept either way; an answer may only call
+   * it a change when `evidence.supportsConclusion` is true.
+   */
+  evidence: ComparisonEvidence;
 }
 
 export interface ToolMeta {

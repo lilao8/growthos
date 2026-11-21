@@ -86,7 +86,7 @@ function refsFor(row: ProductPerformanceRow, scope: RefScope, href: string): Met
   const m = row.metrics;
   return [
     makeRef(scope, 'view_sessions', { label: `${row.title} view sessions`, value: m.viewSessions, unit: 'count', definition: 'product_view_sessions', href }),
-    makeRef(scope, 'purchase_sessions', { label: `${row.title} purchasing sessions`, value: m.purchaseSessions, unit: 'count', definition: 'product_conversion_rate', href }),
+    makeRef(scope, 'purchase_sessions', { label: `${row.title} purchasing sessions`, value: m.purchaseSessions, unit: 'count', definition: 'product_purchase_sessions', href }),
     makeRef(scope, 'conversion_rate', { label: `${row.title} product conversion`, value: m.conversionRate, unit: 'ratio', definition: 'product_conversion_rate', href }),
     makeRef(scope, 'revenue', { label: `${row.title} revenue`, value: m.revenueCents, unit: 'cents', definition: 'product_revenue', href }),
   ];

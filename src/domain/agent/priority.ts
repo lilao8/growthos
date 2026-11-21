@@ -47,6 +47,51 @@ export function evidenceStrength(
   return 'sufficient';
 }
 
+const STRENGTH_ORDER: readonly EvidenceStrength[] = ['insufficient', 'limited', 'sufficient'];
+
+/** The weaker of two judgements: a comparison is only as strong as its thinner side. */
+export function weakerStrength(a: EvidenceStrength, b: EvidenceStrength): EvidenceStrength {
+  return STRENGTH_ORDER.indexOf(a) <= STRENGTH_ORDER.indexOf(b) ? a : b;
+}
+
+export interface ComparisonEvidence {
+  strength: EvidenceStrength;
+  /**
+   * False when either period is below the sample floor, or there is no
+   * previous period. A change computed from such figures is arithmetic, not
+   * evidence of a rise or fall, and must not be stated as one.
+   */
+  supportsConclusion: boolean;
+  currentSample: Sample;
+  previousSample: Sample | null;
+  thresholds: SampleThresholds;
+}
+
+/**
+ * Judges whether a two-period change can carry a conclusion. Both periods are
+ * held to the same thresholds a single-period finding is; the weaker one wins.
+ */
+export function comparisonEvidence(
+  currentSample: Sample,
+  previousSample: Sample | null,
+  thresholds: SampleThresholds,
+): ComparisonEvidence {
+  const strength =
+    previousSample === null
+      ? 'insufficient'
+      : weakerStrength(
+          evidenceStrength(currentSample, thresholds),
+          evidenceStrength(previousSample, thresholds),
+        );
+  return {
+    strength,
+    supportsConclusion: strength !== 'insufficient',
+    currentSample,
+    previousSample,
+    thresholds,
+  };
+}
+
 export interface RankableFinding {
   id: string;
   priority: Priority;

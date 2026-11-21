@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   AGENT_PRIORITY_VERSION,
+  comparisonEvidence,
   downgrade,
+  weakerStrength,
   evidenceStrength,
   rankFindings,
   type RankableFinding,
@@ -107,5 +109,59 @@ describe('rankFindings', () => {
     const result = rankFindings([]);
     expect(result.ranked).toEqual([]);
     expect(result.insufficient).toEqual([]);
+  });
+});
+
+describe('weakerStrength', () => {
+  it('returns the weaker of two judgements, in either order', () => {
+    expect(weakerStrength('sufficient', 'limited')).toBe('limited');
+    expect(weakerStrength('limited', 'sufficient')).toBe('limited');
+    expect(weakerStrength('limited', 'insufficient')).toBe('insufficient');
+    expect(weakerStrength('insufficient', 'sufficient')).toBe('insufficient');
+    expect(weakerStrength('sufficient', 'sufficient')).toBe('sufficient');
+  });
+});
+
+describe('comparisonEvidence', () => {
+  const STEP = { minimumSessions: 60, minimumOrders: null };
+
+  it('supports a conclusion when both periods meet the floor', () => {
+    const evidence = comparisonEvidence({ sessions: 60, orders: null }, { sessions: 200, orders: null }, STEP);
+    expect(evidence.strength).toBe('sufficient');
+    expect(evidence.supportsConclusion).toBe(true);
+  });
+
+  it('does not support one when only the current period is thin', () => {
+    const evidence = comparisonEvidence({ sessions: 59, orders: null }, { sessions: 200, orders: null }, STEP);
+    expect(evidence.strength).toBe('insufficient');
+    expect(evidence.supportsConclusion).toBe(false);
+  });
+
+  it('does not support one when only the previous period is thin', () => {
+    const evidence = comparisonEvidence({ sessions: 200, orders: null }, { sessions: 59, orders: null }, STEP);
+    expect(evidence.supportsConclusion).toBe(false);
+  });
+
+  it('does not support one when both periods are thin, and keeps the raw samples', () => {
+    const evidence = comparisonEvidence({ sessions: 8, orders: null }, { sessions: 10, orders: null }, STEP);
+    expect(evidence).toEqual({
+      strength: 'insufficient',
+      supportsConclusion: false,
+      currentSample: { sessions: 8, orders: null },
+      previousSample: { sessions: 10, orders: null },
+      thresholds: STEP,
+    });
+  });
+
+  it('supports a limited conclusion when orders are thin but sessions are not', () => {
+    const evidence = comparisonEvidence({ sessions: 400, orders: 24 }, { sessions: 400, orders: 30 }, RATE);
+    expect(evidence.strength).toBe('limited');
+    expect(evidence.supportsConclusion).toBe(true);
+  });
+
+  it('does not support one without a previous period', () => {
+    const evidence = comparisonEvidence({ sessions: 400, orders: 40 }, null, RATE);
+    expect(evidence.strength).toBe('insufficient');
+    expect(evidence.supportsConclusion).toBe(false);
   });
 });

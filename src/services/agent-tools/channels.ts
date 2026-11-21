@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { comparableWindows } from '@/domain/agent/windows';
 import { compareValues } from '@/domain/agent/comparison';
-import { evidenceStrength } from '@/domain/agent/priority';
+import { comparisonEvidence, evidenceStrength } from '@/domain/agent/priority';
 import { analyticsHref } from '@/domain/agent/links';
 import { makeRef, refId, type MetricRef, type RefScope } from '@/domain/agent/refs';
 import { DEMO_AS_OF, DEMO_WINDOW, type DateWindow, type DemoRangeDays } from '@/domain/demo-window';
@@ -82,6 +82,11 @@ function refFor(window: DateWindow, channel: Channel, metric: string): string {
   return refId({ tool: TOOL, window, channel, productId: null }, metric);
 }
 
+const CHANNEL_THRESHOLDS = {
+  minimumSessions: ANALYTICS_THRESHOLDS.minimumSessions,
+  minimumOrders: ANALYTICS_THRESHOLDS.minimumOrders,
+};
+
 /** Channel figures each rule reads. */
 const RULE_METRICS: Record<string, string[]> = {
   'high-traffic-low-conversion': ['sessions', 'orders', 'conversion_rate'],
@@ -104,19 +109,21 @@ export const channelPerformanceTool: AgentTool<ChannelPerformanceInput, ChannelP
     const windows = comparableWindows(input.range, DEMO_AS_OF, DEMO_WINDOW);
     const deps = { traffic: context.traffic };
 
-    let current;
-    let previous = null;
-    try {
-      current = await loadAnalytics(deps, input.range);
-      if (input.compare && windows.previous !== null) {
-        previous = await loadAnalytics(deps, input.range, windows.previous.end);
-      }
-    } catch (cause) {
-      return { status: 'error', message: messageFrom(cause, 'Could not load channel data.') };
-    }
+    const current = await loadAnalytics(deps, input.range).catch(
+      (cause: unknown) => ({ status: 'error' as const, message: messageFrom(cause, 'Could not load channel data.') }),
+    );
     if (current.status === 'error') return { status: 'error', message: current.message };
-    if (previous !== null && previous.status === 'error') {
-      return { status: 'error', message: previous.message };
+
+    // The previous window is context. If it cannot be read, the current
+    // figures still stand; the comparison is reported as unavailable.
+    let previous = null;
+    let previousFailure: string | null = null;
+    if (input.compare && windows.previous !== null) {
+      const loaded = await loadAnalytics(deps, input.range, windows.previous.end).catch(
+        (cause: unknown) => ({ status: 'error' as const, message: messageFrom(cause, 'Could not load the previous window.') }),
+      );
+      if (loaded.status === 'error') previousFailure = loaded.message;
+      else previous = loaded;
     }
 
     const window = current.view.window;
@@ -154,6 +161,13 @@ export const channelPerformanceTool: AgentTool<ChannelPerformanceInput, ChannelP
                 previousView === null || before === undefined
                   ? null
                   : refFor(previousView.window, row.channel, metric),
+              // Every figure in a channel row rests on that row's sessions
+              // and orders, so all of them share one sample judgement.
+              evidence: comparisonEvidence(
+                { sessions: row.sessions, orders: row.orders },
+                before === undefined ? null : { sessions: before.sessions, orders: before.orders },
+                CHANNEL_THRESHOLDS,
+              ),
             });
             return {
               channel: row.channel,
@@ -165,6 +179,12 @@ export const channelPerformanceTool: AgentTool<ChannelPerformanceInput, ChannelP
           });
 
     const gaps: Gap[] = [];
+    if (previousFailure !== null) {
+      gaps.push({
+        code: 'previous-window-unavailable',
+        message: `The previous ${input.range}-day window could not be read (${previousFailure}), so no change over time can be claimed. The current figures are unaffected.`,
+      });
+    }
     if (input.compare && windows.gap !== null) {
       gaps.push({
         code: 'no-prior-window',
@@ -197,10 +217,7 @@ export const channelPerformanceTool: AgentTool<ChannelPerformanceInput, ChannelP
         priority: item.priority,
         strength: evidenceStrength(
           { sessions: row?.sessions ?? 0, orders: row?.orders ?? 0 },
-          {
-            minimumSessions: ANALYTICS_THRESHOLDS.minimumSessions,
-            minimumOrders: ANALYTICS_THRESHOLDS.minimumOrders,
-          },
+          CHANNEL_THRESHOLDS,
         ),
         affectedSessions: row?.sessions ?? null,
         observed: item.reason,

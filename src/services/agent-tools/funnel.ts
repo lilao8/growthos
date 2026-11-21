@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { comparableWindows } from '@/domain/agent/windows';
 import { compareValues } from '@/domain/agent/comparison';
+import { comparisonEvidence, type ComparisonEvidence } from '@/domain/agent/priority';
 import { funnelHref } from '@/domain/agent/links';
 import { makeRef, refId, type MetricRef, type RefScope } from '@/domain/agent/refs';
 import { DEMO_AS_OF, DEMO_WINDOW, type DateWindow, type DemoRangeDays } from '@/domain/demo-window';
@@ -125,22 +126,23 @@ export const funnelTool: AgentTool<FunnelInput, FunnelData> = {
 
     const windows = comparableWindows(input.range, DEMO_AS_OF, DEMO_WINDOW);
     const deps = { traffic: context.traffic };
-    let current;
-    let previous = null;
-    try {
-      current = await loadFunnel(deps, input.range, { channel: input.channel });
-      if (input.compare && windows.previous !== null) {
-        previous = await loadFunnel(deps, input.range, {
-          channel: input.channel,
-          end: windows.previous.end,
-        });
-      }
-    } catch (cause) {
-      return { status: 'error', message: messageFrom(cause, 'Could not load funnel data.') };
-    }
+    const current = await loadFunnel(deps, input.range, { channel: input.channel }).catch(
+      (cause: unknown) => ({ status: 'error' as const, message: messageFrom(cause, 'Could not load funnel data.') }),
+    );
     if (current.status === 'error') return { status: 'error', message: current.message };
-    if (previous !== null && previous.status === 'error') {
-      return { status: 'error', message: previous.message };
+
+    // The previous window is context; its failure leaves the current funnel intact.
+    let previous = null;
+    let previousFailure: string | null = null;
+    if (input.compare && windows.previous !== null) {
+      const loaded = await loadFunnel(deps, input.range, {
+        channel: input.channel,
+        end: windows.previous.end,
+      }).catch(
+        (cause: unknown) => ({ status: 'error' as const, message: messageFrom(cause, 'Could not load the previous window.') }),
+      );
+      if (loaded.status === 'error') previousFailure = loaded.message;
+      else previous = loaded;
     }
 
     const report = current.view.report;
@@ -164,25 +166,53 @@ export const funnelTool: AgentTool<FunnelInput, FunnelData> = {
       previousReport === null
         ? null
         : { tool: TOOL, window: previousReport.window, channel: input.channel, productId: null };
-    const compared = (metric: string, current: number | null, prior: number | null): ComparedMetric => ({
+    const compared = (
+      metric: string,
+      current: number | null,
+      prior: number | null,
+      evidence: ComparisonEvidence,
+    ): ComparedMetric => ({
       ...compareValues(current, prior),
       currentRefId: refId(currentScope, metric),
       previousRefId: previousScope === null ? null : refId(previousScope, metric),
+      evidence,
     });
 
     const comparisons: StageComparison[] =
       previousReport === null
         ? []
-        : report.transitions.map((transition, index) => ({
-            label: transition.label,
-            conversion: compared(
-              `conversion:${transition.from}->${transition.to}`,
-              transition.conversion,
-              previousReport.transitions[index]?.conversion ?? null,
-            ),
-          }));
+        : report.transitions.map((transition, index) => {
+            const key = `${transition.from}->${transition.to}`;
+            const before = previousReport.transitions[index];
+            // A stage rate rests on the sessions entering the stage, judged
+            // against that stage's own minimum — the same rule that keeps a
+            // thin step out of the findings.
+            const thresholds = {
+              minimumSessions: DEFAULT_FUNNEL_CONFIG.thresholds[key]?.minimumSessions ?? 0,
+              minimumOrders: null,
+            };
+            return {
+              label: transition.label,
+              conversion: compared(
+                `conversion:${key}`,
+                transition.conversion,
+                before?.conversion ?? null,
+                comparisonEvidence(
+                  { sessions: transition.fromSessions, orders: null },
+                  before === undefined ? null : { sessions: before.fromSessions, orders: null },
+                  thresholds,
+                ),
+              ),
+            };
+          });
 
     const gaps: Gap[] = [];
+    if (previousFailure !== null) {
+      gaps.push({
+        code: 'previous-window-unavailable',
+        message: `The previous ${input.range}-day window could not be read (${previousFailure}), so no change over time can be claimed. The current funnel is unaffected.`,
+      });
+    }
     if (input.compare && windows.gap !== null) {
       gaps.push({
         code: 'no-prior-window',
@@ -249,7 +279,21 @@ export const funnelTool: AgentTool<FunnelInput, FunnelData> = {
       overallConversion:
         previousReport === null
           ? null
-          : compared('overall_conversion', report.overallConversion, previousReport.overallConversion),
+          : compared(
+              'overall_conversion',
+              report.overallConversion,
+              previousReport.overallConversion,
+              // Purchasing sessions ÷ sessions is the site conversion rate,
+              // so it is held to the same floors as a channel's rate.
+              comparisonEvidence(
+                { sessions: report.totalSessions, orders: report.purchaseSessions },
+                { sessions: previousReport.totalSessions, orders: previousReport.purchaseSessions },
+                {
+                  minimumSessions: ANALYTICS_THRESHOLDS.minimumSessions,
+                  minimumOrders: ANALYTICS_THRESHOLDS.minimumOrders,
+                },
+              ),
+            ),
     };
     const meta = {
       window,

@@ -26,6 +26,8 @@ export const METRIC_DEFINITIONS = {
   drop_off_rate: '1 − stage conversion.',
   overall_funnel_conversion: 'Purchasing sessions ÷ sessions, over the same population.',
   product_view_sessions: 'Distinct sessions that viewed this product.',
+  product_purchase_sessions:
+    'Distinct sessions whose order included this product. A session that bought several products counts once for each.',
   product_conversion_rate:
     'Sessions that bought this product ÷ sessions that viewed it. Not additive across products.',
   product_revenue: 'Order-line revenue apportioned to this product.',

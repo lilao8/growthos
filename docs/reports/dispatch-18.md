@@ -184,4 +184,55 @@
 
 ---
 
+## 8. 第二轮复核修正（Codex 复核 `3dac15d` 后）
+
+逐条对照代码核实，全部成立，均不涉及范围、口径或权限的变化。
+
+| # | 复核意见 | 修正 |
+|---|---|---|
+| 阻塞 | 低样本的步骤已经移出排序，但它的环比（如 30 天 AI Referral 结账 → 购买，本期 8 次、前期 10 次，门槛 60）仍带着两个有效引用，可能被引用为「下降」 | 新增纯函数 `comparisonEvidence()`（`src/domain/agent/priority.ts`），每个比较项都带 `evidence`：`strength`、`supportsConclusion`、两期原始样本和门槛。两期使用与单期发现相同的门槛，取较弱的一方；没有前一期时一律不支持结论。漏斗阶段的比较用该阶段自身的 `minimumSessions`；整体转化和渠道指标用 `ANALYTICS_THRESHOLDS`（会话 300 / 订单 25）。原始数字照常返回，Dispatch 19 的回答校验必须读取 `supportsConclusion` |
+| 建议 | 前一期读取失败时，本期结果也一起丢失 | 渠道和漏斗工具改为本期优先：前一期失败时仍返回本期数据，`previous: null`，并附 `previous-window-unavailable` 缺口 |
+| 建议 | 购买会话引用的口径键借用了转化率 | 新增 `product_purchase_sessions` 计数定义 |
+| 可选 | 浏览器测试补一个过期场景 | 新增 E2E：先保存审计、再修改 meta 标题，然后打开证据链接，预览显示新内容的检查结果（标明原因是「older content」）；打开前后 localStorage 不变；普通审计页仍显示 stale |
+
+口径决定：按 Codex 的建议维持原规则。渠道订单少于 25 仍是「低置信，降一档」，回答中要显示样本量；漏斗阶段低于最低进入会话数则只作为缺口。两条规则各有既定含义。
+
+### 8.1 新增测试
+
+- 单元测试 +7：`weakerStrength` 1 个；`comparisonEvidence` 6 个（两期都达标、只有本期不足、只有前期不足、两期都不足且保留原始样本、订单不足时为 limited、没有前一期）。
+- 集成测试 +5：
+  - 渠道比较：每个渠道的 `supportsConclusion` 等于「两期会话都 ≥ 300」，且样本与数据一致；Email 不支持结论。
+  - 前一期失败时，渠道工具的本期结果不变，并附缺口。
+  - AI Referral 结账步骤：两期都低于 60，方向仍然计算出来，但 `evidence` 标为 insufficient 并保留原始样本。
+  - 全站漏斗：每个阶段的比较是否支持结论，与两期样本对门槛的判断一致；整体转化支持结论。
+  - 前一期失败时，漏斗工具的本期结果不变。
+  - 另外，商品工具的已有用例里补充断言购买会话引用的定义和单位。
+- E2E +1 个 × 3 个浏览器：过期审计的预览。
+
+### 8.2 变异测试
+
+`priority.ts` 得分 91.01%，8 个存活变异均为等价变异：原有 6 个见第 3 节；新增 2 个，一个是 `STRENGTH_ORDER` 首项改成空字符串后 `indexOf` 返回 -1，仍是最小值；另一个是 `<=` 改成 `<`，只在两边相等时生效，而这时返回的是同一个值。
+
+### 8.3 门禁（本机，Node v24.18.0）
+
+| 命令 | 结果 |
+|---|---|
+| `npm ci` | PASS |
+| `npm run lint` | PASS |
+| `npm run typecheck` | PASS |
+| `npm run test -- --run` | PASS：32 个文件，**630 个测试** |
+| `npm run test:integration -- --run` | PASS：18 个文件，**364 个测试** |
+| `npm run test:e2e` | PASS：**816 个测试**，3 个浏览器，1.3 分钟 |
+| `npm run build` | PASS |
+
+本轮没有出现失败。
+
+### 8.4 交给 Dispatch 19 的约束
+
+- 回答里说某个指标「上升」或「下降」，必须引用一个 `ComparedMetric`，且其 `evidence.supportsConclusion === true`；否则只能陈述两期的原始数字，并说明样本不足。
+- 发现为 `limited` 时，回答中要显示样本量。
+- 带 `refIds` 的缺口可以引用原始数字，但不能作为结论。
+
+---
+
 **本阶段完成。已停止，等待确认下一 Dispatch。**

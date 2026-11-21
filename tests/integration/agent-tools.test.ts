@@ -21,6 +21,7 @@ import { CHANNELS } from '@/domain/types';
 import { DEFAULT_FUNNEL_CONFIG } from '@/domain/funnel/recommendations';
 import { rankFindings } from '@/domain/agent/priority';
 import type { DemoState } from '@/repositories/types';
+import type { TrafficRepository } from '@/repositories/traffic-repository';
 
 /**
  * The four agent tools over the real fixture: agreement with the pages'
@@ -62,6 +63,19 @@ function expectRefsResolve(outcome: { meta: { refs: { refId: string }[]; auditRe
     expect(finding.refIds.length).toBeGreaterThan(0);
     for (const id of finding.refIds) expect(known, `${id} is cited but not returned`).toContain(id);
   }
+}
+
+/** Succeeds on every call except the nth, so the previous window alone can fail. */
+function failingOnCall(n: number): TrafficRepository {
+  const inner = createFixtureTrafficRepository();
+  let calls = 0;
+  return {
+    async load() {
+      calls += 1;
+      if (calls === n) throw new Error('previous source down');
+      return inner.load();
+    },
+  };
 }
 
 describe('registry', () => {
@@ -193,6 +207,40 @@ describe('get_channel_performance', () => {
     }
   });
 
+  it('marks each channel comparison as supporting a conclusion only when both periods meet the floors', async () => {
+    const outcome = ok<ChannelPerformanceData>(await runTool('get_channel_performance', {}, context()));
+    const previous = outcome.data.previous?.channels ?? [];
+    const verdicts = outcome.data.comparisons.map((row) => {
+      const current = outcome.data.channels.find((candidate) => candidate.channel === row.channel);
+      const before = previous.find((candidate) => candidate.channel === row.channel);
+      const expected = (current?.sessions ?? 0) >= 300 && (before?.sessions ?? 0) >= 300;
+      for (const metric of [row.sessions, row.orders, row.revenueCents, row.conversionRate]) {
+        expect(metric.evidence.supportsConclusion).toBe(expected);
+        expect(metric.evidence.currentSample).toEqual({ sessions: current?.sessions, orders: current?.orders });
+        expect(metric.evidence.previousSample).toEqual({ sessions: before?.sessions, orders: before?.orders });
+      }
+      return expected;
+    });
+    expect(verdicts).toContain(true);
+    expect(verdicts).toContain(false);
+    const email = outcome.data.comparisons.find((row) => row.channel === 'Email');
+    expect(email?.conversionRate.evidence.supportsConclusion).toBe(false);
+  });
+
+  it('keeps the current figures when only the previous window fails', async () => {
+    const normal = ok<ChannelPerformanceData>(await runTool('get_channel_performance', { compare: false }, context()));
+    const outcome = ok<ChannelPerformanceData>(
+      await runTool('get_channel_performance', {}, context({ traffic: failingOnCall(2) })),
+    );
+    expect(outcome.data.channels).toEqual(normal.data.channels);
+    expect(outcome.data.previous).toBeNull();
+    expect(outcome.data.comparisons).toEqual([]);
+    expect(outcome.meta.previousWindow).toBeNull();
+    const gap = outcome.meta.gaps.find((candidate) => candidate.code === 'previous-window-unavailable');
+    expect(gap?.message).toContain('previous source down');
+    expect(outcome.findings.length).toBe(normal.findings.length);
+  });
+
   it('reports an empty data set as empty, with N/A rates and no NaN or Infinity', async () => {
     const outcome = await runTool('get_channel_performance', {}, context({ traffic: createEmptyTrafficRepository() }));
     expect(outcome.status).toBe('empty');
@@ -261,6 +309,49 @@ describe('get_funnel', () => {
     expect(byId.get(overall?.previousRefId ?? '')?.value).toBe(overall?.previous);
   });
 
+  it('marks a thin stage comparison as unable to support a conclusion, keeping its raw figures', async () => {
+    const outcome = ok<FunnelData>(await runTool('get_funnel', { channel: 'AI Referral' }, context()));
+    const checkout = outcome.data.comparisons.find((row) => row.label === 'Checkout → Purchase');
+    const now = outcome.data.report.transitions.find((t) => t.from === 'checkout');
+    const before = outcome.data.previous?.transitions.find((t) => t.from === 'checkout');
+    expect(now?.fromSessions).toBeLessThan(60);
+    expect(before?.fromSessions).toBeLessThan(60);
+    // The arithmetic is still reported…
+    expect(checkout?.conversion.direction).not.toBe('unknown');
+    expect(checkout?.conversion.previousRefId).not.toBeNull();
+    // …but it is flagged as not evidence of a change.
+    expect(checkout?.conversion.evidence).toEqual({
+      strength: 'insufficient',
+      supportsConclusion: false,
+      currentSample: { sessions: now?.fromSessions, orders: null },
+      previousSample: { sessions: before?.fromSessions, orders: null },
+      thresholds: { minimumSessions: 60, minimumOrders: null },
+    });
+  });
+
+  it('lets a stage comparison support a conclusion when both periods meet the stage minimum', async () => {
+    const outcome = ok<FunnelData>(await runTool('get_funnel', {}, context()));
+    for (const row of outcome.data.comparisons) {
+      const now = outcome.data.report.transitions.find((t) => t.label === row.label);
+      const before = outcome.data.previous?.transitions.find((t) => t.label === row.label);
+      const minimum = DEFAULT_FUNNEL_CONFIG.thresholds[`${now?.from}->${now?.to}`]?.minimumSessions ?? 0;
+      expect(row.conversion.evidence.supportsConclusion).toBe(
+        (now?.fromSessions ?? 0) >= minimum && (before?.fromSessions ?? 0) >= minimum,
+      );
+    }
+    expect(outcome.data.comparisons.some((row) => row.conversion.evidence.supportsConclusion)).toBe(true);
+    expect(outcome.data.overallConversion?.evidence.supportsConclusion).toBe(true);
+  });
+
+  it('keeps the current funnel when only the previous window fails', async () => {
+    const normal = ok<FunnelData>(await runTool('get_funnel', { compare: false }, context()));
+    const outcome = ok<FunnelData>(await runTool('get_funnel', {}, context({ traffic: failingOnCall(2) })));
+    expect(outcome.data.report).toEqual(normal.data.report);
+    expect(outcome.data.previous).toBeNull();
+    expect(outcome.data.overallConversion).toBeNull();
+    expect(outcome.meta.gaps.map((gap) => gap.code)).toContain('previous-window-unavailable');
+  });
+
   it('turns steps below their sample minimum into gaps, never findings', async () => {
     const outcome = await runTool('get_funnel', { channel: 'AI Referral' }, context());
     if (outcome.status !== 'ok' && outcome.status !== 'empty') throw new Error(outcome.status);
@@ -307,6 +398,9 @@ describe('get_product_performance', () => {
     expect(outcome.data.rows.map((row) => row.productId)).toEqual(['prd_ridgeline_2p_tent']);
     expect(outcome.data.notFound).toEqual(['NT-999']);
     expect(outcome.meta.gaps.some((gap) => gap.code === 'product-not-found' && gap.message.includes('NT-999'))).toBe(true);
+    const purchases = outcome.meta.refs.find((ref) => ref.refId.endsWith(':purchase_sessions'));
+    expect(purchases?.definition).toBe('product_purchase_sessions');
+    expect(purchases?.unit).toBe('count');
   });
 
   it('is empty, not an error, when nothing matches', async () => {

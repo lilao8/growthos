@@ -200,6 +200,34 @@ for (const { kind, sku } of AUDIT_CASES) {
   });
 }
 
+test('after a saved audit and an edit, the evidence link previews the edited page without writing', async ({ page }) => {
+  // Save an audit, then edit the page so that audit goes stale.
+  await gotoReady(page, '/seo/snap_ridgeline_2p_tent');
+  await page.getByTestId('run-page-audit').click();
+  await expect(page.getByTestId('page-score')).toBeVisible();
+  const savedTitleCheck = await page.getByTestId('check-meta-title-length').innerText();
+
+  await gotoReady(page, '/products/prd_ridgeline_2p_tent');
+  await page.getByTestId('field-meta-title').fill('Ridgeline 2P');
+  await page.getByTestId('save-seo').click();
+  await expect(page.getByTestId('save-success')).toBeVisible();
+
+  // Opening the evidence link is a read.
+  await gotoReady(page, '/seo/snap_ridgeline_2p_tent?preview=1');
+  const before = await storageSnapshot(page);
+  await expect(page.getByTestId('audit-preview-notice')).toContainText('older content');
+  await expect(page.getByTestId('stale-notice')).toHaveCount(0);
+  const titleCheck = page.getByTestId('check-meta-title-length');
+  await expect(titleCheck).toContainText('12');
+  expect(await titleCheck.innerText()).not.toBe(savedTitleCheck);
+  expect(await storageSnapshot(page)).toBe(before);
+
+  // The saved audit is still the stale one: the plain page says so.
+  await gotoReady(page, '/seo/snap_ridgeline_2p_tent');
+  await expect(page.getByTestId('stale-notice')).toBeVisible();
+  expect(await storageSnapshot(page)).toBe(before);
+});
+
 test('saving the audit from a preview replaces the preview with the saved result', async ({ page }) => {
   await gotoReady(page, '/seo/snap_ridgeline_2p_tent?preview=1');
   await expect(page.getByTestId('audit-preview-notice')).toBeVisible();
