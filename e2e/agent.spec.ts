@@ -110,7 +110,8 @@ test('a write request changes nothing and says the agent is read-only', async ({
   await page.getByTestId('agent-question').fill('把第一条建议标记为完成');
   await page.getByTestId('agent-ask').click();
   const turn = page.getByTestId('agent-turn').first();
-  await expect(turn.getByTestId('agent-summary')).toContainText('只能读取和分析数据', { timeout: 15_000 });
+  // GrowthOS, not the model, writes what happened to the requested action.
+  await expect(turn.getByTestId('agent-summary')).toContainText('No action was taken: mark_recommendation_done does not exist', { timeout: 15_000 });
   await expect(turn.getByTestId('agent-finding')).toHaveCount(0);
   await expect(turn.getByTestId('agent-refused')).toContainText('No action was taken');
   await turn.getByTestId('agent-tool-log').locator('summary').click();
@@ -167,4 +168,40 @@ test('a stream that breaks off leaves the analysing state with a retry', async (
   await expect(page.getByTestId('agent-progress')).toHaveCount(0);
   await expect(page.getByTestId('agent-ask')).toBeEnabled();
   await expect(page.getByTestId('agent-question')).toHaveValue(MAIN);
+});
+
+test('a lookup with no alert is answered with the figure itself, which opens on the product page', async ({ page }) => {
+  await gotoReady(page, '/agent');
+  await page.getByTestId('agent-question').fill('过去 30 天 Ridgeline 从自然搜索获得多少购买会话？');
+  await page.getByTestId('agent-ask').click();
+  const turn = page.getByTestId('agent-turn').first();
+  await expect(turn).toBeVisible({ timeout: 15_000 });
+  await expect(turn.getByTestId('agent-finding')).toHaveCount(0);
+  const tent = turn.getByTestId('agent-answer-fact').filter({ hasText: 'Ridgeline 2P Backpacking Tent purchasing sessions' });
+  await expect(tent).toHaveText('Ridgeline 2P Backpacking Tent purchasing sessions (Organic Search), 2026-08-02 — 2026-08-31: 3');
+  await expect(page.getByTestId('agent-scope')).toContainText('All channels');
+
+  await tent.getByTestId('agent-figure').click();
+  await expect(page).toHaveURL(/\/products\/prd_ridgeline_2p_tent\?range=30&channel=Organic\+Search$/);
+  await expect(page.getByTestId('detail-purchase-sessions')).toHaveText('3');
+});
+
+test('leaving the page while the agent works cancels the request', async ({ page }) => {
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/agent', async (route) => {
+    await held;
+    await route.continue().catch(() => {});
+  });
+  const failed = page.waitForEvent('requestfailed', (request) => request.url().includes('/api/agent'));
+  await gotoReady(page, '/agent');
+  await page.getByTestId('agent-question').fill(MAIN);
+  await page.getByTestId('agent-ask').click();
+  await expect(page.getByTestId('agent-progress')).toBeVisible();
+  await page.getByRole('link', { name: 'Analytics' }).first().click();
+  const request = await failed;
+  expect(request.failure()).not.toBeNull();
+  release();
 });

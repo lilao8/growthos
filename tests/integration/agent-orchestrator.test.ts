@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { runAgentTurn, type AgentDeps, type AgentEvent, type AgentTurnResult } from '@/services/agent/orchestrator';
 import { createDemoModel, createScriptedModel, currentQuestion, resultsSince } from '@/services/agent/scripted-model';
 import type { AgentMessage, ModelTurn } from '@/services/agent/model';
@@ -117,7 +117,8 @@ describe('the main question', () => {
       const finding = firstFinding(messages);
       return {
         summary: 'One thing to check.',
-        findings: [{ basedOn: finding.id, facts: [{ kind: 'value', refId: finding.refIds[0] ?? '' }], whyPriority: 'Paid traffic that is not converting.', howToVerify: 'Compare pages.', scope: { channel: 'Meta', productId: null } }],
+        facts: [],
+        findings: [{ basedOn: finding.id, facts: [{ kind: 'value', refId: finding.refIds[0] ?? '' }], whyPriority: 'Paid traffic that is not converting.', howToVerify: 'Compare pages.' }],
         gaps: [],
       };
     });
@@ -168,7 +169,7 @@ describe('scope across turns', () => {
       if (resultsSince(messages, question.index).length === 0) {
         return { type: 'tool_calls', calls: [{ id: 's', name: 'set_analysis_scope', arguments: '{"range":14}' }] };
       }
-      return { type: 'final', content: JSON.stringify({ summary: 'Nothing changed.', findings: [], gaps: [] }) };
+      return { type: 'final', content: JSON.stringify({ summary: 'Nothing changed.', facts: [], findings: [], gaps: [] }) };
     });
     const { result } = await ask(MAIN, DEFAULT_SCOPE, { model });
     expect(result.toolCalls[0]?.status).toBe('invalid-input');
@@ -204,7 +205,7 @@ describe('enough data and not enough data', () => {
   });
 
   it('reports a product that does not exist', async () => {
-    const model = oneQueryModel(() => ({ summary: 'No such product.', findings: [], gaps: [] }), [
+    const model = oneQueryModel(() => ({ summary: 'No such product.', facts: [], findings: [], gaps: [] }), [
       { id: 'p', name: 'get_product_performance', arguments: '{"products":["NT-999"]}' },
     ]);
     const { result } = await ask(MAIN, DEFAULT_SCOPE, { model });
@@ -253,7 +254,7 @@ describe('answer validation', () => {
       attempts += 1;
       const finding = firstFinding(messages);
       const whyPriority = attempts === 1 ? 'Conversion is 0.54%.' : 'Paid traffic that is not converting.';
-      return { summary: 'Check this.', findings: [{ basedOn: finding.id, facts: [{ kind: 'value', refId: finding.refIds[0] ?? '' }], whyPriority, howToVerify: 'Compare pages.', scope: { channel: 'Meta', productId: null } }], gaps: [] };
+      return { summary: 'Check this.', facts: [], findings: [{ basedOn: finding.id, facts: [{ kind: 'value', refId: finding.refIds[0] ?? '' }], whyPriority, howToVerify: 'Compare pages.' }], gaps: [] };
     });
     const { result, events } = await ask(MAIN, DEFAULT_SCOPE, { model });
     expect(attempts).toBe(2);
@@ -264,7 +265,8 @@ describe('answer validation', () => {
   it('falls back to GrowthOS ranking when the answer still fails after one correction', async () => {
     const model = oneQueryModel((messages) => ({
       summary: 'Meta conversion fell sharply.',
-      findings: [{ basedOn: firstFinding(messages).id, facts: [{ kind: 'value', refId: 'channels:invented' }], whyPriority: 'x', howToVerify: 'y', scope: { channel: null, productId: null } }],
+      facts: [],
+      findings: [{ basedOn: firstFinding(messages).id, facts: [{ kind: 'value', refId: 'channels:invented' }], whyPriority: 'x', howToVerify: 'y' }],
       gaps: [],
     }));
     const { result } = await ask(MAIN, DEFAULT_SCOPE, { model });
@@ -283,6 +285,139 @@ describe('answer validation', () => {
     const { result } = await ask(MAIN, DEFAULT_SCOPE, { model: broken });
     expect(result.status).toBe('fallback');
     expect(result.issues[0]?.code).toBe('invalid-json');
+  });
+});
+
+describe('a lookup with figures but no alert', () => {
+  const LOOKUP = '过去 30 天 Ridgeline 从自然搜索获得多少购买会话？';
+
+  it('answers with the figures themselves, without needing a finding, and leaves the scope alone', async () => {
+    const { result } = await ask(LOOKUP);
+    expect(result.status).toBe('answered');
+    const call = result.toolCalls[0];
+    expect(call?.name).toBe('get_product_performance');
+    expect(call?.input).toMatchObject({ query: 'Ridgeline', channel: 'Organic Search', range: 30 });
+    // A condition in the question narrows the call, not the conversation.
+    expect(result.scope).toEqual(DEFAULT_SCOPE);
+    const answer = answered(result);
+    expect(answer.findings).toEqual([]);
+    const lines = answer.facts.map((fact) => fact.map((segment) => segment.text).join(''));
+    expect(lines.length).toBeGreaterThan(0);
+    const tent = lines.find((line) => line.startsWith('Ridgeline 2P Backpacking Tent purchasing sessions'));
+    expect(tent).toBe('Ridgeline 2P Backpacking Tent purchasing sessions (Organic Search), 2026-08-02 — 2026-08-31: 3');
+  });
+
+  it('keeps those figures when the model fails and GrowthOS falls back', async () => {
+    const model = oneQueryModel(() => ({ summary: 'There were 3.', facts: [], findings: [], gaps: [] }), [
+      { id: 'p', name: 'get_product_performance', arguments: '{"query":"Ridgeline","channel":"Organic Search"}' },
+    ]);
+    const { result } = await ask(LOOKUP, DEFAULT_SCOPE, { model });
+    expect(result.status).toBe('fallback');
+    const lines = answered(result).facts.map((fact) => fact.map((segment) => segment.text).join(''));
+    expect(lines).toContain('Ridgeline 2P Backpacking Tent purchasing sessions (Organic Search), 2026-08-02 — 2026-08-31: 3');
+  });
+});
+
+describe('cards stay inside their own scope', () => {
+  it("does not accept a 2P finding illustrated with the 3P audit, and the fallback card keeps the 2P scope", async () => {
+    let attempts = 0;
+    const model = createScriptedModel('mixed', (messages) => {
+      const question = currentQuestion(messages);
+      const results = resultsSince(messages, question.index);
+      if (results.length === 0) {
+        return { type: 'tool_calls', calls: [{ id: 'a', name: 'get_audit_findings', arguments: '{"kind":"seo","products":["NT-TENT-RDG2","NT-TENT-RDG3"]}' }] };
+      }
+      attempts += 1;
+      const body = results[0]?.body as { findings: { id: string; title: string }[]; auditRefs: { refId: string; ruleId: string }[] };
+      const twoP = body.findings.find((finding) => finding.title.includes('Ridgeline 2P'));
+      const threeP = body.auditRefs.find((ref) => ref.refId.includes('snap_ridgeline_3p'));
+      return {
+        type: 'final',
+        content: JSON.stringify({
+          summary: 'Check the tent page.',
+          facts: [],
+          findings: [{ basedOn: twoP?.id, facts: [{ kind: 'audit', refId: threeP?.refId }], whyPriority: 'Its heading is weak.', howToVerify: 'Open the page.' }],
+          gaps: [],
+        }),
+      };
+    });
+    const { result } = await ask(MAIN, DEFAULT_SCOPE, { model });
+    expect(attempts).toBe(2);
+    expect(result.status).toBe('fallback');
+    expect(result.issues.map((issue) => issue.code)).toContain('scope-mismatch');
+    for (const finding of answered(result).findings) {
+      expect(finding.scope.productId).not.toBeNull();
+      const audits = finding.evidence.filter((link) => link.href.startsWith('/seo/'));
+      expect(new Set(audits.map((link) => link.href)).size).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('keeps the Organic Search scope on fallback cards', async () => {
+    const model = createScriptedModel('organic-broken', (messages) => {
+      const question = currentQuestion(messages);
+      if (resultsSince(messages, question.index).length === 0) {
+        return { type: 'tool_calls', calls: [{ id: 'f', name: 'get_funnel', arguments: '{"channel":"Organic Search"}' }] };
+      }
+      return { type: 'final', content: 'not json' };
+    });
+    const { result } = await ask(ORGANIC, DEFAULT_SCOPE, { model });
+    expect(result.status).toBe('fallback');
+    const findings = answered(result).findings;
+    expect(findings.length).toBeGreaterThan(0);
+    for (const finding of findings) expect(finding.scope).toEqual({ channel: 'Organic Search', productId: null });
+  });
+});
+
+describe('refused actions', () => {
+  function claimingModel(summaries: string[]) {
+    let turn = 0;
+    return createScriptedModel('claims', (messages) => {
+      const question = currentQuestion(messages);
+      if (resultsSince(messages, question.index).length === 0) {
+        return { type: 'tool_calls', calls: [{ id: 'm', name: 'mark_recommendation_done', arguments: '{"id":"first"}' }] };
+      }
+      const summary = summaries[Math.min(turn, summaries.length - 1)] ?? '';
+      turn += 1;
+      return { type: 'final', content: JSON.stringify({ summary, facts: [], findings: [], gaps: [] }) };
+    });
+  }
+
+  it('never shows a model claim that the action succeeded', async () => {
+    const { result } = await ask('把第一条建议标记为完成', DEFAULT_SCOPE, { model: claimingModel(['已把这条建议标为完成。']) });
+    expect(result.refusedActions).toEqual(['mark_recommendation_done']);
+    expect(result.issues.map((issue) => issue.code)).toContain('action-claim');
+    const summary = (result.answer?.summary ?? []).map((segment) => segment.text).join('');
+    expect(summary).not.toContain('已把');
+    expect(summary).toContain('No action was taken');
+  });
+
+  it('writes the summary itself even when the model phrases it correctly', async () => {
+    const { result } = await ask('把第一条建议标记为完成', DEFAULT_SCOPE, { model: claimingModel(['这里只能分析数据。']) });
+    expect(result.status).toBe('answered');
+    expect((result.answer?.summary ?? []).map((segment) => segment.text).join('')).toContain('No action was taken: mark_recommendation_done does not exist');
+  });
+
+  it('does not treat a question about change as a request to change something', async () => {
+    const { result } = await ask('How did conversion change over the last 30 days?');
+    expect(result.refusedActions).toEqual([]);
+    expect(result.toolCalls[0]?.name).toBe('get_channel_performance');
+  });
+});
+
+describe('cleanup', () => {
+  it('leaves no timer behind after a turn, however it ends', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      await ask(MAIN);
+      expect(vi.getTimerCount()).toBe(0);
+      const failing = createScriptedModel('throws', () => {
+        throw new Error('down');
+      });
+      await ask(MAIN, DEFAULT_SCOPE, { model: failing });
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -320,7 +455,7 @@ describe('cancellation', () => {
           ],
         };
       }
-      return { type: 'final', content: JSON.stringify({ summary: 'Done.', findings: [], gaps: [] }) };
+      return { type: 'final', content: JSON.stringify({ summary: 'Done.', facts: [], findings: [], gaps: [] }) };
     });
     const { result } = await ask(MAIN, DEFAULT_SCOPE, { model, traffic, signal: controller.signal });
     expect(result.toolCalls.map((call) => call.status)).toEqual(['error', 'cancelled', 'cancelled']);
@@ -332,7 +467,7 @@ describe('limits', () => {
     let n = 0;
     const model = createScriptedModel('greedy', (messages) => {
       const nudged = messages.some((message) => message.role === 'user' && message.content.startsWith('No more tool calls'));
-      if (nudged) return { type: 'final', content: JSON.stringify({ summary: 'Stopped at the limit.', findings: [], gaps: [] }) };
+      if (nudged) return { type: 'final', content: JSON.stringify({ summary: 'Stopped at the limit.', facts: [], findings: [], gaps: [] }) };
       n += 1;
       return { type: 'tool_calls', calls: [{ id: `a${n}`, name: 'get_channel_performance', arguments: '{}' }, { id: `b${n}`, name: 'get_funnel', arguments: '{}' }, { id: `c${n}`, name: 'get_funnel', arguments: '{"channel":"Email"}' }] };
     });

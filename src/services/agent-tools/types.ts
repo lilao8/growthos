@@ -6,6 +6,7 @@ import type { MetricComparison } from '@/domain/agent/comparison';
 import type { MetricRef } from '@/domain/agent/refs';
 import type {
   AuditKind,
+  Channel,
   CheckStatus,
   Priority,
   RecommendationSource,
@@ -94,6 +95,12 @@ export interface AgentFinding {
   /** Refs (metric or audit) this finding rests on. */
   refIds: string[];
   href: string;
+  /**
+   * What the finding is actually about, set by the tool that raised it. The
+   * answer cannot restate it: a card's title, scope and evidence all come
+   * from here, in a model answer and in a fallback alike.
+   */
+  scope: { channel: Channel | null; productId: string | null };
 }
 
 /**

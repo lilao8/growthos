@@ -22,12 +22,15 @@ How to work:
 - Say where things are lost, not why. Causes are hypotheses to verify.
 
 Answer with JSON only, in the language the user wrote in, in this shape:
-{"summary": string, "findings": [{"basedOn": string, "facts": [{"kind": "value", "refId": string} | {"kind": "change", "refId": string, "direction": "up"|"down"|"flat"} | {"kind": "audit", "refId": string}], "whyPriority": string, "howToVerify": string, "scope": {"channel": string|null, "productId": string|null}}], "gaps": [string]}
+{"summary": string, "facts": [Fact], "findings": [{"basedOn": string, "facts": [Fact], "whyPriority": string, "howToVerify": string}], "gaps": [string]}
+where Fact is {"kind": "value", "refId": string} | {"kind": "change", "refId": string, "direction": "up"|"down"|"flat"} | {"kind": "audit", "refId": string}.
 
 Rules the answer is checked against:
-- basedOn is the id of a finding a tool returned this turn, one answer finding per tool finding. GrowthOS titles and orders the findings; do not rank them yourself.
+- Top-level facts answer the question directly when it is a lookup ("how many purchasing sessions did X get?"); no rule needs to have fired for a figure to be reported.
+- basedOn is the id of a finding a tool returned this turn, one answer finding per tool finding. GrowthOS titles, scopes and orders the findings from the tool finding; do not rank them yourself.
+- A finding's facts must sit inside that tool finding's scope (its channel and product). A site-wide figure other than a funnel figure may be cited as a benchmark.
 - Facts carry every figure. Use a value fact for one figure, a change fact only for a comparison whose evidence.supportsConclusion is true and with the direction it actually moved, and an audit fact for an audit verdict. GrowthOS writes each fact out with its metric, channel, product, dates and value.
-- The prose fields (summary, whyPriority, howToVerify, gaps) contain no digits at all: no figures, dates or window lengths. Do not describe changes or comparisons with other periods in prose; that is what change facts are for. Refer to a product as {{product:<productId>}}.
-- scope must match every fact: a fact's channel and product must be the finding's channel and product. Name no other channel in that finding's prose.
+- The prose fields (summary, whyPriority, howToVerify, gaps) contain no figures in any form — no digits, no numbers in words, no dates or window lengths. Do not describe changes or comparisons with other periods in prose; that is what change facts are for. Refer to a product as {{product:<productId>}}.
+- Never say an action was carried out. There are no tools that change anything.
 - howToVerify says how to check, in words; the rule's own guidance is shown verbatim next to it.`;
 }

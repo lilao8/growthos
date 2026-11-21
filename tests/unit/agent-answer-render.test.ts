@@ -13,6 +13,7 @@ function known(id: string, overrides: Partial<KnownFinding> = {}): KnownFinding 
     howToVerify: `Check ${id}`,
     refIds: [],
     href: `/page/${id}`,
+    scope: { channel: 'Organic Search', productId: null },
     ...overrides,
   };
 }
@@ -38,7 +39,8 @@ function context(findings: KnownFinding[] = [], overrides: Partial<AnswerContext
     audits: new Map([['aud', { refId: 'aud', ruleId: 'h1', status: 'error', evidence: '0 H1 elements', productId: 'prd_a', href: '/seo/snap_a?preview=1' }]]),
     findings: new Map(findings.map((finding) => [finding.id, finding])),
     products: new Map([['prd_a', 'Ridgeline 2P Backpacking Tent']]),
-    channels: [],
+    actionRefused: false,
+    figuresWithoutFindings: [],
     ...overrides,
   };
 }
@@ -78,7 +80,23 @@ describe('renderFact', () => {
     });
     expect(text(renderFact({ kind: 'value', refId: funnel }, ctx))).toBe('Checkout → Purchase conversion (Meta), 2026-08-02 — 2026-08-31: 25.00%');
     expect(text(renderFact({ kind: 'value', refId: site }, ctx))).toBe('Site sessions (all channels), 2026-08-02 — 2026-08-31: 10');
-    expect(text(renderFact({ kind: 'value', refId: product }, ctx))).toBe('Ridgeline 2P view sessions, 2026-08-02 — 2026-08-31: 5');
+    expect(text(renderFact({ kind: 'value', refId: product }, ctx))).toBe('Ridgeline 2P view sessions (all channels), 2026-08-02 — 2026-08-31: 5');
+  });
+
+  it('labels a site figure inside a channel finding as a site-wide benchmark', () => {
+    const site = 'channels:2026-08-02..2026-08-31:all:all:average_order_value';
+    const funnel = 'funnel:2026-08-02..2026-08-31:all:all:stage:session';
+    const ctx = context([], {
+      refs: new Map([
+        [site, ref(site, { label: 'Site average order value', channel: null, unit: 'cents', value: 17731 })],
+        [funnel, ref(funnel, { label: 'Sessions sessions', channel: null, funnel: true, value: 9 })],
+      ]),
+    });
+    const meta = { channel: 'Meta', productId: null };
+    expect(text(renderFact({ kind: 'value', refId: site }, ctx, meta))).toBe('Site average order value (site-wide benchmark), 2026-08-02 — 2026-08-31: $177.31');
+    expect(text(renderFact({ kind: 'value', refId: site }, ctx))).toBe('Site average order value (all channels), 2026-08-02 — 2026-08-31: $177.31');
+    expect(text(renderFact({ kind: 'value', refId: site }, ctx, { channel: null, productId: null }))).toContain('(all channels)');
+    expect(text(renderFact({ kind: 'value', refId: funnel }, ctx, meta))).toContain('(all channels)');
   });
 
   it('writes a change with both periods, each linked to its own window', () => {
@@ -146,29 +164,35 @@ describe('renderAnswer', () => {
     facts: [{ kind: 'value' as const, refId }],
     whyPriority: 'b',
     howToVerify: 'c',
-    scope: { channel: 'Organic Search', productId: null },
   });
 
   it('orders findings by the agent ranking and titles them from the tool finding', () => {
     const ctx = context([known('low', { priority: 'Low' }), known('critical', { priority: 'Critical' })]);
-    const rendered = renderAnswer({ summary: 'S', findings: [finding('low'), finding('critical')], gaps: ['g'] }, ctx, 'model');
+    const rendered = renderAnswer({ summary: 'S', facts: [], findings: [finding('low'), finding('critical')], gaps: ['g'] }, ctx, 'model');
     expect(rendered.findings.map((item) => item.title)).toEqual(['Title critical', 'Title low']);
     expect(rendered.findings.map((item) => item.rank)).toEqual([1, 2]);
     expect(rendered.findings[0]?.ruleGuidance).toBe('Check critical');
+    // Scope and fact sentences come from the tool finding, not from the answer.
     expect(rendered.findings[0]?.scope).toEqual({ channel: 'Organic Search', productId: null });
-    expect(rendered.findings[0]?.facts).toEqual([renderFact({ kind: 'value', refId: ORDERS }, ctx)]);
+    expect(rendered.findings[0]?.facts).toEqual([renderFact({ kind: 'value', refId: ORDERS }, ctx, { channel: 'Organic Search', productId: null })]);
     expect(rendered.source).toBe('model');
     expect(rendered.gaps).toEqual([[{ kind: 'text', text: 'g' }]]);
   });
 
+  it('writes out the top-level facts that answer a lookup', () => {
+    const rendered = renderAnswer({ summary: 'S', facts: [{ kind: 'value', refId: ORDERS }], findings: [], gaps: [] }, context(), 'model');
+    expect(rendered.facts).toEqual([renderFact({ kind: 'value', refId: ORDERS }, context())]);
+    expect(rendered.findings).toEqual([]);
+  });
+
   it('drops a finding whose basis is unknown instead of failing', () => {
-    const rendered = renderAnswer({ summary: 'S', findings: [finding('ghost'), finding('f')], gaps: [] }, context([known('f')]), 'model');
+    const rendered = renderAnswer({ summary: 'S', facts: [], findings: [finding('ghost'), finding('f')], gaps: [] }, context([known('f')]), 'model');
     expect(rendered.findings.map((item) => item.basedOn)).toEqual(['f']);
   });
 
   it('links the finding page, each cited figure and both periods of a change', () => {
     const ctx = context([known('f', { refIds: ['aud'] })]);
-    const rendered = renderAnswer({ summary: 'S', findings: [finding('f', CVR)], gaps: [] }, ctx, 'model');
+    const rendered = renderAnswer({ summary: 'S', facts: [], findings: [finding('f', CVR)], gaps: [] }, ctx, 'model');
     expect(rendered.findings[0]?.evidence).toEqual([
       { href: '/page/f', label: 'Title f' },
       { href: '/analytics?range=30', label: 'Organic Search conversion rate, 2026-08-02 — 2026-08-31' },
@@ -179,7 +203,7 @@ describe('renderAnswer', () => {
 
   it('labels each evidence link by what it shows, and keeps the first label for a shared page', () => {
     const ctx = context([known('f', { href: '/analytics?range=30', title: 'Organic Search: conversion' })]);
-    const rendered = renderAnswer({ summary: 'S', findings: [finding('f', CVR)], gaps: [] }, ctx, 'model');
+    const rendered = renderAnswer({ summary: 'S', facts: [], findings: [finding('f', CVR)], gaps: [] }, ctx, 'model');
     expect(rendered.findings[0]?.evidence).toEqual([
       { href: '/analytics?range=30', label: 'Organic Search: conversion' },
       { href: '/analytics?range=30&end=2026-08-01', label: 'Organic Search conversion rate, 2026-07-03 — 2026-08-01' },
@@ -188,7 +212,7 @@ describe('renderAnswer', () => {
 
   it('shows the sample and the downgrade of a limited finding', () => {
     const ctx = context([known('f', { priority: 'Critical', strength: 'limited', affectedSessions: 372 })]);
-    const rendered = renderAnswer({ summary: 'S', findings: [finding('f')], gaps: [] }, ctx, 'model');
+    const rendered = renderAnswer({ summary: 'S', facts: [], findings: [finding('f')], gaps: [] }, ctx, 'model');
     expect(rendered.findings[0]).toMatchObject({ priority: 'Critical', effectivePriority: 'High', downgraded: true, affectedSessions: 372 });
   });
 });
@@ -209,7 +233,18 @@ describe('fallbackAnswer', () => {
     expect(rendered.findings[0]?.howToVerify).toEqual([{ kind: 'text', text: 'Check b' }]);
     expect(rendered.findings[0]?.evidence).toEqual([{ href: '/page/b', label: 'Title b' }]);
     expect(rendered.findings[0]?.whyPriority[0]?.kind).toBe('text');
-    expect(rendered.findings[0]?.scope).toEqual({ channel: null, productId: null });
+    expect(rendered.findings[0]?.scope).toEqual({ channel: 'Organic Search', productId: null });
+    expect(rendered.facts).toEqual([]);
+  });
+
+  it('keeps the figures of a lookup that raised no finding, in order and at most twelve', () => {
+    const ids = Array.from({ length: 14 }, (_, index) => `products:w:all:p${index}:purchase_sessions`);
+    const refs = new Map(ids.map((id, index) => [id, ref(id, { label: `P${index} purchasing sessions`, channel: null, productId: `p${index}`, value: index })]));
+    const rendered = fallbackAnswer(context([], { refs, figuresWithoutFindings: ['missing', ...ids] }), 'R');
+    // Twelve candidates, one of which cannot be resolved and is left out.
+    expect(rendered.facts).toHaveLength(11);
+    expect(text(rendered.facts[0] ?? [])).toBe('P0 purchasing sessions (all channels), 2026-08-02 — 2026-08-31: 0');
+    expect(rendered.findings).toEqual([]);
     expect(rendered.gaps).toEqual([]);
   });
 

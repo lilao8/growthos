@@ -252,6 +252,7 @@ export const funnelTool: AgentTool<FunnelInput, FunnelData> = {
           refId(currentScope, `stage:${step?.from ?? ''}`),
         ],
         href,
+        scope: { channel: input.channel, productId: null },
       };
     });
 

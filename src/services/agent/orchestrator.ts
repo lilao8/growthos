@@ -283,13 +283,33 @@ export async function runAgentTurn(
   ): AgentTurnResult => {
     clearTimeout(turnTimer);
     deps.signal?.removeEventListener('abort', onOuterAbort);
+    const refusedActions = [...new Set(toolCalls.filter((call) => call.status === 'unknown-tool').map((call) => call.name))];
+    // When an action was refused, GrowthOS writes the summary: whatever the
+    // model said, nothing was changed. The read-only analysis stays.
+    const refusal = [
+      {
+        kind: 'text' as const,
+        text: `No action was taken: ${refusedActions.join(', ')} does not exist, because this agent can only read and analyse. Any findings below come from the data it read.`,
+      },
+    ];
+    // The system, not the model, reports what happened to a requested action;
+    // that report stands even when the model's answer was unusable.
+    const answer: RenderedAnswer | null =
+      refusedActions.length === 0
+        ? result.answer
+        : result.answer === null
+          ? { summary: refusal, facts: [], findings: [], gaps: [], source: 'fallback' }
+          : { ...result.answer, summary: refusal };
+    const status = refusedActions.length > 0 && result.status === 'failed' ? 'fallback' : result.status;
     const done: AgentTurnResult = {
       ...result,
+      status,
+      answer,
       scope,
       window: scopeWindow(scope),
       toolCalls,
       toolGaps: context.toolGaps(),
-      refusedActions: [...new Set(toolCalls.filter((call) => call.status === 'unknown-tool').map((call) => call.name))],
+      refusedActions,
       failedChecks: toolCalls
         .filter((call) => call.status === 'error')
         .map((call) => ({ name: call.name, message: call.summary })),
@@ -302,7 +322,8 @@ export async function runAgentTurn(
 
   const fallback = (reason: string): AgentTurnResult => {
     const built = context.build();
-    if (built.findings.size === 0 && context.toolGaps().length === 0) {
+    // Nothing at all to show — no finding, no figure, no gap — is a failure.
+    if (built.findings.size === 0 && built.figuresWithoutFindings.length === 0 && context.toolGaps().length === 0) {
       return finish({ status: 'failed', answer: null, issues, message: reason });
     }
     return finish({
@@ -354,6 +375,7 @@ export async function runAgentTurn(
       }
     }
     context.add(outcome);
+    if (outcome.status === 'unknown-tool') context.refuseAction();
     const record: ToolCallRecord = {
       id: call.id,
       name: call.name,
@@ -366,79 +388,86 @@ export async function runAgentTurn(
     return forModel(outcome);
   };
 
-  for (let step = 0; step < limits.maxModelSteps; step += 1) {
-    if (turn.signal.aborted) return fallback('The analysis ran out of time before an answer was ready.');
+  try {
+    for (let step = 0; step < limits.maxModelSteps; step += 1) {
+      if (turn.signal.aborted) return fallback('The analysis ran out of time before an answer was ready.');
 
-    let reply;
-    try {
-      reply = await withTimeout(
-        deps.model.next({ messages, tools: TOOL_SPECS }, turn.signal),
-        Math.max(1, limits.turnTimeoutMs),
-        turn.signal,
-      );
-    } catch (cause) {
-      const reason =
-        cause instanceof Timeout
-          ? 'The analysis ran out of time before an answer was ready.'
-          : `The model could not be reached (${cause instanceof Error ? cause.message : 'unknown error'}).`;
-      notes.push(reason);
-      return fallback(reason);
-    }
-
-    if (reply.type === 'tool_calls') {
-      messages.push({ role: 'assistant', content: null, toolCalls: reply.calls });
-      for (const call of reply.calls) {
-        // A cancelled or timed-out turn starts nothing new, even mid-batch.
-        if (turn.signal.aborted) {
-          const message = 'Not run: the request was cancelled or ran out of time.';
-          messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify({ status: 'cancelled', message }) });
-          toolCalls.push({ id: call.id, name: call.name, input: call.arguments, status: 'cancelled', summary: message });
-          continue;
-        }
-        if (toolCallsUsed >= limits.maxToolCalls) {
-          const refused = { status: 'limit-reached', message: `The limit of ${limits.maxToolCalls} tool calls per question has been reached.` };
-          messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify(refused) });
-          toolCalls.push({ id: call.id, name: call.name, input: call.arguments, status: 'limit-reached', summary: refused.message });
-          if (!limitAnnounced) notes.push(refused.message);
-          limitAnnounced = true;
-          continue;
-        }
-        toolCallsUsed += 1;
-        const content = await runCall(call);
-        messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content });
+      let reply;
+      try {
+        reply = await withTimeout(
+          deps.model.next({ messages, tools: TOOL_SPECS }, turn.signal),
+          Math.max(1, limits.turnTimeoutMs),
+          turn.signal,
+        );
+      } catch (cause) {
+        const reason =
+          cause instanceof Timeout
+            ? 'The analysis ran out of time before an answer was ready.'
+            : `The model could not be reached (${cause instanceof Error ? cause.message : 'unknown error'}).`;
+        notes.push(reason);
+        return fallback(reason);
       }
-      if (limitAnnounced) {
-        messages.push({ role: 'user', content: 'No more tool calls are available for this question. Answer now with what you have, and list what you could not check as gaps.' });
+
+      if (reply.type === 'tool_calls') {
+        messages.push({ role: 'assistant', content: null, toolCalls: reply.calls });
+        for (const call of reply.calls) {
+          // A cancelled or timed-out turn starts nothing new, even mid-batch.
+          if (turn.signal.aborted) {
+            const message = 'Not run: the request was cancelled or ran out of time.';
+            messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify({ status: 'cancelled', message }) });
+            toolCalls.push({ id: call.id, name: call.name, input: call.arguments, status: 'cancelled', summary: message });
+            continue;
+          }
+          if (toolCallsUsed >= limits.maxToolCalls) {
+            const refused = { status: 'limit-reached', message: `The limit of ${limits.maxToolCalls} tool calls per question has been reached.` };
+            messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify(refused) });
+            toolCalls.push({ id: call.id, name: call.name, input: call.arguments, status: 'limit-reached', summary: refused.message });
+            if (!limitAnnounced) notes.push(refused.message);
+            limitAnnounced = true;
+            continue;
+          }
+          toolCallsUsed += 1;
+          const content = await runCall(call);
+          messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content });
+        }
+        if (limitAnnounced) {
+          messages.push({ role: 'user', content: 'No more tool calls are available for this question. Answer now with what you have, and list what you could not check as gaps.' });
+        }
+        continue;
       }
-      continue;
-    }
 
-    onEvent({ type: 'answering' });
-    messages.push({ role: 'assistant', content: reply.content, toolCalls: [] });
+      onEvent({ type: 'answering' });
+      messages.push({ role: 'assistant', content: reply.content, toolCalls: [] });
 
-    let answer;
-    try {
-      answer = agentAnswerSchema.parse(parseAnswerJson(reply.content));
-    } catch (cause) {
-      issues = [{ finding: null, code: 'invalid-json', message: `The answer is not valid JSON in the required shape: ${cause instanceof Error ? cause.message.slice(0, 300) : 'unparseable'}` }];
-      if (repaired) return fallback('The model did not return a usable answer.');
+      let answer;
+      try {
+        answer = agentAnswerSchema.parse(parseAnswerJson(reply.content));
+      } catch (cause) {
+        issues = [{ finding: null, code: 'invalid-json', message: `The answer is not valid JSON in the required shape: ${cause instanceof Error ? cause.message.slice(0, 300) : 'unparseable'}` }];
+        if (repaired) return fallback('The model did not return a usable answer.');
+        repaired = true;
+        onEvent({ type: 'repairing', issues });
+        messages.push({ role: 'user', content: repairRequest(issues) });
+        continue;
+      }
+
+      const built = context.build();
+      issues = validateAnswer(answer, built);
+      if (issues.length === 0) {
+        return finish({ status: 'answered', answer: renderAnswer(answer, built, 'model'), issues: [], message: null });
+      }
+      if (repaired) return fallback("The model's answer did not pass validation after one correction.");
       repaired = true;
       onEvent({ type: 'repairing', issues });
       messages.push({ role: 'user', content: repairRequest(issues) });
-      continue;
     }
 
-    const built = context.build();
-    issues = validateAnswer(answer, built);
-    if (issues.length === 0) {
-      return finish({ status: 'answered', answer: renderAnswer(answer, built, 'model'), issues: [], message: null });
-    }
-    if (repaired) return fallback("The model's answer did not pass validation after one correction.");
-    repaired = true;
-    onEvent({ type: 'repairing', issues });
-    messages.push({ role: 'user', content: repairRequest(issues) });
+    notes.push(`The model did not finish within ${limits.maxModelSteps} steps.`);
+    return fallback('The model did not finish its answer.');
+  } finally {
+    // Every exit — answer, fallback, failure or an unexpected throw — releases
+    // the timer and the listener, so nothing outlives the turn.
+    clearTimeout(turnTimer);
+    deps.signal?.removeEventListener('abort', onOuterAbort);
   }
-
-  notes.push(`The model did not finish within ${limits.maxModelSteps} steps.`);
-  return fallback('The model did not finish its answer.');
 }

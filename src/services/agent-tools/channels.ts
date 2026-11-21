@@ -230,6 +230,7 @@ export const channelPerformanceTool: AgentTool<ChannelPerformanceInput, ChannelP
           ),
         ],
         href,
+        scope: { channel, productId: null },
       };
     });
 

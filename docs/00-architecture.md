@@ -381,3 +381,4 @@ npm run build
 - **`/api/agent`。** POST + NDJSON 流式事件。`AGENT_LIVE_ENABLED` 必须恰好为 `"true"`，否则 503；provider 由 `AGENT_MODEL_PROVIDER` 选择（本阶段只有 `scripted`）。请求体 zod 严格校验，浏览器状态经 `parseLocalState`，不合格 400 且不调用模型。
 - **替身模型。** `createDemoModel()` 根据工具结果决定下一步，供本地演示与 E2E；id 为 `scripted:demo`，界面标注 Scripted stand-in model。
 - **复核修订：事实结构化。** 回答的 `facts` 为 `value` / `change`（带方向）/ `audit`，事实句由 `renderFact()` 用工具结果写出：指标、渠道范围、起止日期、值；变化写出两期，各自链接到自己的窗口。文本字段不允许出现数字和变化措辞，商品只能写成 `{{product:<id>}}`。校验新增 `wrong-direction` 和 `scope-mismatch`。结果新增 `failedChecks`、`refusedActions`，工具缺口带证据链接。客户端捕获流中断；编排循环在每次模型或工具调用前检查取消信号；`/api/agent` 边读请求体边限制在 320 KB 以内。
+- **第二轮复核修订。** 工具发现带 `scope`（渠道或商品），卡片的标题、范围和证据都以依据为准，回答 schema 不再接受模型写的 scope；回答新增顶层 `facts`，用于没有告警的查数类问题，降级时保留这些数字。有操作被拒绝时，摘要由系统写（`refusedActions`），文本声称已执行操作会被拒绝。取消链：页面卸载 → fetch 中止 → 请求结束 / 响应流 `cancel()` → 路由的 `AbortController` → 编排循环；`try/finally` 保证每个出口都清理。文本校验先做 NFKC 归一化，渠道一致性只按结构化范围判断。

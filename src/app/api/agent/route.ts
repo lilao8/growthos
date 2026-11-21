@@ -69,8 +69,17 @@ export async function POST(request: Request): Promise<Response> {
   const parsed = parseAgentRequest(body, stateBytes);
   if (!parsed.ok) return jsonError(400, 'invalid-request', parsed.error);
 
+  // One cancellation for the whole turn: the request ending, or the reader
+  // cancelling the response stream, both stop the model and the tools.
+  const cancel = new AbortController();
+  if (request.signal.aborted) cancel.abort();
+  request.signal.addEventListener('abort', () => cancel.abort(), { once: true });
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
+    cancel() {
+      cancel.abort();
+    },
     async start(controller) {
       let open = true;
       const write = (line: string): void => {
@@ -78,8 +87,9 @@ export async function POST(request: Request): Promise<Response> {
         try {
           controller.enqueue(encoder.encode(`${line}\n`));
         } catch {
-          // The client went away; the turn is cancelled through request.signal.
+          // The client went away; stop the turn too.
           open = false;
+          cancel.abort();
         }
       };
       const send = (event: AgentEvent): void => write(JSON.stringify(event));
@@ -91,7 +101,7 @@ export async function POST(request: Request): Promise<Response> {
             traffic: createFixtureTrafficRepository(),
             state: { source: 'browser-local', value: parsed.state },
             now: () => new Date().toISOString(),
-            signal: request.signal,
+            signal: cancel.signal,
           },
           send,
         );

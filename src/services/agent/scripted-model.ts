@@ -102,7 +102,10 @@ function call(name: string, args: Record<string, unknown> = {}): ToolCall {
   return { id: `call_${callCounter}`, name, arguments: JSON.stringify(args) };
 }
 
-const WRITE_REQUEST = /标记|删除|修改|暂停|发送|关闭|\b(mark|delete|pause|change|update|send|close|apply)\b/i;
+// Imperative action verbs only: "How did conversion change?" is a question, not a request to change anything.
+const WRITE_REQUEST = /标记|删除|修改|暂停|发送|关闭|\b(mark|delete|pause|send|apply)\b/i;
+const PRODUCT_LOOKUP = /购买会话|purchasing sessions|how many purchases/i;
+const PRODUCT_NAME = /[A-Z][a-z]{3,}/;
 const ORGANIC = /自然搜索|organic/i;
 const CJK = /[一-鿿]/;
 
@@ -113,9 +116,7 @@ function finalAnswer(question: string, results: readonly ToolResult[], scopeNote
   const picked = rankFindings(findingsIn(results)).ranked.slice(0, 5).map((entry) => entry.finding);
 
   const findings = picked.map((finding) => {
-    const cited = finding.refIds.slice(0, 3);
-    const channel = cited.map((id) => refs.get(id)?.channel ?? null).find((value) => value !== null) ?? null;
-    const productId = cited.map((id) => refs.get(id)?.productId ?? null).find((value) => value !== null) ?? null;
+    const cited = finding.refIds.slice(0, 3).filter((id) => id.startsWith('audits:') || refs.has(id));
     return {
       basedOn: finding.id,
       facts: cited.map((id) => (id.startsWith('audits:') ? { kind: 'audit', refId: id } : { kind: 'value', refId: id })),
@@ -125,7 +126,6 @@ function finalAnswer(question: string, results: readonly ToolResult[], scopeNote
       howToVerify: chinese
         ? '按下方的规则原文逐项核对，并在证据链接打开的页面上确认同一日期范围的数字。'
         : 'Work through the rule guidance below, and confirm the figures for the same dates on the pages the evidence links open.',
-      scope: { channel, productId },
     };
   });
 
@@ -138,7 +138,24 @@ function finalAnswer(question: string, results: readonly ToolResult[], scopeNote
         ? `以下是${scopeNote}内建议优先排查的问题，排序由 GrowthOS 按规则严重度、证据充分度和受影响会话决定。每个数字都链接到可以核对的页面。`
         : `These are the issues worth checking first within ${scopeNote}, ordered by GrowthOS on rule severity, evidence and sessions affected. Every figure links to the page that shows it.`;
 
-  return { type: 'final', content: JSON.stringify({ summary, findings, gaps: [] }) };
+  return { type: 'final', content: JSON.stringify({ summary, facts: [], findings, gaps: [] }) };
+}
+
+/** A lookup: the figures are the answer, and no rule needs to have fired. */
+function lookupAnswer(question: string, results: readonly ToolResult[]): ModelTurn {
+  const chinese = CJK.test(question);
+  const facts = listIn<SeenRef>(results, 'refs')
+    .filter((ref) => ref.refId.endsWith(':purchase_sessions'))
+    .map((ref) => ({ kind: 'value', refId: ref.refId }));
+  const summary =
+    facts.length === 0
+      ? chinese
+        ? '没有找到匹配的商品，下方说明了原因。'
+        : 'No matching product was found; the note below says why.'
+      : chinese
+        ? '下面是工具查到的购买会话数，按商品分别列出。这只是查数，没有触发任何告警规则。'
+        : 'These are the purchasing sessions the tool found, product by product. This is a lookup; no alert rule was involved.';
+  return { type: 'final', content: JSON.stringify({ summary, facts, findings: [], gaps: [] }) };
 }
 
 function readOnlyAnswer(question: string): ModelTurn {
@@ -149,6 +166,7 @@ function readOnlyAnswer(question: string): ModelTurn {
       summary: chinese
         ? '我只能读取和分析数据，没有任何可以修改、标记或发送的工具，所以没有执行这个操作。要不要采取行动由你决定；需要的话我可以先分析相关数据。'
         : 'I can only read and analyse data. There is no tool that changes, marks or sends anything, so nothing was done. Whether to act is your call; I can analyse the relevant data first if that helps.',
+      facts: [],
       findings: [],
       gaps: [],
     }),
@@ -165,6 +183,18 @@ const demoStep: ScriptStep = (messages) => {
     // has no such tool.
     if (!called.has('mark_recommendation_done')) return { type: 'tool_calls', calls: [call('mark_recommendation_done', { id: 'first' })] };
     return readOnlyAnswer(question.text);
+  }
+
+  if (PRODUCT_LOOKUP.test(question.text)) {
+    if (!called.has('get_product_performance')) {
+      const name = PRODUCT_NAME.exec(question.text)?.[0] ?? null;
+      const args: Record<string, unknown> = { query: name };
+      // A condition stated in the question itself narrows this call only;
+      // it is not a change to the conversation's scope.
+      if (ORGANIC.test(question.text)) args['channel'] = 'Organic Search';
+      return { type: 'tool_calls', calls: [call('get_product_performance', args)] };
+    }
+    return lookupAnswer(question.text, results);
   }
 
   if (ORGANIC.test(question.text)) {

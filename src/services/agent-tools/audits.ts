@@ -216,6 +216,7 @@ export const auditFindingsTool: AgentTool<AuditFindingsInput, AuditFindingsData>
             ruleVersion: item.ruleVersion,
             refIds: [ref.refId],
             href,
+            scope: { channel: null, productId: product?.id ?? null },
           });
         }
       }

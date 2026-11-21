@@ -47,13 +47,17 @@ function period(ref: CitableRef): string {
  * rate read without its scope is exactly how a Meta figure gets mistaken for
  * an Organic Search one.
  */
-function describe(ref: CitableRef): string {
+function describe(ref: CitableRef, scope: FindingScope | null = null): string {
   if (ref.channel !== null) return ref.label.includes(ref.channel) ? ref.label : `${ref.label} (${ref.channel})`;
-  return ref.productId === null ? `${ref.label} (all channels)` : ref.label;
+  // A site figure inside a channel finding is a point of comparison, not the channel's own figure.
+  if (scope !== null && scope.channel !== null && !ref.funnel) return `${ref.label} (site-wide benchmark)`;
+  return `${ref.label} (all channels)`;
 }
 
-function figure(ref: CitableRef): Segment {
-  return { kind: 'link', text: formatValue(ref.value, ref.unit), href: ref.href, title: `${describe(ref)}, ${period(ref)}` };
+type FindingScope = { channel: string | null; productId: string | null };
+
+function figure(ref: CitableRef, scope: FindingScope | null = null): Segment {
+  return { kind: 'link', text: formatValue(ref.value, ref.unit), href: ref.href, title: `${describe(ref, scope)}, ${period(ref)}` };
 }
 
 function relativeText(relative: number | null): string {
@@ -68,8 +72,11 @@ function previousRef(currentRefId: string, context: AnswerContext): CitableRef |
   return previousRefId === null ? undefined : context.refs.get(previousRefId);
 }
 
-/** One fact, written out. Validated input only; an unresolvable fact renders as nothing. */
-export function renderFact(fact: AnswerFact, context: AnswerContext): Segment[] {
+/**
+ * One fact, written out. Validated input only; an unresolvable fact renders as
+ * nothing. `scope` is the finding's, when the fact sits inside one.
+ */
+export function renderFact(fact: AnswerFact, context: AnswerContext, scope: FindingScope | null = null): Segment[] {
   if (fact.kind === 'audit') {
     const audit = context.audits.get(fact.refId);
     if (audit === undefined) return [];
@@ -79,16 +86,16 @@ export function renderFact(fact: AnswerFact, context: AnswerContext): Segment[] 
   const ref = context.refs.get(fact.refId);
   if (ref === undefined) return [];
   if (fact.kind === 'value') {
-    return [{ kind: 'text', text: `${describe(ref)}, ${period(ref)}: ` }, figure(ref)];
+    return [{ kind: 'text', text: `${describe(ref, scope)}, ${period(ref)}: ` }, figure(ref, scope)];
   }
   const comparison = context.comparisons.get(fact.refId);
   const previous = previousRef(fact.refId, context);
   if (comparison === undefined || previous === undefined) return [];
   return [
-    { kind: 'text', text: `${describe(ref)}: ` },
-    figure(previous),
+    { kind: 'text', text: `${describe(ref, scope)}: ` },
+    figure(previous, scope),
     { kind: 'text', text: ` (${period(previous)}) → ` },
-    figure(ref),
+    figure(ref, scope),
     { kind: 'text', text: ` (${period(ref)})${relativeText(comparison.relativeChange)}` },
   ];
 }
@@ -134,6 +141,8 @@ export interface RenderedFinding {
 
 export interface RenderedAnswer {
   summary: Segment[];
+  /** Figures that answer the question directly, each written out with its scope. */
+  facts: Segment[][];
   findings: RenderedFinding[];
   gaps: Segment[][];
   /** 'model' when the model's answer passed validation; 'fallback' otherwise. */
@@ -148,9 +157,9 @@ function linksFor(basis: KnownFinding, citedIds: readonly string[], context: Ans
   for (const id of [...citedIds, ...basis.refIds]) {
     const ref = context.refs.get(id);
     if (ref !== undefined) {
-      add(ref.href, `${describe(ref)}, ${period(ref)}`);
+      add(ref.href, `${describe(ref, basis.scope)}, ${period(ref)}`);
       const previous = previousRef(id, context);
-      if (previous !== undefined) add(previous.href, `${describe(previous)}, ${period(previous)}`);
+      if (previous !== undefined) add(previous.href, `${describe(previous, basis.scope)}, ${period(previous)}`);
     }
     const audit = context.audits.get(id);
     if (audit !== undefined) add(audit.href, audit.ruleId);
@@ -177,11 +186,11 @@ export function renderAnswer(answer: AgentAnswer, context: AnswerContext, source
         rank: entry.rank,
         basedOn: entry.finding.id,
         title: entry.finding.title,
-        facts: finding.facts.map((fact) => renderFact(fact, context)),
+        facts: finding.facts.map((fact) => renderFact(fact, context, entry.finding.scope)),
         whyPriority: renderProse(finding.whyPriority, context),
         howToVerify: renderProse(finding.howToVerify, context),
         ruleGuidance: entry.finding.howToVerify,
-        scope: finding.scope,
+        scope: entry.finding.scope,
         priority: entry.finding.priority,
         effectivePriority: entry.effectivePriority,
         downgraded: entry.downgraded,
@@ -194,6 +203,7 @@ export function renderAnswer(answer: AgentAnswer, context: AnswerContext, source
 
   return {
     summary: renderProse(answer.summary, context),
+    facts: answer.facts.map((fact) => renderFact(fact, context)),
     findings,
     gaps: answer.gaps.map((gap) => renderProse(gap, context)),
     source,
@@ -223,7 +233,7 @@ export function fallbackAnswer(context: AnswerContext, reason: string, limit = 5
       ],
       howToVerify: [{ kind: 'text', text: basis.howToVerify }],
       ruleGuidance: basis.howToVerify,
-      scope: { channel: null, productId: null },
+      scope: basis.scope,
       priority: basis.priority,
       effectivePriority: entry.effectivePriority,
       downgraded: entry.downgraded,
@@ -232,5 +242,10 @@ export function fallbackAnswer(context: AnswerContext, reason: string, limit = 5
       evidence: linksFor(basis, [], context),
     };
   });
-  return { summary: [{ kind: 'text', text: reason }], findings, gaps: [], source: 'fallback' };
+  // A lookup with no finding behind it still has its figures.
+  const facts = context.figuresWithoutFindings
+    .slice(0, 12)
+    .map((refId) => renderFact({ kind: 'value', refId }, context))
+    .filter((segments) => segments.length > 0);
+  return { summary: [{ kind: 'text', text: reason }], facts, findings, gaps: [], source: 'fallback' };
 }

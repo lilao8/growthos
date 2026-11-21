@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { ErrorBlock, LoadingBlock } from '@/components/ui/status-block';
@@ -62,6 +62,9 @@ export function AgentView({ mode }: { mode: DemoDataMode | null }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [draft, setDraft] = useState('');
+  // The request in flight, so leaving the page cancels it on the server too.
+  const inFlight = useRef<AbortController | null>(null);
+  useEffect(() => () => inFlight.current?.abort(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +90,9 @@ export function AgentView({ mode }: { mode: DemoDataMode | null }) {
     async (question: string) => {
       if (localState.kind !== 'ready' || question.trim() === '') return;
       setStatus({ kind: 'running', question, events: [] });
+      inFlight.current?.abort();
+      const controller = new AbortController();
+      inFlight.current = controller;
       const outcome = await askAgent(
         {
           question,
@@ -103,7 +109,10 @@ export function AgentView({ mode }: { mode: DemoDataMode | null }) {
           );
           if (event.type === 'scope') setScope(event.scope);
         },
+        { signal: controller.signal },
       );
+      if (controller.signal.aborted) return;
+      inFlight.current = null;
       if (outcome.kind === 'done' && outcome.result.status === 'failed') {
         // Nothing usable came back: keep the question and offer a retry.
         setStatus({ kind: 'error', question, message: outcome.result.message ?? 'The analysis could not produce an answer.' });
@@ -322,6 +331,15 @@ function TurnView({ turn, index }: { turn: Turn; index: number }) {
           <p className="text-sm" data-testid="agent-summary">
             <AnswerText segments={result.answer.summary} />
           </p>
+          {result.answer.facts.length > 0 && (
+            <ul className="flex list-disc flex-col gap-1 pl-5 text-sm" aria-label="Figures found" data-testid="agent-answer-facts">
+              {result.answer.facts.map((fact, factIndex) => (
+                <li key={factIndex} data-testid="agent-answer-fact">
+                  <AnswerText segments={fact} />
+                </li>
+              ))}
+            </ul>
+          )}
           {result.answer.findings.length > 0 && (
             <ol className="flex flex-col gap-3">
               {result.answer.findings.map((finding) => (
