@@ -151,6 +151,10 @@ export interface RenderedFinding {
   downgraded: boolean;
   strength: EvidenceStrength;
   affectedSessions: number | null;
+  /** What affectedSessions counts, e.g. "sessions that entered this step". */
+  sampleLabel: string;
+  /** Sessions lost at a funnel step; null elsewhere. */
+  lostSessions: number | null;
   /** The finding's own page first, then each cited figure's page, de-duplicated. */
   evidence: Array<{ label: string; href: string }>;
 }
@@ -214,6 +218,8 @@ export function renderAnswer(answer: AgentAnswer, context: AnswerContext, source
         downgraded: entry.downgraded,
         strength: entry.finding.strength,
         affectedSessions: entry.finding.affectedSessions,
+        sampleLabel: entry.finding.sampleLabel,
+        lostSessions: entry.finding.lostSessions,
         evidence: linksFor(entry.finding, finding.facts.map((fact) => fact.refId), context),
       },
     ];
@@ -243,7 +249,8 @@ export function fallbackAnswer(context: AnswerContext, reason: string, limit = 5
   const ranking = rankFindings([...context.findings.values()]);
   const findings: RenderedFinding[] = ranking.ranked.slice(0, limit).map((entry) => {
     const basis = entry.finding;
-    const sample = basis.affectedSessions === null ? 'an unknown number of' : formatInteger(basis.affectedSessions);
+    const sample = basis.affectedSessions === null ? `an unknown number of ${basis.sampleLabel}` : `${formatInteger(basis.affectedSessions)} ${basis.sampleLabel}`;
+    const lost = basis.lostSessions === null ? '' : `, ${formatInteger(basis.lostSessions)} lost`;
     return {
       rank: entry.rank,
       basedOn: basis.id,
@@ -252,7 +259,7 @@ export function fallbackAnswer(context: AnswerContext, reason: string, limit = 5
       whyPriority: [
         {
           kind: 'text',
-          text: `Ranked ${entry.effectivePriority}: rule severity ${basis.priority}, evidence ${basis.strength}${entry.downgraded ? ' (moved down one level for limited evidence)' : ''}, ${sample} sessions affected.`,
+          text: `Ranked ${entry.effectivePriority}: rule severity ${basis.priority}, evidence ${basis.strength}${entry.downgraded ? ' (moved down one level for limited evidence)' : ''}, ${sample}${lost}.`,
         },
       ],
       howToVerify: [{ kind: 'text', text: basis.howToVerify }],
@@ -263,6 +270,8 @@ export function fallbackAnswer(context: AnswerContext, reason: string, limit = 5
       downgraded: entry.downgraded,
       strength: basis.strength,
       affectedSessions: basis.affectedSessions,
+      sampleLabel: basis.sampleLabel,
+      lostSessions: basis.lostSessions,
       evidence: linksFor(basis, [], context),
     };
   });

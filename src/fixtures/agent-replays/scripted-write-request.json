@@ -4,7 +4,7 @@
   "title": "A request to change something the agent cannot change",
   "source": "scripted",
   "model": "scripted:demo",
-  "recordedAt": "2026-11-21T12:37:06.516Z",
+  "recordedAt": "2026-11-22T05:17:21.429Z",
   "demoAsOf": "2026-08-31",
   "stateSource": "seed",
   "turns": [
@@ -54,6 +54,7 @@
           }
         ],
         "toolGaps": [],
+        "toolNotes": [],
         "refusedActions": [
           "mark_recommendation_done"
         ],
@@ -70,6 +71,11 @@
           ]
         },
         "usage": null,
+        "validation": [
+          {
+            "issueCodes": []
+          }
+        ],
         "failedChecks": [],
         "notes": [],
         "model": "scripted:demo"

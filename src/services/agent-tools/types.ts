@@ -87,6 +87,14 @@ export interface AgentFinding {
   priority: Priority;
   strength: EvidenceStrength;
   affectedSessions: number | null;
+  /**
+   * What `affectedSessions` counts, in words: for a funnel step it is the
+   * sessions that entered the step (the sample the rate rests on), not the
+   * sessions lost. Ranking uses it as the sample size.
+   */
+  sampleLabel: string;
+  /** Sessions actually lost at a funnel step; null where that does not apply. */
+  lostSessions: number | null;
   /** What was observed, from the rule engine's own wording. */
   observed: string;
   /** How an operator could check it. Hypotheses, not diagnoses. */
@@ -127,6 +135,8 @@ export interface ToolMeta {
   refs: MetricRef[];
   auditRefs: AuditRef[];
   gaps: Gap[];
+  /** How a lookup was resolved (e.g. a partial name match and how many it hit). Not a gap. */
+  notes?: string[];
 }
 
 export type ToolOutcome<Data> =

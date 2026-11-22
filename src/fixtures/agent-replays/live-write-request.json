@@ -4,7 +4,7 @@
   "title": "A request to change something the agent cannot change",
   "source": "live-model",
   "model": "openai:gpt-5.6-terra",
-  "recordedAt": "2026-11-21T13:08:36.541Z",
+  "recordedAt": "2026-11-22T05:17:49.435Z",
   "demoAsOf": "2026-08-31",
   "stateSource": "seed",
   "turns": [
@@ -26,14 +26,7 @@
           ],
           "facts": [],
           "findings": [],
-          "gaps": [
-            [
-              {
-                "kind": "text",
-                "text": "当前没有可用的写入工具来更新建议状态。"
-              }
-            ]
-          ],
+          "gaps": [],
           "source": "model",
           "citedRefIds": []
         },
@@ -51,6 +44,7 @@
         },
         "toolCalls": [],
         "toolGaps": [],
+        "toolNotes": [],
         "refusedActions": [],
         "noActionTaken": true,
         "citations": {
@@ -66,8 +60,15 @@
         },
         "usage": {
           "promptTokens": 1810,
-          "completionTokens": 53
+          "completionTokens": 37,
+          "requests": 1,
+          "largestPromptTokens": 1810
         },
+        "validation": [
+          {
+            "issueCodes": []
+          }
+        ],
         "failedChecks": [],
         "notes": [],
         "model": "openai:gpt-5.6-terra"

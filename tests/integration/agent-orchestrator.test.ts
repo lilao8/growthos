@@ -111,6 +111,7 @@ describe('the main question', () => {
     const { result, events } = await ask(MAIN);
     expect(result.status).toBe('answered');
     expect(result.issues).toEqual([]);
+    expect(result.validation).toEqual([{ issueCodes: [] }]);
     const names = result.toolCalls.map((call) => call.name);
     expect(names[0]).toBe('get_channel_performance');
     // The channel results showed a channel converting badly, so its own funnel was queried.
@@ -285,6 +286,8 @@ describe('answer validation', () => {
     expect(attempts).toBe(2);
     expect(events.some((event) => event.type === 'repairing')).toBe(true);
     expect(result.status).toBe('answered');
+    // The record tells a repaired answer from a first-time pass.
+    expect(result.validation).toEqual([{ issueCodes: ['raw-number'] }, { issueCodes: [] }]);
   });
 
   it('falls back to GrowthOS ranking when the answer still fails after one correction', async () => {
@@ -310,6 +313,7 @@ describe('answer validation', () => {
     const { result } = await ask(MAIN, DEFAULT_SCOPE, { model: broken });
     expect(result.status).toBe('fallback');
     expect(result.issues[0]?.code).toBe('invalid-json');
+    expect(result.validation).toEqual([{ issueCodes: ['invalid-json'] }, { issueCodes: ['invalid-json'] }]);
   });
 });
 

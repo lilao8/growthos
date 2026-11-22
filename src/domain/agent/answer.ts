@@ -96,6 +96,9 @@ export interface KnownFinding {
   priority: Priority;
   strength: EvidenceStrength;
   affectedSessions: number | null;
+  /** What affectedSessions counts, in words (e.g. sessions that entered a funnel step). */
+  sampleLabel: string;
+  lostSessions: number | null;
   observed: string;
   howToVerify: string;
   refIds: string[];

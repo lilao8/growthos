@@ -4,7 +4,7 @@
   "title": "Lookup with no alert: Ridgeline purchasing sessions from organic search",
   "source": "live-model",
   "model": "openai:gpt-5.6-terra",
-  "recordedAt": "2026-11-21T13:08:35.004Z",
+  "recordedAt": "2026-11-22T05:17:48.116Z",
   "demoAsOf": "2026-08-31",
   "stateSource": "seed",
   "turns": [
@@ -21,7 +21,7 @@
           "summary": [
             {
               "kind": "text",
-              "text": "自然搜索下，Ridgeline 系列各产品的购买会话如下。"
+              "text": "自然搜索下，名称匹配 Ridgeline 的商品购买会话如下。"
             }
           ],
           "facts": [
@@ -75,8 +75,10 @@
         "message": null,
         "scope": {
           "range": 30,
-          "channel": null,
-          "products": []
+          "channel": "Organic Search",
+          "products": [
+            "Ridgeline"
+          ]
         },
         "window": {
           "start": "2026-08-02",
@@ -85,7 +87,19 @@
         },
         "toolCalls": [
           {
-            "id": "call_pyh5W5YLaPO7JHgBEeKCmcUF",
+            "id": "call_o1JpoFkQk2u1zOaRqzwXQybr",
+            "name": "set_analysis_scope",
+            "input": {
+              "products": [
+                "Ridgeline"
+              ],
+              "channel": "Organic Search"
+            },
+            "status": "ok",
+            "summary": "Scope set to 30 days, Organic Search."
+          },
+          {
+            "id": "call_5SSszZaYQp2FstOHGcuA4fZh",
             "name": "get_product_performance",
             "input": {
               "range": 30,
@@ -100,6 +114,10 @@
           }
         ],
         "toolGaps": [],
+        "toolNotes": [
+          "\"Ridgeline\" is a partial name match: 3 products matched by title, SKU or keyword.",
+          "Showing all 3."
+        ],
         "refusedActions": [],
         "noActionTaken": false,
         "citations": {
@@ -160,9 +178,16 @@
           ]
         },
         "usage": {
-          "promptTokens": 5265,
-          "completionTokens": 189
+          "promptTokens": 5640,
+          "completionTokens": 228,
+          "requests": 2,
+          "largestPromptTokens": 3822
         },
+        "validation": [
+          {
+            "issueCodes": []
+          }
+        ],
         "failedChecks": [],
         "notes": [],
         "model": "openai:gpt-5.6-terra"

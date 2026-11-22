@@ -115,6 +115,7 @@ export const productPerformanceTool: AgentTool<ProductPerformanceInput, ProductP
 
     const catalogue: ProductRow[] = result.rows;
     const notFound: string[] = [];
+    const matchNotes: string[] = [];
     let selected = catalogue;
     if (input.products.length > 0) {
       selected = [];
@@ -128,12 +129,14 @@ export const productPerformanceTool: AgentTool<ProductPerformanceInput, ProductP
         );
         const rows = exact === undefined ? catalogue.filter((candidate) => matches(candidate.product, key)) : [exact];
         if (rows.length === 0) notFound.push(key);
+        else if (exact === undefined) matchNotes.push(`"${key}" is a partial name match: ${rows.length} product${rows.length === 1 ? '' : 's'} matched by title, SKU or keyword.`);
         for (const row of rows) if (!selected.includes(row)) selected.push(row);
       }
     } else if (input.query !== null) {
       const query = input.query;
       selected = catalogue.filter((row) => matches(row.product, query));
       if (selected.length === 0) notFound.push(input.query);
+      else matchNotes.push(`"${query}" is a partial name match: ${selected.length} product${selected.length === 1 ? '' : 's'} matched by title, SKU or keyword.`);
     }
 
     const rows: ProductPerformanceRow[] = [...selected]
@@ -146,6 +149,12 @@ export const productPerformanceTool: AgentTool<ProductPerformanceInput, ProductP
         status: row.product.status,
         metrics: row.metrics,
       }));
+
+    if (matchNotes.length > 0 && rows.length < selected.length) {
+      matchNotes.push(`Showing ${rows.length} of ${selected.length} matched products, by revenue.`);
+    } else if (matchNotes.length > 0) {
+      matchNotes.push(`Showing all ${rows.length}.`);
+    }
 
     const refs = rows.flatMap((row) =>
       refsFor(
@@ -176,6 +185,7 @@ export const productPerformanceTool: AgentTool<ProductPerformanceInput, ProductP
       refs,
       auditRefs: [],
       gaps,
+      notes: matchNotes,
     };
     return rows.length === 0
       ? { status: 'empty', data, meta, findings: [] }

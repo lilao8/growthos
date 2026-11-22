@@ -15,9 +15,37 @@ import type { AgentTurnResult } from './orchestrator';
  * read, so a malformed recording fails loudly rather than rendering wrong.
  */
 
+/**
+ * A link that stays on this site: a root-relative path that the browser
+ * resolves to the page's own origin. "//host/path" and "/\\host" are
+ * protocol-relative tricks that leave the site, so they are refused.
+ */
+export function isSiteLink(href: string): boolean {
+  if (!href.startsWith('/') || href.startsWith('//') || href.includes('\\')) return false;
+  try {
+    return new URL(href, 'https://growthos.invalid').origin === 'https://growthos.invalid';
+  } catch {
+    return false;
+  }
+}
+
+const siteHref = z.string().refine(isSiteLink, { message: 'Links must stay on this site.' });
+
+/**
+ * Things that must never be written to a replay: anything key-shaped, an
+ * account identifier, or an auth header. Returns what was found, by kind only.
+ */
+export function findSensitive(text: string): string[] {
+  const found: string[] = [];
+  if (/\bsk-[A-Za-z0-9_-]{6,}/.test(text)) found.push('api-key');
+  if (/\borg-[A-Za-z0-9]{6,}/.test(text)) found.push('organisation-id');
+  if (/\bBearer\s+[A-Za-z0-9]/.test(text) || /Authorization/i.test(text)) found.push('auth-header');
+  return found;
+}
+
 const segment = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('text'), text: z.string() }),
-  z.strictObject({ kind: z.literal('link'), text: z.string(), href: z.string().startsWith('/'), title: z.string() }),
+  z.strictObject({ kind: z.literal('link'), text: z.string(), href: siteHref, title: z.string() }),
 ]);
 const scope = z.strictObject({ range: z.literal(DEMO_RANGE_DAYS), channel: z.enum(CHANNELS).nullable(), products: z.array(z.string()) });
 const window = z.strictObject({ start: z.string(), end: z.string(), days: z.number() });
@@ -38,7 +66,9 @@ const renderedFinding = z.strictObject({
   downgraded: z.boolean(),
   strength: z.enum(['sufficient', 'limited', 'insufficient']),
   affectedSessions: z.number().nullable(),
-  evidence: z.array(z.strictObject({ label: z.string(), href: z.string().startsWith('/') })),
+  sampleLabel: z.string(),
+  lostSessions: z.number().nullable(),
+  evidence: z.array(z.strictObject({ label: z.string(), href: siteHref })),
 });
 
 const renderedAnswer = z.strictObject({
@@ -56,13 +86,15 @@ const turnResult = z.object({
   scope,
   window,
   toolCalls: z.array(z.strictObject({ id: z.string(), name: z.string(), input: z.unknown(), status: z.string(), summary: z.string() })),
-  toolGaps: z.array(z.strictObject({ message: z.string(), links: z.array(z.strictObject({ label: z.string(), href: z.string() })) })),
+  toolGaps: z.array(z.strictObject({ message: z.string(), links: z.array(z.strictObject({ label: z.string(), href: siteHref })) })),
+  toolNotes: z.array(z.string()),
   refusedActions: z.array(z.string()),
   noActionTaken: z.boolean(),
   failedChecks: z.array(z.strictObject({ name: z.string(), message: z.string() })),
   citations: z.strictObject({ refs: z.array(z.unknown()), comparisons: z.array(z.unknown()), audits: z.array(z.unknown()) }),
   provenance: z.strictObject({ dataSources: z.array(z.string()), ruleVersions: z.array(z.string()) }),
-  usage: z.strictObject({ promptTokens: z.number(), completionTokens: z.number() }).nullable(),
+  usage: z.strictObject({ promptTokens: z.number(), completionTokens: z.number(), requests: z.number(), largestPromptTokens: z.number() }).nullable(),
+  validation: z.array(z.strictObject({ issueCodes: z.array(z.string()) })),
   issues: z.array(z.strictObject({ finding: z.number().nullable(), code: z.string(), message: z.string() })),
   notes: z.array(z.string()),
   model: z.string(),
@@ -104,6 +136,8 @@ export interface Replay {
 export type ReplayParse = { ok: true; replay: Replay } | { ok: false; error: string };
 
 export function parseReplay(raw: unknown): ReplayParse {
+  const sensitive = findSensitive(JSON.stringify(raw) ?? '');
+  if (sensitive.length > 0) return { ok: false, error: `Replay contains sensitive content (${sensitive.join(', ')}).` };
   const parsed = replayFileSchema.safeParse(raw);
   if (!parsed.success) {
     const first = parsed.error.issues[0];

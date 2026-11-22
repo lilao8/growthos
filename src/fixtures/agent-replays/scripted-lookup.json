@@ -4,7 +4,7 @@
   "title": "Lookup with no alert: Ridgeline purchasing sessions from organic search",
   "source": "scripted",
   "model": "scripted:demo",
-  "recordedAt": "2026-11-21T12:37:06.514Z",
+  "recordedAt": "2026-11-22T05:17:21.428Z",
   "demoAsOf": "2026-08-31",
   "stateSource": "seed",
   "turns": [
@@ -97,6 +97,10 @@
           }
         ],
         "toolGaps": [],
+        "toolNotes": [
+          "\"Ridgeline\" is a partial name match: 3 products matched by title, SKU or keyword.",
+          "Showing all 3."
+        ],
         "refusedActions": [],
         "noActionTaken": false,
         "citations": {
@@ -157,6 +161,11 @@
           ]
         },
         "usage": null,
+        "validation": [
+          {
+            "issueCodes": []
+          }
+        ],
         "failedChecks": [],
         "notes": [],
         "model": "scripted:demo"

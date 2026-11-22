@@ -220,6 +220,8 @@ export const channelPerformanceTool: AgentTool<ChannelPerformanceInput, ChannelP
           CHANNEL_THRESHOLDS,
         ),
         affectedSessions: row?.sessions ?? null,
+        sampleLabel: 'sessions from this channel in the window',
+        lostSessions: null,
         observed: item.reason,
         howToVerify: item.suggestedAction,
         ruleVersion: item.ruleVersion,

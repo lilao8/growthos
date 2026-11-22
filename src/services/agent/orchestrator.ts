@@ -106,6 +106,8 @@ export interface AgentTurnResult {
   toolCalls: ToolCallRecord[];
   /** Gaps reported by the tools, in GrowthOS's own words, with links to the figures behind them. */
   toolGaps: ToolGap[];
+  /** How lookups were resolved, e.g. a partial name match and how many products it hit. */
+  toolNotes: string[];
   /** Actions the model tried that do not exist. */
   refusedActions: string[];
   /**
@@ -127,8 +129,18 @@ export interface AgentTurnResult {
   };
   /** Where the figures came from and which rule versions judged them. */
   provenance: { dataSources: string[]; ruleVersions: string[] };
-  /** Tokens the model reported for this turn, when it reports them. */
-  usage: { promptTokens: number; completionTokens: number } | null;
+  /**
+   * Every answer the model submitted this turn and what validation found in
+   * each, in order. One entry with no codes is a first-time pass; more
+   * entries mean the answer was repaired (or, if it still failed, replaced).
+   */
+  validation: Array<{ issueCodes: string[] }>;
+  /**
+   * Tokens the model reported for this turn, when it reports them: totals
+   * across every request, how many requests, and the largest single prompt —
+   * the one that meets a per-request limit first.
+   */
+  usage: { promptTokens: number; completionTokens: number; requests: number; largestPromptTokens: number } | null;
   /** Issues from the last validation, when the answer had to be repaired or replaced. */
   issues: AnswerIssue[];
   /** Limits hit, timeouts and similar, for the operator. */
@@ -219,11 +231,13 @@ function withTimeout<T>(work: Promise<T>, ms: number, signal: AbortSignal): Prom
 /**
  * What the model sees of a tool outcome, within a character budget.
  *
- * Full first. Over budget, the raw `data` goes, keeping the findings, the
- * figures and verdicts they cite, and the gaps — everything an answer may
- * cite. Still over, findings are cut to the best-ranked ones that fit. The
- * result always says what was left out, so the model never mistakes a
- * trimmed result for a complete one.
+ * Full first. Over budget, the raw `data` goes and what an answer may cite is
+ * kept, in tiers: the figures the kept findings cite; then each two-period
+ * comparison as a pair, with both of its figures and its evidence verdict;
+ * then the remaining figures in the tool's own order — which is what a lookup
+ * with no finding (product figures, say) is made of. Only when even the
+ * findings do not fit are the lowest-ranked findings dropped. The result says
+ * what was left out, so the model never mistakes it for complete.
  */
 export function forModel(
   outcome: RunToolOutcome | { status: 'ok'; scope: ConversationScope },
@@ -233,28 +247,97 @@ export function forModel(
   if (full.length <= maxChars || !('meta' in outcome) || (outcome.status !== 'ok' && outcome.status !== 'empty')) return full;
 
   const ranked = rankFindings(outcome.findings).ranked.map((entry) => entry.finding);
-  const unranked = outcome.findings.filter((finding) => !ranked.includes(finding));
-  const ordered = [...ranked, ...unranked];
-  for (let keep = ordered.length; keep >= 0; keep -= 1) {
-    const findings = ordered.slice(0, keep);
+  const ordered = [...ranked, ...outcome.findings.filter((finding) => !ranked.includes(finding))];
+  const comparisons = comparisonsIn(outcome.data);
+  const refsById = new Map(outcome.meta.refs.map((ref) => [ref.refId, ref]));
+
+  const build = (findings: AgentFinding[], extras: number): string | null => {
     const cited = new Set(findings.flatMap((finding) => finding.refIds));
-    const compact = JSON.stringify({
+    // Extra units: each comparison (with both figures), then each other figure.
+    const units: Array<{ refIds: string[]; comparison: CompactComparison | null }> = [
+      ...comparisons.map((comparison) => ({
+        refIds: [comparison.currentRefId, ...(comparison.previousRefId === null ? [] : [comparison.previousRefId])],
+        comparison,
+      })),
+      ...outcome.meta.refs.map((ref) => ({ refIds: [ref.refId], comparison: null })),
+    ];
+    const included = new Set(cited);
+    const keptComparisons: CompactComparison[] = [];
+    for (const unit of units.slice(0, extras)) {
+      for (const id of unit.refIds) included.add(id);
+      if (unit.comparison !== null) keptComparisons.push(unit.comparison);
+    }
+    const refs = outcome.meta.refs.filter((ref) => included.has(ref.refId) && refsById.has(ref.refId));
+    const text = JSON.stringify({
       status: outcome.status,
       truncated: {
         reason: `This result was larger than ${maxChars} characters, so its raw data was left out.`,
         findingsShown: findings.length,
         findingsTotal: outcome.findings.length,
+        figuresShown: refs.length,
+        figuresTotal: outcome.meta.refs.length,
+        comparisonsShown: keptComparisons.length,
+        comparisonsTotal: comparisons.length,
       },
       window: outcome.meta.window,
       previousWindow: outcome.meta.previousWindow,
       findings: findings.map(findingForModel),
-      refs: outcome.meta.refs.filter((ref) => cited.has(ref.refId)).map(refForModel),
+      refs: refs.map(refForModel),
+      comparisons: keptComparisons,
       auditRefs: outcome.meta.auditRefs.filter((ref) => cited.has(ref.refId)).map(auditForModel),
       gaps: outcome.meta.gaps,
     });
-    if (compact.length <= maxChars) return compact;
+    return text.length <= maxChars ? text : null;
+  };
+
+  const unitCount = comparisons.length + outcome.meta.refs.length;
+  for (let keep = ordered.length; keep >= 0; keep -= 1) {
+    const findings = ordered.slice(0, keep);
+    if (build(findings, 0) === null) continue;
+    // The largest number of extra units that still fits.
+    let low = 0;
+    let high = unitCount;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      if (build(findings, mid) === null) high = mid - 1;
+      else low = mid;
+    }
+    return build(findings, low) ?? '';
   }
   return JSON.stringify({ status: outcome.status, truncated: { reason: `This result was too large to send (limit ${maxChars} characters).` } });
+}
+
+interface CompactComparison {
+  currentRefId: string;
+  previousRefId: string | null;
+  current: number | null;
+  previous: number | null;
+  direction: string;
+  supportsConclusion: boolean;
+}
+
+/** Every two-period comparison in a tool's data, reduced to what an answer may cite. */
+function comparisonsIn(value: unknown, into: CompactComparison[] = []): CompactComparison[] {
+  if (Array.isArray(value)) {
+    for (const item of value) comparisonsIn(item, into);
+    return into;
+  }
+  if (value === null || typeof value !== 'object') return into;
+  const record = value as Record<string, unknown>;
+  const evidence = record['evidence'];
+  if (typeof record['currentRefId'] === 'string' && evidence !== null && typeof evidence === 'object') {
+    into.push({
+      currentRefId: record['currentRefId'],
+      previousRefId: typeof record['previousRefId'] === 'string' ? record['previousRefId'] : null,
+      current: typeof record['current'] === 'number' ? record['current'] : null,
+      previous: typeof record['previous'] === 'number' ? record['previous'] : null,
+      direction: typeof record['direction'] === 'string' ? record['direction'] : 'unknown',
+      supportsConclusion: (evidence as Record<string, unknown>)['supportsConclusion'] === true,
+    });
+    return into;
+  }
+  for (const item of Object.values(record)) comparisonsIn(item, into);
+  return into;
 }
 
 function findingForModel(finding: AgentFinding) {
@@ -354,6 +437,7 @@ export async function runAgentTurn(
   let toolCallsUsed = 0;
   let usage = null as AgentTurnResult['usage'];
   let budgetReached = false;
+  const validationLog: string[][] = [];
   /** Set when any answer this turn claimed an action was carried out. */
   let actionClaimed = false;
   let limitAnnounced = false;
@@ -366,7 +450,7 @@ export async function runAgentTurn(
   messages.push({ role: 'user', content: input.question });
 
   const finish = (
-    result: Omit<AgentTurnResult, 'scope' | 'window' | 'toolCalls' | 'toolGaps' | 'notes' | 'model' | 'refusedActions' | 'failedChecks' | 'noActionTaken' | 'citations' | 'provenance' | 'usage'>,
+    result: Omit<AgentTurnResult, 'scope' | 'window' | 'toolCalls' | 'toolGaps' | 'notes' | 'model' | 'refusedActions' | 'failedChecks' | 'noActionTaken' | 'citations' | 'provenance' | 'usage' | 'validation' | 'toolNotes'>,
   ): AgentTurnResult => {
     clearTimeout(turnTimer);
     deps.signal?.removeEventListener('abort', onOuterAbort);
@@ -400,11 +484,13 @@ export async function runAgentTurn(
       window: scopeWindow(scope),
       toolCalls,
       toolGaps: context.toolGaps(),
+      toolNotes: context.toolNotes(),
       refusedActions,
       noActionTaken,
       citations: citationsFor(answer, context.build()),
       provenance: { ...context.provenance(), ruleVersions: [...context.provenance().ruleVersions, AGENT_PRIORITY_VERSION].sort() },
       usage,
+      validation: validationLog.map((codes) => ({ issueCodes: codes })),
       failedChecks: toolCalls
         .filter((call) => call.status === 'error')
         .map((call) => ({ name: call.name, message: call.summary })),
@@ -520,6 +606,8 @@ export async function runAgentTurn(
         usage = {
           promptTokens: (usage?.promptTokens ?? 0) + reply.usage.promptTokens,
           completionTokens: (usage?.completionTokens ?? 0) + reply.usage.completionTokens,
+          requests: (usage?.requests ?? 0) + 1,
+          largestPromptTokens: Math.max(usage?.largestPromptTokens ?? 0, reply.usage.promptTokens),
         };
       }
 
@@ -565,6 +653,7 @@ export async function runAgentTurn(
         answer = agentAnswerSchema.parse(parseAnswerJson(reply.content));
       } catch (cause) {
         issues = [{ finding: null, code: 'invalid-json', message: `The answer is not valid JSON in the required shape: ${cause instanceof Error ? cause.message.slice(0, 300) : 'unparseable'}` }];
+        validationLog.push(['invalid-json']);
         if (repaired) return fallback('The model did not return a usable answer.');
         repaired = true;
         onEvent({ type: 'repairing', issues });
@@ -574,6 +663,7 @@ export async function runAgentTurn(
 
       const built = context.build();
       issues = validateAnswer(answer, built);
+      validationLog.push([...new Set(issues.map((issue) => issue.code))]);
       if (issues.some((issue) => issue.code === 'action-claim')) actionClaimed = true;
       if (issues.length === 0) {
         return finish({ status: 'answered', answer: renderAnswer(answer, built, 'model'), issues: [], message: null });

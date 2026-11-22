@@ -243,6 +243,8 @@ export const funnelTool: AgentTool<FunnelInput, FunnelData> = {
         // conclusion, so the step is insufficient, not merely limited.
         strength: step?.confidence === 'low' ? 'insufficient' : 'sufficient',
         affectedSessions: step?.sampleSessions ?? null,
+        sampleLabel: 'sessions that entered this step',
+        lostSessions: step?.dropOffSessions ?? null,
         observed: item.reason,
         howToVerify: item.suggestedAction,
         ruleVersion: item.ruleVersion,

@@ -54,3 +54,18 @@ test('an unknown replay is a 404', async ({ page }) => {
   const response = await page.goto('/agent/replays/does-not-exist');
   expect(response?.status()).toBe(404);
 });
+
+test('a figure from the real-model replay opens on its page with the same number', async ({ page }) => {
+  await gotoReady(page, '/agent/replays/live-review');
+  await expect(page.getByTestId('replay-source')).toContainText('Real model run');
+  await expect(page.getByTestId('replay-validation')).toContainText('turns passed on the first attempt');
+  const followUp = page.getByTestId('agent-turn').nth(1);
+  const fact = followUp.getByTestId('agent-fact').filter({ hasText: 'Add to Cart → Checkout conversion (Organic Search), 2026-08-02 — 2026-08-31' }).first();
+  await expect(fact).toContainText('39.49%');
+  await fact.getByTestId('agent-figure').click();
+  await expect(page).toHaveURL(/\/funnel\?range=30&channel=Organic\+Search$/);
+  await expect(page.getByTestId('funnel-window')).toHaveText('2026-08-02 — 2026-08-31 · 30 days · UTC');
+  await expect(page.getByTestId('funnel-scope')).toHaveText('Scope: Organic Search sessions only');
+  await expect(page.getByTestId('stage-add_to_cart')).toContainText('195');
+  await expect(page.getByTestId('conversion-add_to_cart-checkout')).toHaveText('39.49%');
+});

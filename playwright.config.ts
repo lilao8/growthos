@@ -51,6 +51,13 @@ export default defineConfig({
       // never calls a real model.
       AGENT_LIVE_ENABLED: 'true',
       AGENT_MODEL_PROVIDER: 'scripted',
+      // A developer's .env.local may tune budgets for their own account;
+      // E2E runs on the defaults. Set values win over .env files, and empty
+      // values are ignored, which restores the defaults.
+      AGENT_MAX_INPUT_CHARS: '',
+      AGENT_MAX_TOOL_RESULT_CHARS: '',
+      AGENT_TURN_TIMEOUT_MS: '',
+      OPENAI_API_KEY: '',
     },
   },
 });

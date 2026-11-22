@@ -30,6 +30,7 @@ export class AnswerContextBuilder {
   private readonly gaps: ToolGap[] = [];
   private readonly products: Map<string, string>;
   private readonly figuresWithoutFindings: string[] = [];
+  private readonly notes: string[] = [];
   private readonly dataSources = new Set<string>();
   private readonly ruleVersions = new Set<string>();
 
@@ -40,6 +41,7 @@ export class AnswerContextBuilder {
   add(outcome: RunToolOutcome): void {
     if (outcome.status !== 'ok' && outcome.status !== 'empty') return;
     for (const source of outcome.meta.dataSources) this.dataSources.add(source);
+    for (const note of outcome.meta.notes ?? []) if (!this.notes.includes(note)) this.notes.push(note);
     for (const audit of outcome.meta.auditRefs) this.ruleVersions.add(audit.ruleVersion);
     for (const finding of outcome.findings) this.ruleVersions.add(finding.ruleVersion);
     for (const ref of outcome.meta.refs) {
@@ -73,6 +75,8 @@ export class AnswerContextBuilder {
         priority: finding.priority,
         strength: finding.strength,
         affectedSessions: finding.affectedSessions,
+        sampleLabel: finding.sampleLabel,
+        lostSessions: finding.lostSessions,
         observed: finding.observed,
         howToVerify: finding.howToVerify,
         refIds: finding.refIds,
@@ -100,6 +104,11 @@ export class AnswerContextBuilder {
   /** Where the turn's figures came from, and which rule versions judged them. */
   provenance(): { dataSources: string[]; ruleVersions: string[] } {
     return { dataSources: [...this.dataSources].sort(), ruleVersions: [...this.ruleVersions].sort() };
+  }
+
+  /** How lookups were resolved this turn, in GrowthOS's own words. */
+  toolNotes(): string[] {
+    return [...this.notes];
   }
 
   toolGaps(): ToolGap[] {

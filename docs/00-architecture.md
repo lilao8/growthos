@@ -391,3 +391,4 @@ npm run build
 - **回合记录**：每轮结果附带 `citations`（引用的原始数字，含变化的前后两期）、`provenance`（数据来源、规则版本）和 `usage`。
 - **回放**：`replayFileSchema` 校验的 JSON 文件位于 `src/fixtures/agent-replays/`，由 `npm run agent:record`（专用的 vitest 配置）录制；`/agent/replays` 页面用实时页面的组件渲染冻结的结果，不调用模型。
 - **只读呈现**：问题本身在要求执行操作时（`domain/agent/intent.ts`），系统也会写「未执行」。
+- **整体复核修订。** 工具结果裁剪按层保留：发现所引用的数字 → 成对的两期比较 → 其余数字。漏斗发现写明样本口径（进入该步骤的会话），并给出流失数。每轮结果附带 `validation`（每次提交的回答各有哪些问题码）、`toolNotes`（例如名称匹配的说明），用量分别记录请求次数和单次最大输入。回放链接必须通过 `isSiteLink` 同源校验，`parseReplay` 拒绝敏感内容。429 尊重服务方要求的等待时间。E2E 服务器显式忽略开发者 `.env.local` 中的预算设置。

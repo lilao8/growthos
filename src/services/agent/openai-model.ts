@@ -131,7 +131,7 @@ export function fromWireResponse(body: unknown): ModelTurn {
     return withUsage({ type: 'final', content: message['content'] });
   }
   const refusal = typeof message['refusal'] === 'string' ? message['refusal'] : null;
-  throw new Error(refusal === null ? 'OpenAI returned neither tool calls nor text.' : `OpenAI declined to answer: ${refusal.slice(0, 300)}`);
+  throw new Error(refusal === null ? 'OpenAI returned neither tool calls nor text.' : `OpenAI declined to answer: ${redact(refusal).slice(0, 300)}`);
 }
 
 function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -184,7 +184,13 @@ export function createOpenAIModel(options: OpenAIModelOptions): ModelClient {
         // A per-minute rate limit clears by itself; wait as asked, a bounded
         // number of times, and stop at once if the turn is cancelled.
         if (attempt < maxRetries && isRetryableRateLimit(outcome.status, outcome.body)) {
-          await sleep(Math.min(retryDelayMs(outcome.headers, 5_000), maxWait), signal);
+          const wait = retryDelayMs(outcome.headers, 5_000);
+          // Retrying before the provider's own wait is over only earns another
+          // 429. If the wait is longer than this turn allows, say so instead.
+          if (wait > maxWait) {
+            throw new Error(`OpenAI rate limit: the provider asks to wait ${Math.ceil(wait / 1000)} s, longer than this turn allows. Try again in a moment.`);
+          }
+          await sleep(wait, signal);
           continue;
         }
         throw new Error(errorMessage(outcome.status, outcome.body));

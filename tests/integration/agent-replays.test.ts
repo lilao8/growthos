@@ -2,7 +2,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { findReplay, listReplays, parseReplay } from '@/services/agent/replays';
+import { findReplay, findSensitive, isSiteLink, listReplays, parseReplay } from '@/services/agent/replays';
 import { runAgentTurn } from '@/services/agent/orchestrator';
 import { createDemoModel } from '@/services/agent/scripted-model';
 import { createFixtureTrafficRepository } from '@/repositories/traffic-repository';
@@ -60,11 +60,41 @@ describe('replay format', () => {
     expect(parseReplay(await replay(overrides)).ok).toBe(false);
   });
 
-  it('rejects a link that leaves the site', async () => {
-    const raw = await replay();
-    const turns = raw['turns'] as { result: { answer: { summary: unknown[] } } }[];
-    turns[0]!.result.answer.summary = [{ kind: 'link', text: 'x', href: 'https://example.com', title: 'x' }];
-    expect(parseReplay(raw).ok).toBe(false);
+  it.each(['https://example.com', '//example.com/path', '/\\example.com', 'javascript:alert(1)'])('rejects a link that leaves the site: %s', async (href) => {
+    const inSummary = await replay();
+    (inSummary['turns'] as { result: { answer: { summary: unknown[] } } }[])[0]!.result.answer.summary = [{ kind: 'link', text: 'x', href, title: 'x' }];
+    expect(parseReplay(inSummary).ok).toBe(false);
+
+    const inEvidence = await replay();
+    (inEvidence['turns'] as { result: { answer: { findings: { evidence: unknown[] }[] } } }[])[0]!.result.answer.findings[0]!.evidence = [{ label: 'x', href }];
+    expect(parseReplay(inEvidence).ok).toBe(false);
+
+    const inGap = await replay();
+    (inGap['turns'] as { result: { toolGaps: unknown[] } }[])[0]!.result.toolGaps = [{ message: 'm', links: [{ label: 'x', href }] }];
+    expect(parseReplay(inGap).ok).toBe(false);
+  });
+
+  it('refuses a replay that carries a key, an organisation id or an auth header', async () => {
+    for (const leak of ['sk-abcdef123456', 'org-AbCdEf1234', 'Bearer abc', 'Authorization: x']) {
+      const raw = await replay();
+      (raw['turns'] as { result: { notes: string[] } }[])[0]!.result.notes = [`provider said ${leak}`];
+      const parsed = parseReplay(raw);
+      expect(parsed.ok, leak).toBe(false);
+      if (!parsed.ok) expect(parsed.error).toContain('sensitive content');
+    }
+  });
+});
+
+describe('guards', () => {
+  it('accepts only links that stay on this site', () => {
+    expect(isSiteLink('/funnel?range=30&channel=Organic+Search')).toBe(true);
+    expect(isSiteLink('/seo/snap_a?preview=1')).toBe(true);
+    for (const href of ['https://example.com', '//example.com', '/\\evil.com', 'funnel', '', 'javascript:alert(1)']) expect(isSiteLink(href), href).toBe(false);
+  });
+
+  it('names what kind of sensitive content it found, never the content itself', () => {
+    expect(findSensitive('fine text')).toEqual([]);
+    expect(findSensitive('key sk-live_abcdef1 and org-Abcdef12 with Bearer x1')).toEqual(['api-key', 'organisation-id', 'auth-header']);
   });
 });
 

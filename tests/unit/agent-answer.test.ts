@@ -34,6 +34,8 @@ function known(id: string, overrides: Partial<KnownFinding> = {}): KnownFinding 
     priority: 'High',
     strength: 'sufficient',
     affectedSessions: 100,
+    sampleLabel: 'sessions that entered this step',
+    lostSessions: null,
     observed: 'engine text',
     howToVerify: 'Keep the title under 60 characters.',
     refIds: [],

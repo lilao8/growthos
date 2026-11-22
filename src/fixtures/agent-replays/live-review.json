@@ -4,7 +4,7 @@
   "title": "30-day storefront review, then \"only organic search?\"",
   "source": "live-model",
   "model": "openai:gpt-5.6-terra",
-  "recordedAt": "2026-11-21T13:08:30.919Z",
+  "recordedAt": "2026-11-22T05:17:44.363Z",
   "demoAsOf": "2026-08-31",
   "stateSource": "seed",
   "turns": [
@@ -21,7 +21,7 @@
           "summary": [
             {
               "kind": "text",
-              "text": "最应优先排查结账至购买环节的流失；同时核查商品页至加购的流失。Meta 的投放效率仅可作为待验证信号，不能据此下结论。"
+              "text": "最该优先排查结账至购买环节的流失；这是站内漏斗中已达到可判断样本要求、且转化表现低于阈值的关键问题。"
             }
           ],
           "facts": [],
@@ -71,13 +71,13 @@
               "whyPriority": [
                 {
                   "kind": "text",
-                  "text": "该环节的转化表现低于规则阈值，购买损失集中在结账完成前。"
+                  "text": "该环节在接近成交时发生明显损失，优先确认结账体验与交易条件是否阻碍完成购买。"
                 }
               ],
               "howToVerify": [
                 {
                   "kind": "text",
-                  "text": "核对结账页展示的运费与免邮门槛是否符合预期，核对支付方式是否覆盖买家常用选择，检查字段和步骤以及是否支持访客结账，检查退换货、支付安全和联系方式等信任信息，并将结账页交付承诺与竞争对手进行对照。逐项排查以下假设，但它们都不是诊断结论：运费可能高于预期；支付方式可能未覆盖买家需求；结账流程可能要求过多信息或步骤；结账页可能缺少首购所需的信任信息；配送时效可能不符合买家预期。"
+                  "text": "核对运费与免运门槛是否符合预期，并与客单价比较。盘点可用支付方式，并与目标市场的常用支付方式及钱包支付比较。检查购买所需字段与步骤，以及是否支持游客结账。确认结账页内是否展示退换政策、安全提示和联系方式。将结账页展示的送达时效与竞品承诺进行比较。"
                 }
               ],
               "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Shipping cost at checkout may be higher than expected. Compare shipping cost and any free-shipping threshold against the average order value. 2. The payment methods offered may not cover what buyers use. List the methods available and compare against what the market expects — wallets included. 3. The checkout may be asking for too much, or across too many steps. Count the fields and steps required to buy, and whether guest checkout exists. 4. The checkout may not carry the reassurance a first-time buyer needs. Check for returns policy, security indicators and contact details inside the checkout. 5. Quoted delivery time may be slower than buyers will accept. Compare the delivery estimate shown at checkout against what competitors promise.",
@@ -90,6 +90,8 @@
               "downgraded": false,
               "strength": "sufficient",
               "affectedSessions": 213,
+              "sampleLabel": "sessions that entered this step",
+              "lostSessions": 134,
               "evidence": [
                 {
                   "href": "/funnel?range=30",
@@ -100,106 +102,37 @@
                   "label": "Checkout → Purchase conversion (all channels), 2026-07-03 — 2026-08-01"
                 }
               ]
-            },
-            {
-              "rank": 2,
-              "basedOn": "rec_funnel_9bc52355@all:2026-08-02..2026-08-31",
-              "title": "Product View → Add to Cart: investigate the drop-off",
-              "facts": [
-                [
-                  {
-                    "kind": "text",
-                    "text": "Product View sessions (all channels), 2026-08-02 — 2026-08-31: "
-                  },
-                  {
-                    "kind": "link",
-                    "text": "1,825",
-                    "href": "/funnel?range=30",
-                    "title": "Product View sessions (all channels), 2026-08-02 — 2026-08-31"
-                  }
-                ],
-                [
-                  {
-                    "kind": "text",
-                    "text": "Product View → Add to Cart conversion (all channels), 2026-08-02 — 2026-08-31: "
-                  },
-                  {
-                    "kind": "link",
-                    "text": "28.11%",
-                    "href": "/funnel?range=30",
-                    "title": "Product View → Add to Cart conversion (all channels), 2026-08-02 — 2026-08-31"
-                  }
-                ],
-                [
-                  {
-                    "kind": "text",
-                    "text": "Product View → Add to Cart drop-off (all channels), 2026-08-02 — 2026-08-31: "
-                  },
-                  {
-                    "kind": "link",
-                    "text": "71.89%",
-                    "href": "/funnel?range=30",
-                    "title": "Product View → Add to Cart drop-off (all channels), 2026-08-02 — 2026-08-31"
-                  }
-                ]
-              ],
-              "whyPriority": [
-                {
-                  "kind": "text",
-                  "text": "该环节承接的访问量较大，流失发生在商品页到加购之间；这是流量规模带来的排查重点，并非低于阈值的表现问题。"
-                }
-              ],
-              "howToVerify": [
-                {
-                  "kind": "text",
-                  "text": "对照同类商品价格，检查首屏是否清楚说明品类关键规格，比较评价的数量与新近程度，使用移动端确认加购入口可见，核对图片是否展示使用场景、尺寸和细节，并确认商品页在加购前说明运费和配送预期。逐项排查以下假设，但它们都不是诊断结论：价格可能不具竞争力；页面可能未清楚说明商品价值；评价可能不足或缺乏近期内容；加购入口可能不清晰或位于首屏下方；图片可能未展示场景、比例或细节；商品页可能未在加购前展示配送成本和时效。"
-                }
-              ],
-              "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Price may be out of line with what comparable products ask. Compare price against the alternatives a shopper would see in the same search. 2. The page may not make the case for the product in concrete terms. Check whether the first screen states weight, capacity, rating or whatever the category buys on. 3. Absent or thin reviews may leave the claim unsupported. Check review count and recency against the better-converting products. 4. The add-to-cart control may be unclear or below the fold. View the page at mobile width and confirm the action is visible without scrolling. 5. Images may not show the product in use, at scale or in detail. Compare the image set against what the category leaders show, including scale references. 6. Delivery cost and timing may not be visible before the cart. Check whether shipping cost and delivery estimate appear on the product page itself.",
-              "scope": {
-                "channel": null,
-                "productId": null
-              },
-              "priority": "High",
-              "effectivePriority": "High",
-              "downgraded": false,
-              "strength": "sufficient",
-              "affectedSessions": 1825,
-              "evidence": [
-                {
-                  "href": "/funnel?range=30",
-                  "label": "Product View → Add to Cart: investigate the drop-off"
-                },
-                {
-                  "href": "/funnel?range=30&end=2026-08-01",
-                  "label": "Product View → Add to Cart conversion (all channels), 2026-07-03 — 2026-08-01"
-                }
-              ]
             }
           ],
           "gaps": [
             [
               {
                 "kind": "text",
-                "text": "Meta 的订单样本不足，相关获客成本、广告回报和转化表现只能作为待验证信号；需要积累更多订单并检查该渠道的复购表现与落地页匹配度。"
+                "text": "未能进一步核查各渠道的独立漏斗，因此无法定位该流失主要来自哪个渠道。"
               }
             ],
             [
               {
                 "kind": "text",
-                "text": "部分渠道的会话样本不足，尚不支持根据其比率形成结论。"
+                "text": "Meta 的获客成本、广告回报与转化率均被工具标记为样本不足，不能作为确定性发现；需要更多订单后复核。"
               }
             ],
             [
               {
                 "kind": "text",
-                "text": "页面审计为本次临时计算结果；需要在审计页面运行并保存检查，才能作为持续追踪依据。"
+                "text": "未能核查结账页的实际运费、支付方式、表单流程、信任信息与配送承诺，因此尚不能判断流失原因。"
               }
             ],
             [
               {
                 "kind": "text",
-                "text": "未能进一步核查结账页配置、支付方式、运费、配送承诺、商品页内容及各渠道的落地页匹配情况。"
+                "text": "未能完成产品页与商品层面的页面质量或审计核查；产品浏览至加购的损失量较大，但工具提示其转化表现未低于阈值，需结合页面检查确认是否存在可优化问题。"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "TikTok、邮件、引荐和人工智能引荐渠道的会话样本不足，无法根据其费率得出结论。"
               }
             ]
           ],
@@ -208,11 +141,7 @@
             "funnel:2026-08-02..2026-08-31:all:all:stage:checkout",
             "funnel:2026-08-02..2026-08-31:all:all:conversion:checkout->purchase",
             "funnel:2026-08-02..2026-08-31:all:all:drop_off:checkout->purchase",
-            "funnel:2026-08-02..2026-08-31:all:all:stage:product_view",
-            "funnel:2026-08-02..2026-08-31:all:all:conversion:product_view->add_to_cart",
-            "funnel:2026-08-02..2026-08-31:all:all:drop_off:product_view->add_to_cart",
-            "funnel:2026-07-03..2026-08-01:all:all:conversion:checkout->purchase",
-            "funnel:2026-07-03..2026-08-01:all:all:conversion:product_view->add_to_cart"
+            "funnel:2026-07-03..2026-08-01:all:all:conversion:checkout->purchase"
           ]
         },
         "issues": [],
@@ -229,7 +158,7 @@
         },
         "toolCalls": [
           {
-            "id": "call_U3xfrKqohB2rJcz4y82zCLNJ",
+            "id": "call_SjObOTlTkS2U09sHtAlxLtfL",
             "name": "get_funnel",
             "input": {
               "range": 30,
@@ -240,7 +169,7 @@
             "summary": "2 findings, 28 citable figures, 0 gaps."
           },
           {
-            "id": "call_27ZQrHr5V7c7VKN40Cv6qfKU",
+            "id": "call_x7K67WjKkzPz7NgE61epqKb0",
             "name": "get_channel_performance",
             "input": {
               "range": 30,
@@ -251,28 +180,17 @@
             "summary": "3 findings, 122 citable figures, 4 gaps."
           },
           {
-            "id": "call_gpCs41MZTEIioRhSFbBZYCrt",
+            "id": "call_3nNLPHNNGIYJmzdYA8F4rfvF",
             "name": "get_product_performance",
             "input": {
               "range": 30,
               "channel": null,
               "products": [],
+              "query": null,
               "limit": 10
             },
             "status": "ok",
             "summary": "0 findings, 40 citable figures, 0 gaps."
-          },
-          {
-            "id": "call_wNxm8TqdmiODHqx6RThamMBw",
-            "name": "get_audit_findings",
-            "input": {
-              "kind": "both",
-              "range": 30,
-              "products": [],
-              "minSeverity": "high"
-            },
-            "status": "ok",
-            "summary": "14 findings, 14 citable figures, 1 gaps."
           }
         ],
         "toolGaps": [
@@ -291,12 +209,9 @@
           {
             "message": "AI Referral had 124 sessions, below the 300 this project needs before drawing a conclusion from its rates.",
             "links": []
-          },
-          {
-            "message": "34 of 34 page audits were not current in this browser and were computed for this answer only. Their audit pages will show \"Not audited\" or \"stale\" until the audit is run there; running it produces the same checks.",
-            "links": []
           }
         ],
+        "toolNotes": [],
         "refusedActions": [],
         "noActionTaken": false,
         "citations": {
@@ -344,65 +259,9 @@
               "href": "/funnel?range=30"
             },
             {
-              "refId": "funnel:2026-08-02..2026-08-31:all:all:stage:product_view",
-              "label": "Product View sessions",
-              "value": 1825,
-              "unit": "count",
-              "channel": null,
-              "productId": null,
-              "window": {
-                "start": "2026-08-02",
-                "end": "2026-08-31"
-              },
-              "funnel": true,
-              "href": "/funnel?range=30"
-            },
-            {
-              "refId": "funnel:2026-08-02..2026-08-31:all:all:conversion:product_view->add_to_cart",
-              "label": "Product View → Add to Cart conversion",
-              "value": 0.2810958904109589,
-              "unit": "ratio",
-              "channel": null,
-              "productId": null,
-              "window": {
-                "start": "2026-08-02",
-                "end": "2026-08-31"
-              },
-              "funnel": true,
-              "href": "/funnel?range=30"
-            },
-            {
-              "refId": "funnel:2026-08-02..2026-08-31:all:all:drop_off:product_view->add_to_cart",
-              "label": "Product View → Add to Cart drop-off",
-              "value": 0.7189041095890412,
-              "unit": "ratio",
-              "channel": null,
-              "productId": null,
-              "window": {
-                "start": "2026-08-02",
-                "end": "2026-08-31"
-              },
-              "funnel": true,
-              "href": "/funnel?range=30"
-            },
-            {
               "refId": "funnel:2026-07-03..2026-08-01:all:all:conversion:checkout->purchase",
               "label": "Checkout → Purchase conversion",
               "value": 0.37681159420289856,
-              "unit": "ratio",
-              "channel": null,
-              "productId": null,
-              "window": {
-                "start": "2026-07-03",
-                "end": "2026-08-01"
-              },
-              "funnel": true,
-              "href": "/funnel?range=30&end=2026-08-01"
-            },
-            {
-              "refId": "funnel:2026-07-03..2026-08-01:all:all:conversion:product_view->add_to_cart",
-              "label": "Product View → Add to Cart conversion",
-              "value": 0.2943898207056102,
               "unit": "ratio",
               "channel": null,
               "productId": null,
@@ -423,15 +282,6 @@
               "relativeChange": -0.015709642470205808,
               "direction": "down",
               "supportsConclusion": true
-            },
-            {
-              "currentRefId": "funnel:2026-08-02..2026-08-31:all:all:conversion:product_view->add_to_cart",
-              "previousRefId": "funnel:2026-07-03..2026-08-01:all:all:conversion:product_view->add_to_cart",
-              "current": 0.2810958904109589,
-              "previous": 0.2943898207056102,
-              "relativeChange": -0.045157574615819485,
-              "direction": "down",
-              "supportsConclusion": true
             }
           ],
           "audits": []
@@ -439,23 +289,25 @@
         "provenance": {
           "dataSources": [
             "fixture:traffic (NorthTrail demo data, 2026-06-03..2026-08-31, UTC)",
-            "rules:geo-1.0.0",
-            "rules:seo-1.0.0",
-            "seed:audit-results",
-            "seed:catalogue",
-            "seed:page-snapshots"
+            "seed:catalogue"
           ],
           "ruleVersions": [
             "agent-priority-1.0.0",
             "funnel-1.0.0",
-            "recommendations-1.0.0",
-            "seo-1.0.0"
+            "recommendations-1.0.0"
           ]
         },
         "usage": {
-          "promptTokens": 17503,
-          "completionTokens": 1998
+          "promptTokens": 10081,
+          "completionTokens": 600,
+          "requests": 2,
+          "largestPromptTokens": 8263
         },
+        "validation": [
+          {
+            "issueCodes": []
+          }
+        ],
         "failedChecks": [],
         "notes": [
           "The input budget of 20000 characters was reached, so no further tools were run."
@@ -476,10 +328,87 @@
           "summary": [
             {
               "kind": "text",
-              "text": "自然搜索流量应优先排查从加购进入结账的流失，其次检查结账至购买环节。"
+              "text": "自然搜索应优先排查从加购到结账的流失，其次排查结账到购买的流失；两处均有足够样本支持进一步核查。"
             }
           ],
-          "facts": [],
+          "facts": [
+            [
+              {
+                "kind": "text",
+                "text": "Organic Search sessions, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "1,048",
+                "href": "/analytics?range=30",
+                "title": "Organic Search sessions, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Organic Search orders, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "32",
+                "href": "/analytics?range=30",
+                "title": "Organic Search orders, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Organic Search conversion rate: "
+              },
+              {
+                "kind": "link",
+                "text": "3.62%",
+                "href": "/analytics?range=30&end=2026-08-01",
+                "title": "Organic Search conversion rate, 2026-07-03 — 2026-08-01"
+              },
+              {
+                "kind": "text",
+                "text": " (2026-07-03 — 2026-08-01) → "
+              },
+              {
+                "kind": "link",
+                "text": "3.05%",
+                "href": "/analytics?range=30",
+                "title": "Organic Search conversion rate, 2026-08-02 — 2026-08-31"
+              },
+              {
+                "kind": "text",
+                "text": " (2026-08-02 — 2026-08-31), −15.6%"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Organic Search revenue: "
+              },
+              {
+                "kind": "link",
+                "text": "$6,366.80",
+                "href": "/analytics?range=30&end=2026-08-01",
+                "title": "Organic Search revenue, 2026-07-03 — 2026-08-01"
+              },
+              {
+                "kind": "text",
+                "text": " (2026-07-03 — 2026-08-01) → "
+              },
+              {
+                "kind": "link",
+                "text": "$5,352.00",
+                "href": "/analytics?range=30",
+                "title": "Organic Search revenue, 2026-08-02 — 2026-08-31"
+              },
+              {
+                "kind": "text",
+                "text": " (2026-08-02 — 2026-08-31), −15.9%"
+              }
+            ]
+          ],
           "findings": [
             {
               "rank": 1,
@@ -526,13 +455,13 @@
               "whyPriority": [
                 {
                   "kind": "text",
-                  "text": "该环节存在显著流失，且影响自然搜索已表现出购买意图的访客。"
+                  "text": "该环节是自然搜索购物意图在进入结账前的主要流失点，且已达到可判断样本要求。"
                 }
               ],
               "howToVerify": [
                 {
                   "kind": "text",
-                  "text": "按以下假设逐项排查，但这些并非诊断结论：加购后进入结账的路径可能不够明显，导致访客停留。加入商品后，确认无需寻找即可看到进入结账的路径。购物车首次展示的成本可能令访客重新考虑。对比商品页显示的价格与购物车小计中包含的运费和税费。购物车可能无法在回访时保留，导致跨会话的购买意图流失。加入商品、离开并在稍后返回，确认购物车仍被保留。"
+                  "text": "将商品加入购物车，确认无需寻找即可看到进入结账的路径；对比商品页价格与购物车中含运费和税费的小计；加入商品后离开并稍后返回，确认购物车仍被保留。"
                 }
               ],
               "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Adding to cart may not make the next step obvious, leaving people stalled. Add an item and confirm the path to checkout is visible without hunting for it. 2. Costs first revealed at the cart may be causing people to reconsider. Compare the price shown on the product page against the cart subtotal including shipping and tax. 3. Carts may not survive a return visit, so intent is lost between sessions. Add an item, leave, return later and confirm the cart is still there.",
@@ -545,6 +474,8 @@
               "downgraded": false,
               "strength": "sufficient",
               "affectedSessions": 195,
+              "sampleLabel": "sessions that entered this step",
+              "lostSessions": 118,
               "evidence": [
                 {
                   "href": "/funnel?range=30&channel=Organic+Search",
@@ -601,13 +532,13 @@
               "whyPriority": [
                 {
                   "kind": "text",
-                  "text": "该环节使已经进入结账的自然搜索访客未能完成购买。"
+                  "text": "已进入结账的自然搜索访客仍在购买前大量流失，直接影响订单与收入。"
                 }
               ],
               "howToVerify": [
                 {
                   "kind": "text",
-                  "text": "按以下假设逐项排查，但这些并非诊断结论：结账时的运费可能高于预期。将运费及包邮门槛与平均订单金额对比。提供的支付方式可能未覆盖买家常用方式。列出可用支付方式，并与市场预期进行对比，包括钱包支付。结账可能要求填写过多信息或经过过多页面。检查购买所需字段和页面，并确认是否提供游客结账。结账页可能缺少首次购买者需要的保障信息。检查结账页内是否展示退货政策、安全标识和联系方式。结账页显示的配送时效可能超出买家接受范围。将结账页配送承诺与竞品承诺进行对比。"
+                  "text": "对比结账页运费及免邮门槛与客单价；盘点可用支付方式并与市场预期进行核对；检查购买所需字段、步骤和访客结账；检查结账页是否提供退货政策、安全提示和联系方式；将结账页展示的配送时效与竞品承诺进行对比。"
                 }
               ],
               "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Shipping cost at checkout may be higher than expected. Compare shipping cost and any free-shipping threshold against the average order value. 2. The payment methods offered may not cover what buyers use. List the methods available and compare against what the market expects — wallets included. 3. The checkout may be asking for too much, or across too many steps. Count the fields and steps required to buy, and whether guest checkout exists. 4. The checkout may not carry the reassurance a first-time buyer needs. Check for returns policy, security indicators and contact details inside the checkout. 5. Quoted delivery time may be slower than buyers will accept. Compare the delivery estimate shown at checkout against what competitors promise.",
@@ -620,6 +551,8 @@
               "downgraded": false,
               "strength": "sufficient",
               "affectedSessions": 77,
+              "sampleLabel": "sessions that entered this step",
+              "lostSessions": 45,
               "evidence": [
                 {
                   "href": "/funnel?range=30&channel=Organic+Search",
@@ -635,12 +568,20 @@
           "gaps": [],
           "source": "model",
           "citedRefIds": [
+            "channels:2026-08-02..2026-08-31:Organic Search:all:sessions",
+            "channels:2026-08-02..2026-08-31:Organic Search:all:orders",
+            "channels:2026-08-02..2026-08-31:Organic Search:all:conversion_rate",
+            "channels:2026-08-02..2026-08-31:Organic Search:all:revenue",
             "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:add_to_cart",
             "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:add_to_cart->checkout",
             "funnel:2026-08-02..2026-08-31:Organic Search:all:drop_off:add_to_cart->checkout",
             "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:checkout",
             "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:checkout->purchase",
             "funnel:2026-08-02..2026-08-31:Organic Search:all:drop_off:checkout->purchase",
+            "channels:2026-07-03..2026-08-01:Organic Search:all:sessions",
+            "channels:2026-07-03..2026-08-01:Organic Search:all:orders",
+            "channels:2026-07-03..2026-08-01:Organic Search:all:conversion_rate",
+            "channels:2026-07-03..2026-08-01:Organic Search:all:revenue",
             "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:add_to_cart->checkout",
             "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:checkout->purchase"
           ]
@@ -659,7 +600,7 @@
         },
         "toolCalls": [
           {
-            "id": "call_la2sysRjh1WzyG59dLPcFbip",
+            "id": "call_COiLWL2Y9FCfUrH2jivVbkKX",
             "name": "set_analysis_scope",
             "input": {
               "channel": "Organic Search"
@@ -668,7 +609,7 @@
             "summary": "Scope set to 30 days, Organic Search."
           },
           {
-            "id": "call_0gTd1w2OqauZp2OPPMXWe9td",
+            "id": "call_aa9nluAghADcBJCu8oxCXjoV",
             "name": "get_funnel",
             "input": {
               "channel": "Organic Search",
@@ -679,7 +620,7 @@
             "summary": "3 findings, 28 citable figures, 0 gaps."
           },
           {
-            "id": "call_IU4jeBOiQGo14npO0YtRiphN",
+            "id": "call_TBvjDKwV5iPff71bHP96PcEZ",
             "name": "get_channel_performance",
             "input": {
               "channel": "Organic Search",
@@ -688,25 +629,70 @@
             },
             "status": "ok",
             "summary": "0 findings, 24 citable figures, 0 gaps."
-          },
-          {
-            "id": "call_T3mC6qgTRjQAXkeq9HGUavOk",
-            "name": "get_product_performance",
-            "input": {
-              "channel": "Organic Search",
-              "range": 30,
-              "products": [],
-              "limit": 10
-            },
-            "status": "ok",
-            "summary": "0 findings, 40 citable figures, 0 gaps."
           }
         ],
         "toolGaps": [],
+        "toolNotes": [],
         "refusedActions": [],
         "noActionTaken": false,
         "citations": {
           "refs": [
+            {
+              "refId": "channels:2026-08-02..2026-08-31:Organic Search:all:sessions",
+              "label": "Organic Search sessions",
+              "value": 1048,
+              "unit": "count",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/analytics?range=30"
+            },
+            {
+              "refId": "channels:2026-08-02..2026-08-31:Organic Search:all:orders",
+              "label": "Organic Search orders",
+              "value": 32,
+              "unit": "count",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/analytics?range=30"
+            },
+            {
+              "refId": "channels:2026-08-02..2026-08-31:Organic Search:all:conversion_rate",
+              "label": "Organic Search conversion rate",
+              "value": 0.030534351145038167,
+              "unit": "ratio",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/analytics?range=30"
+            },
+            {
+              "refId": "channels:2026-08-02..2026-08-31:Organic Search:all:revenue",
+              "label": "Organic Search revenue",
+              "value": 535200,
+              "unit": "cents",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/analytics?range=30"
+            },
             {
               "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:add_to_cart",
               "label": "Add to Cart sessions",
@@ -792,6 +778,62 @@
               "href": "/funnel?range=30&channel=Organic+Search"
             },
             {
+              "refId": "channels:2026-07-03..2026-08-01:Organic Search:all:sessions",
+              "label": "Organic Search sessions",
+              "value": 967,
+              "unit": "count",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-07-03",
+                "end": "2026-08-01"
+              },
+              "funnel": false,
+              "href": "/analytics?range=30&end=2026-08-01"
+            },
+            {
+              "refId": "channels:2026-07-03..2026-08-01:Organic Search:all:orders",
+              "label": "Organic Search orders",
+              "value": 35,
+              "unit": "count",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-07-03",
+                "end": "2026-08-01"
+              },
+              "funnel": false,
+              "href": "/analytics?range=30&end=2026-08-01"
+            },
+            {
+              "refId": "channels:2026-07-03..2026-08-01:Organic Search:all:conversion_rate",
+              "label": "Organic Search conversion rate",
+              "value": 0.03619441571871768,
+              "unit": "ratio",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-07-03",
+                "end": "2026-08-01"
+              },
+              "funnel": false,
+              "href": "/analytics?range=30&end=2026-08-01"
+            },
+            {
+              "refId": "channels:2026-07-03..2026-08-01:Organic Search:all:revenue",
+              "label": "Organic Search revenue",
+              "value": 636680,
+              "unit": "cents",
+              "channel": "Organic Search",
+              "productId": null,
+              "window": {
+                "start": "2026-07-03",
+                "end": "2026-08-01"
+              },
+              "funnel": false,
+              "href": "/analytics?range=30&end=2026-08-01"
+            },
+            {
               "refId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:add_to_cart->checkout",
               "label": "Add to Cart → Checkout conversion",
               "value": 0.4393939393939394,
@@ -822,6 +864,42 @@
           ],
           "comparisons": [
             {
+              "currentRefId": "channels:2026-08-02..2026-08-31:Organic Search:all:sessions",
+              "previousRefId": "channels:2026-07-03..2026-08-01:Organic Search:all:sessions",
+              "current": 1048,
+              "previous": 967,
+              "relativeChange": 0.08376421923474664,
+              "direction": "up",
+              "supportsConclusion": true
+            },
+            {
+              "currentRefId": "channels:2026-08-02..2026-08-31:Organic Search:all:orders",
+              "previousRefId": "channels:2026-07-03..2026-08-01:Organic Search:all:orders",
+              "current": 32,
+              "previous": 35,
+              "relativeChange": -0.08571428571428572,
+              "direction": "down",
+              "supportsConclusion": true
+            },
+            {
+              "currentRefId": "channels:2026-08-02..2026-08-31:Organic Search:all:conversion_rate",
+              "previousRefId": "channels:2026-07-03..2026-08-01:Organic Search:all:conversion_rate",
+              "current": 0.030534351145038167,
+              "previous": 0.03619441571871768,
+              "relativeChange": -0.1563794983642312,
+              "direction": "down",
+              "supportsConclusion": true
+            },
+            {
+              "currentRefId": "channels:2026-08-02..2026-08-31:Organic Search:all:revenue",
+              "previousRefId": "channels:2026-07-03..2026-08-01:Organic Search:all:revenue",
+              "current": 535200,
+              "previous": 636680,
+              "relativeChange": -0.159389332160583,
+              "direction": "down",
+              "supportsConclusion": true
+            },
+            {
               "currentRefId": "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:add_to_cart->checkout",
               "previousRefId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:add_to_cart->checkout",
               "current": 0.39487179487179486,
@@ -844,8 +922,7 @@
         },
         "provenance": {
           "dataSources": [
-            "fixture:traffic (NorthTrail demo data, 2026-06-03..2026-08-31, UTC)",
-            "seed:catalogue"
+            "fixture:traffic (NorthTrail demo data, 2026-06-03..2026-08-31, UTC)"
           ],
           "ruleVersions": [
             "agent-priority-1.0.0",
@@ -853,9 +930,16 @@
           ]
         },
         "usage": {
-          "promptTokens": 7558,
-          "completionTokens": 795
+          "promptTokens": 10027,
+          "completionTokens": 760,
+          "requests": 3,
+          "largestPromptTokens": 6223
         },
+        "validation": [
+          {
+            "issueCodes": []
+          }
+        ],
         "failedChecks": [],
         "notes": [],
         "model": "openai:gpt-5.6-terra"

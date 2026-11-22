@@ -339,6 +339,13 @@ export function TurnView({ turn, index }: { turn: Turn; index: number }) {
           <p className="text-sm" data-testid="agent-summary">
             <AnswerText segments={result.answer.summary} />
           </p>
+          {result.toolNotes.length > 0 && (
+            <ul className="text-xs text-[var(--color-ink-muted)]" aria-label="How the lookup was matched" data-testid="agent-tool-notes">
+              {result.toolNotes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          )}
           {result.answer.facts.length > 0 && (
             <ul className="flex list-disc flex-col gap-1 pl-5 text-sm" aria-label="Figures found" data-testid="agent-answer-facts">
               {result.answer.facts.map((fact, factIndex) => (
@@ -385,7 +392,8 @@ export function TurnView({ turn, index }: { turn: Turn; index: number }) {
                           ? ''
                           : finding.affectedSessions === 0
                             ? ' · no sessions in this window, so the current impact is limited'
-                            : ` · ${formatInteger(finding.affectedSessions)} sessions affected`}
+                            : ` · ${formatInteger(finding.affectedSessions)} ${finding.sampleLabel}`}
+                        {finding.lostSessions === null ? '' : ` · ${formatInteger(finding.lostSessions)} lost at this step`}
                         {finding.downgraded ? ' · moved down one level because the sample is limited' : ''}
                       </p>
                       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-label="Evidence links">

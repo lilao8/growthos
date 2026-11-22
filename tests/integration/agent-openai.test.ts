@@ -108,6 +108,7 @@ describe('response mapping', () => {
     expect(() => fromWireResponse({ choices: [{}] })).toThrow('without a message');
     expect(() => fromWireResponse({ choices: [{ message: { content: '   ' } }] })).toThrow('neither tool calls nor text');
     expect(() => fromWireResponse({ choices: [{ message: { content: null, refusal: 'no' } }] })).toThrow('declined to answer: no');
+    expect(() => fromWireResponse({ choices: [{ message: { content: null, refusal: 'Policy for org-AbC123xyz' } }] })).toThrow('declined to answer: Policy for org-…');
     expect(() => fromWireResponse({ choices: [{ message: { tool_calls: [{ id: 'x' }] } }] })).toThrow('malformed tool call at position 0');
   });
 });
@@ -171,14 +172,24 @@ describe('rate limits', () => {
     expect(waits).toEqual([1500]);
   });
 
-  it('caps the wait, reads retry-after in seconds, and gives up after the retries', async () => {
+  it('does not retry early when the provider asks for a longer wait than the turn allows', async () => {
     const waits: number[] = [];
-    const { fetcher, calls } = sequence([{ ...tpm, headers: { 'retry-after': '90' } }]);
-    const model = createOpenAIModel({ apiKey: KEY, model: 'm', fetcher, maxRetries: 2, maxRetryWaitMs: 20_000, sleep: async (ms) => void waits.push(ms) });
+    const { fetcher, calls } = sequence([{ ...tpm, headers: { 'retry-after': '90' } }, ok]);
+    const model = createOpenAIModel({ apiKey: KEY, model: 'm', fetcher, maxRetryWaitMs: 20_000, sleep: async (ms) => void waits.push(ms) });
+    const error = await model.next({ messages: conversation, tools: [] }, new AbortController().signal).catch((cause: Error) => cause);
+    expect((error as Error).message).toBe('OpenAI rate limit: the provider asks to wait 90 s, longer than this turn allows. Try again in a moment.');
+    expect(calls()).toBe(1);
+    expect(waits).toEqual([]);
+  });
+
+  it('honours the wait it is given, and gives up after the retries', async () => {
+    const waits: number[] = [];
+    const { fetcher, calls } = sequence([{ ...tpm, headers: { 'retry-after': '3' } }]);
+    const model = createOpenAIModel({ apiKey: KEY, model: 'm', fetcher, maxRetries: 2, sleep: async (ms) => void waits.push(ms) });
     const error = await model.next({ messages: conversation, tools: [] }, new AbortController().signal).catch((cause: Error) => cause);
     expect((error as Error).message).toContain('OpenAI answered 429');
     expect(calls()).toBe(3);
-    expect(waits).toEqual([20_000, 20_000]);
+    expect(waits).toEqual([3000, 3000]);
   });
 
   it('does not retry an exhausted quota', async () => {
@@ -189,7 +200,8 @@ describe('rate limits', () => {
   });
 
   it('stops waiting when the turn is cancelled', async () => {
-    const { fetcher, calls } = sequence([{ ...tpm, headers: { 'retry-after-ms': '60000' } }, ok]);
+    // A wait within the turn's limit, interrupted by cancellation.
+    const { fetcher, calls } = sequence([{ ...tpm, headers: { 'retry-after-ms': '15000' } }, ok]);
     const controller = new AbortController();
     const model = createOpenAIModel({ apiKey: KEY, model: 'm', fetcher });
     const pending = model.next({ messages: conversation, tools: [] }, controller.signal);
@@ -266,6 +278,33 @@ describe('model input budget', () => {
     expect(body.findings[0]?.priority).toBe('Critical');
   });
 
+  it('keeps the figures of a lookup with no findings when it has to trim (Organic Search top ten at 6,000)', async () => {
+    const outcome = await runTool('get_product_performance', { channel: 'Organic Search', limit: 10 }, context());
+    if (outcome.status !== 'ok') throw new Error(outcome.status);
+    expect(outcome.findings).toEqual([]);
+    expect(outcome.meta.refs).toHaveLength(40);
+    const body = JSON.parse(forModel(outcome, 6_000)) as { refs: { refId: string; value: number | null }[]; truncated: { figuresShown: number; figuresTotal: number } };
+    expect(body.refs.length).toBeGreaterThan(10);
+    expect(body.truncated).toMatchObject({ figuresShown: body.refs.length, figuresTotal: 40 });
+    // The figures kept are the tool's own leading rows, so the top products survive whole.
+    expect(body.refs.slice(0, 4).map((ref) => ref.refId.split(':').pop())).toEqual(['view_sessions', 'purchase_sessions', 'conversion_rate', 'revenue']);
+  });
+
+  it('keeps each comparison as a pair: both figures and the evidence verdict, or neither', async () => {
+    const outcome = await runTool('get_channel_performance', {}, context());
+    const body = JSON.parse(forModel(outcome, 6_000)) as {
+      refs: { refId: string }[];
+      comparisons: { currentRefId: string; previousRefId: string | null; supportsConclusion: boolean }[];
+    };
+    expect(body.comparisons.length).toBeGreaterThan(0);
+    const ids = new Set(body.refs.map((ref) => ref.refId));
+    for (const comparison of body.comparisons) {
+      expect(ids.has(comparison.currentRefId)).toBe(true);
+      expect(comparison.previousRefId === null || ids.has(comparison.previousRefId)).toBe(true);
+      expect(typeof comparison.supportsConclusion).toBe('boolean');
+    }
+  });
+
   it('leaves a small result untouched', async () => {
     const outcome = await runTool('get_funnel', { channel: 'Email', compare: false }, context());
     expect(forModel(outcome, 24_000)).toBe(forModel(outcome, Number.MAX_SAFE_INTEGER));
@@ -321,7 +360,7 @@ describe('record of a turn', () => {
     });
     const result = await runAgentTurn({ question: 'q', history: [], scope: DEFAULT_SCOPE }, { model, ...context() });
     expect(result.status).toBe('answered');
-    expect(result.usage).toEqual({ promptTokens: 400, completionTokens: 45 });
+    expect(result.usage).toEqual({ promptTokens: 400, completionTokens: 45, requests: 2, largestPromptTokens: 300 });
     expect(result.citations.refs).toHaveLength(1);
     expect(result.citations.refs[0]?.value).not.toBeUndefined();
     expect(result.provenance.dataSources.some((source) => source.startsWith('fixture:traffic'))).toBe(true);

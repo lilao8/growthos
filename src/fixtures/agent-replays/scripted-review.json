@@ -4,7 +4,7 @@
   "title": "30-day storefront review, then \"only organic search?\"",
   "source": "scripted",
   "model": "scripted:demo",
-  "recordedAt": "2026-11-21T12:37:06.510Z",
+  "recordedAt": "2026-11-22T05:17:21.423Z",
   "demoAsOf": "2026-08-31",
   "stateSource": "seed",
   "turns": [
@@ -90,6 +90,8 @@
               "downgraded": false,
               "strength": "sufficient",
               "affectedSessions": 213,
+              "sampleLabel": "sessions that entered this step",
+              "lostSessions": 134,
               "evidence": [
                 {
                   "href": "/funnel?range=30",
@@ -141,6 +143,8 @@
               "downgraded": false,
               "strength": "sufficient",
               "affectedSessions": 175,
+              "sampleLabel": "sessions that viewed this page in the window",
+              "lostSessions": null,
               "evidence": [
                 {
                   "href": "/seo/snap_summit_20_bag?preview=1",
@@ -188,6 +192,8 @@
               "downgraded": false,
               "strength": "sufficient",
               "affectedSessions": 175,
+              "sampleLabel": "sessions that viewed this page in the window",
+              "lostSessions": null,
               "evidence": [
                 {
                   "href": "/seo/snap_summit_20_bag?preview=1",
@@ -235,6 +241,8 @@
               "downgraded": false,
               "strength": "sufficient",
               "affectedSessions": 157,
+              "sampleLabel": "sessions that viewed this page in the window",
+              "lostSessions": null,
               "evidence": [
                 {
                   "href": "/seo/snap_basecamp_tarp?preview=1",
@@ -306,6 +314,8 @@
               "downgraded": false,
               "strength": "sufficient",
               "affectedSessions": 1825,
+              "sampleLabel": "sessions that entered this step",
+              "lostSessions": 1312,
               "evidence": [
                 {
                   "href": "/funnel?range=30",
@@ -428,6 +438,7 @@
             "links": []
           }
         ],
+        "toolNotes": [],
         "refusedActions": [],
         "noActionTaken": false,
         "citations": {
@@ -611,6 +622,11 @@
           ]
         },
         "usage": null,
+        "validation": [
+          {
+            "issueCodes": []
+          }
+        ],
         "failedChecks": [],
         "notes": [],
         "model": "scripted:demo"
@@ -698,6 +714,8 @@
               "downgraded": false,
               "strength": "sufficient",
               "affectedSessions": 195,
+              "sampleLabel": "sessions that entered this step",
+              "lostSessions": 118,
               "evidence": [
                 {
                   "href": "/funnel?range=30&channel=Organic+Search",
@@ -773,6 +791,8 @@
               "downgraded": false,
               "strength": "sufficient",
               "affectedSessions": 77,
+              "sampleLabel": "sessions that entered this step",
+              "lostSessions": 45,
               "evidence": [
                 {
                   "href": "/funnel?range=30&channel=Organic+Search",
@@ -848,6 +868,8 @@
               "downgraded": false,
               "strength": "sufficient",
               "affectedSessions": 608,
+              "sampleLabel": "sessions that entered this step",
+              "lostSessions": 413,
               "evidence": [
                 {
                   "href": "/funnel?range=30&channel=Organic+Search",
@@ -921,6 +943,7 @@
           }
         ],
         "toolGaps": [],
+        "toolNotes": [],
         "refusedActions": [],
         "noActionTaken": false,
         "citations": {
@@ -1135,6 +1158,11 @@
           ]
         },
         "usage": null,
+        "validation": [
+          {
+            "issueCodes": []
+          }
+        ],
         "failedChecks": [],
         "notes": [],
         "model": "scripted:demo"

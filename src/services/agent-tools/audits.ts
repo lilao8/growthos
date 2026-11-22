@@ -211,6 +211,8 @@ export const auditFindingsTool: AgentTool<AuditFindingsInput, AuditFindingsData>
             // the observed input behind it.
             strength: check.evidence === null ? 'limited' : 'sufficient',
             affectedSessions: sessions,
+            sampleLabel: 'sessions that viewed this page in the window',
+            lostSessions: null,
             observed: item.reason,
             howToVerify: item.suggestedAction,
             ruleVersion: item.ruleVersion,

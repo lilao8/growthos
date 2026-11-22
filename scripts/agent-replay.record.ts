@@ -73,7 +73,7 @@ it('records agent replays', async () => {
       scope = result.scope;
       // A short, key-free trace for the operator running the recording.
       process.stdout.write(
-        `[${name}] ${question}\n  status=${result.status} calls=${result.toolCalls.map((call) => `${call.name}:${call.status}`).join(', ')}\n  issues=${result.issues.map((issue) => issue.code).join(', ') || 'none'} findings=${result.answer?.findings.length ?? 0} facts=${result.answer?.facts.length ?? 0} usage=${JSON.stringify(result.usage)}\n`,
+        `[${name}] ${question}\n  status=${result.status} validation=${JSON.stringify(result.validation.map((round) => round.issueCodes))} calls=${result.toolCalls.map((call) => `${call.name}:${call.status}`).join(', ')}\n  issues=${result.issues.map((issue) => issue.code).join(', ') || 'none'} findings=${result.answer?.findings.length ?? 0} facts=${result.answer?.facts.length ?? 0} usage=${JSON.stringify(result.usage)}\n`,
       );
     }
 
@@ -88,8 +88,10 @@ it('records agent replays', async () => {
       stateSource: 'seed',
       turns,
     };
+    // parseReplay also refuses anything key-shaped, an account id or an
+    // auth header, so a recording that captured one is never written.
     const checked = parseReplay(JSON.parse(JSON.stringify(replay)));
-    if (!checked.ok) throw new Error(checked.error);
+    if (!checked.ok) throw new Error(`Not written: ${checked.error}`);
     writeFileSync(path.join(DIR, `${replay.id}.json`), `${JSON.stringify(replay, null, 2)}\n`);
   }
   writeIndex();

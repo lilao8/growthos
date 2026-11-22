@@ -9,6 +9,8 @@ function known(id: string, overrides: Partial<KnownFinding> = {}): KnownFinding 
     priority: 'High',
     strength: 'sufficient',
     affectedSessions: 100,
+    sampleLabel: 'sessions that entered this step',
+    lostSessions: null,
     observed: `Engine says ${id}`,
     howToVerify: `Check ${id}`,
     refIds: [],
@@ -224,9 +226,9 @@ describe('renderAnswer', () => {
   });
 
   it('shows the sample and the downgrade of a limited finding', () => {
-    const ctx = context([known('f', { priority: 'Critical', strength: 'limited', affectedSessions: 372 })]);
+    const ctx = context([known('f', { priority: 'Critical', strength: 'limited', affectedSessions: 372, lostSessions: 50 })]);
     const rendered = renderAnswer({ summary: 'S', facts: [], findings: [finding('f')], gaps: [] }, ctx, 'model');
-    expect(rendered.findings[0]).toMatchObject({ priority: 'Critical', effectivePriority: 'High', downgraded: true, affectedSessions: 372 });
+    expect(rendered.findings[0]).toMatchObject({ priority: 'Critical', effectivePriority: 'High', downgraded: true, affectedSessions: 372, sampleLabel: 'sessions that entered this step', lostSessions: 50 });
   });
 });
 
@@ -288,16 +290,16 @@ describe('fallbackAnswer', () => {
   it('states the sample, the downgrade, and an unknown sample in plain words', () => {
     const rendered = fallbackAnswer(
       context([
-        known('limited', { priority: 'Critical', strength: 'limited', affectedSessions: 1234 }),
+        known('limited', { priority: 'Critical', strength: 'limited', affectedSessions: 1234, lostSessions: 134 }),
         known('unknown', { priority: 'Low', affectedSessions: null }),
       ]),
       'R',
     );
     expect(rendered.findings[0]?.whyPriority[0]?.text).toBe(
-      'Ranked High: rule severity Critical, evidence limited (moved down one level for limited evidence), 1,234 sessions affected.',
+      'Ranked High: rule severity Critical, evidence limited (moved down one level for limited evidence), 1,234 sessions that entered this step, 134 lost.',
     );
     expect(rendered.findings[1]?.whyPriority[0]?.text).toBe(
-      'Ranked Low: rule severity Low, evidence sufficient, an unknown number of sessions affected.',
+      'Ranked Low: rule severity Low, evidence sufficient, an unknown number of sessions that entered this step.',
     );
   });
 });

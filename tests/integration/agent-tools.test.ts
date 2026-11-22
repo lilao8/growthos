@@ -384,6 +384,16 @@ describe('get_funnel', () => {
     expect(outcome.findings.some((finding) => finding.ruleId === 'checkout->purchase')).toBe(true);
   });
 
+  it('labels a step finding with the sessions that entered it, and gives the sessions lost separately', async () => {
+    const outcome = ok<FunnelData>(await runTool('get_funnel', {}, context()));
+    const checkout = outcome.findings.find((finding) => finding.ruleId === 'checkout->purchase');
+    const step = outcome.data.report.transitions.find((transition) => transition.from === 'checkout');
+    expect(checkout?.affectedSessions).toBe(step?.fromSessions);
+    expect(checkout?.sampleLabel).toBe('sessions that entered this step');
+    expect(checkout?.lostSessions).toBe(step?.dropOffSessions);
+    expect(checkout?.lostSessions).toBeLessThan(checkout?.affectedSessions ?? 0);
+  });
+
   it('marks a small channel funnel as indicative', async () => {
     const outcome = ok<FunnelData>(await runTool('get_funnel', { channel: 'AI Referral' }, context()));
     expect(outcome.meta.gaps.map((gap) => gap.code)).toContain('below-minimum-sessions');
@@ -410,9 +420,21 @@ describe('get_product_performance', () => {
     expect(outcome.data.rows.every((row) => row.title.includes('Ridgeline'))).toBe(true);
   });
 
-  it('prefers the exact SKU over a name match', async () => {
+  it('prefers the exact SKU over a name match, and adds no match note for it', async () => {
     const outcome = ok<ProductPerformanceData>(await runTool('get_product_performance', { products: ['NT-TENT-RDG2'] }, context()));
     expect(outcome.data.rows.map((row) => row.productId)).toEqual(['prd_ridgeline_2p_tent']);
+    expect(outcome.meta.notes).toEqual([]);
+  });
+
+  it('says when a key matched by name, how many products it hit and how many are shown', async () => {
+    const byKey = ok<ProductPerformanceData>(await runTool('get_product_performance', { products: ['Ridgeline'] }, context()));
+    expect(byKey.meta.notes).toEqual([
+      `"Ridgeline" is a partial name match: ${byKey.data.rows.length} products matched by title, SKU or keyword.`,
+      `Showing all ${byKey.data.rows.length}.`,
+    ]);
+    const truncated = ok<ProductPerformanceData>(await runTool('get_product_performance', { query: 'NT-', limit: 3 }, context()));
+    expect(truncated.data.rows).toHaveLength(3);
+    expect(truncated.meta.notes?.[1]).toMatch(/^Showing 3 of \d+ matched products, by revenue\.$/);
   });
 
   it('is empty, not an error, when nothing matches', async () => {
