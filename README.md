@@ -6,6 +6,8 @@
 
 无需登录，直接可用。数据由固定 seed 生成，线上与本地逐位一致。编辑与决策保存在你自己浏览器的本地存储里，不会影响其他访问者；应用内提供 demo reset。建议从 [Dashboard](https://growthos-michaell1.vercel.app/dashboard) 进入，按下文[演示路径](#演示路径与讲解提纲)浏览。
 
+想看 Agent 如何给出可核对的数字，可以直接打开[客服反馈回放](https://growthos-michaell1.vercel.app/agent/replays/live-support-feedback)，点进件数查看对应的[模拟工单](https://growthos-michaell1.vercel.app/support)。
+
 ![Dashboard](docs/screenshots/01-dashboard.png)
 
 > **这是一个作品集项目，不是生产系统。** 数据由固定 seed 生成，窗口结束日是常量而非今天。项目中没有任何一个数字代表真实业绩，SEO / GEO 分数是本项目自己写的规则，不是任何搜索引擎的排名算法。完整的能力边界见应用内的 About this project 页面（[截图](docs/screenshots/15-about-project.png)），以及本文的[已知限制与未来规划](#已知限制与未来规划)。
@@ -317,5 +319,6 @@ npm run perf
 | 20 | [OpenAI 接入、输入预算、真实试跑与回放](docs/20-agent-live-replay.md) | [报告](docs/reports/dispatch-20.md) |
 | 21 | [客服反馈分析](docs/21-agent-support-feedback.md) | [报告](docs/reports/dispatch-21.md) |
 | 22 | [客服反馈真实试跑与回放](docs/22-agent-support-replay.md) | [报告](docs/reports/dispatch-22.md) |
+| 23 | Vercel 公开发布与线上验收 | [报告](docs/reports/dispatch-23.md) |
 
 > 报告是**过程记录**，写的是当时实测到的数字。数据集在 Dispatch 6、8、11 调整过，所以早期报告里的某些数值与当前不同——这是刻意保留的，回改会把"当时确实测到这个数"变成事后修饰。当前数值以最新报告和应用本身为准。
