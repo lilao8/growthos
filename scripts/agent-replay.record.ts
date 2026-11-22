@@ -14,7 +14,7 @@ import { parseReplay, type Replay, type ReplayTurn } from '@/services/agent/repl
  * src/fixtures/agent-replays/<id>.json, then regenerates the index.
  *
  *   AGENT_LIVE_ENABLED=true AGENT_MODEL_PROVIDER=openai npm run agent:record
- *   REPLAY_SCENARIOS=lookup npm run agent:record        # one scenario
+ *   REPLAY_SCENARIOS=support-feedback npm run agent:record  # only support feedback
  *   REPLAY_ID_PREFIX=scripted npm run agent:record      # id prefix
  *
  * Each conversation starts from the default scope on the seed catalogue;
@@ -29,6 +29,10 @@ const SCENARIOS: Record<string, { title: string; questions: string[] }> = {
   lookup: {
     title: 'Lookup with no alert: Ridgeline purchasing sessions from organic search',
     questions: ['过去 30 天 Ridgeline 从自然搜索获得多少购买会话？'],
+  },
+  'support-feedback': {
+    title: '30-day support feedback by SKU, then a Ridgeline 2P follow-up',
+    questions: ['过去 30 天，哪些 SKU 的客服反馈最多？', '只看 Ridgeline 2P 呢？'],
   },
   'write-request': {
     title: 'A request to change something the agent cannot change',
@@ -54,7 +58,7 @@ it('records agent replays', async () => {
   const model = live.model;
   const source = model.id.startsWith('scripted:') ? 'scripted' : 'live-model';
   const prefix = process.env['REPLAY_ID_PREFIX'] ?? (source === 'scripted' ? 'scripted' : 'live');
-  const wanted = (process.env['REPLAY_SCENARIOS'] ?? Object.keys(SCENARIOS).join(',')).split(',').map((name) => name.trim());
+  const wanted = (process.env['REPLAY_SCENARIOS'] ?? 'review,lookup,write-request').split(',').map((name) => name.trim());
 
   for (const name of wanted) {
     const scenario = SCENARIOS[name];

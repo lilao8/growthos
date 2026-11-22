@@ -308,12 +308,14 @@ npm run perf
 | 16 | 修掉 E2E 的 hydration 竞态 | [报告](docs/reports/dispatch-16.md) |
 | 17 | `src/domain` 变异测试 | [报告](docs/reports/dispatch-17.md) |
 
-**运营 Agent（18–20）**
+**运营 Agent**
 
 | 阶段 | 范围 | 报告 |
 |---|---|---|
 | 18 | [只读工具层与可复现证据链接](docs/18-agent-tools.md) | [报告](docs/reports/dispatch-18.md) |
 | 19 | [编排循环、回答校验、API 与 `/agent` 界面](docs/19-agent-orchestration.md) | [报告](docs/reports/dispatch-19.md) |
 | 20 | [OpenAI 接入、输入预算、真实试跑与回放](docs/20-agent-live-replay.md) | [报告](docs/reports/dispatch-20.md) |
+| 21 | [客服反馈分析](docs/21-agent-support-feedback.md) | [报告](docs/reports/dispatch-21.md) |
+| 22 | [客服反馈真实试跑与回放](docs/22-agent-support-replay.md) | [报告](docs/reports/dispatch-22.md) |
 
 > 报告是**过程记录**，写的是当时实测到的数字。数据集在 Dispatch 6、8、11 调整过，所以早期报告里的某些数值与当前不同——这是刻意保留的，回改会把"当时确实测到这个数"变成事后修饰。当前数值以最新报告和应用本身为准。

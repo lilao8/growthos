@@ -1,0 +1,575 @@
+{
+  "version": 1,
+  "id": "live-support-feedback",
+  "title": "30-day support feedback by SKU, then a Ridgeline 2P follow-up",
+  "source": "live-model",
+  "model": "openai:gpt-5.6-terra",
+  "recordedAt": "2026-11-22T07:35:35.832Z",
+  "demoAsOf": "2026-08-31",
+  "stateSource": "seed",
+  "turns": [
+    {
+      "question": "过去 30 天，哪些 SKU 的客服反馈最多？",
+      "scopeBefore": {
+        "range": 30,
+        "channel": null,
+        "products": []
+      },
+      "result": {
+        "status": "fallback",
+        "answer": {
+          "summary": [
+            {
+              "kind": "text",
+              "text": "The model's answer did not pass validation after one correction. The findings below are GrowthOS's own ranking of what the tools returned."
+            }
+          ],
+          "facts": [
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 2P Backpacking Tent · support tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "5",
+                "href": "/support?range=30&product=prd_ridgeline_2p_tent",
+                "title": "Ridgeline 2P Backpacking Tent · support tickets, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 2P Backpacking Tent · Shipping tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "3",
+                "href": "/support?range=30&product=prd_ridgeline_2p_tent&category=shipping",
+                "title": "Ridgeline 2P Backpacking Tent · Shipping tickets, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 2P Backpacking Tent · Product quality tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "2",
+                "href": "/support?range=30&product=prd_ridgeline_2p_tent&category=quality",
+                "title": "Ridgeline 2P Backpacking Tent · Product quality tickets, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline Rain Shell · support tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "3",
+                "href": "/support?range=30&product=prd_ridgeline_rain_shell",
+                "title": "Ridgeline Rain Shell · support tickets, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline Rain Shell · Sizing & fit tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "2",
+                "href": "/support?range=30&product=prd_ridgeline_rain_shell&category=fit",
+                "title": "Ridgeline Rain Shell · Sizing & fit tickets, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline Rain Shell · Returns & exchanges tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "1",
+                "href": "/support?range=30&product=prd_ridgeline_rain_shell&category=returns",
+                "title": "Ridgeline Rain Shell · Returns & exchanges tickets, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Beacon 400 Rechargeable Headlamp · support tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "2",
+                "href": "/support?range=30&product=prd_beacon_headlamp",
+                "title": "Beacon 400 Rechargeable Headlamp · support tickets, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Beacon 400 Rechargeable Headlamp · Product information tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "1",
+                "href": "/support?range=30&product=prd_beacon_headlamp&category=information",
+                "title": "Beacon 400 Rechargeable Headlamp · Product information tickets, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Beacon 400 Rechargeable Headlamp · Product quality tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "1",
+                "href": "/support?range=30&product=prd_beacon_headlamp&category=quality",
+                "title": "Beacon 400 Rechargeable Headlamp · Product quality tickets, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Unmatched SKU · support tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "2",
+                "href": "/support?range=30&product=unmatched",
+                "title": "Unmatched SKU · support tickets, 2026-08-02 — 2026-08-31"
+              }
+            ]
+          ],
+          "findings": [],
+          "separateFindings": [],
+          "rankingChannel": null,
+          "gaps": [],
+          "source": "fallback",
+          "citedRefIds": [
+            "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:tickets",
+            "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:shipping",
+            "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:quality",
+            "support:2026-08-02..2026-08-31:all:prd_ridgeline_rain_shell:tickets",
+            "support:2026-08-02..2026-08-31:all:prd_ridgeline_rain_shell:fit",
+            "support:2026-08-02..2026-08-31:all:prd_ridgeline_rain_shell:returns",
+            "support:2026-08-02..2026-08-31:all:prd_beacon_headlamp:tickets",
+            "support:2026-08-02..2026-08-31:all:prd_beacon_headlamp:information",
+            "support:2026-08-02..2026-08-31:all:prd_beacon_headlamp:quality",
+            "support:2026-08-02..2026-08-31:all:unmatched:tickets"
+          ]
+        },
+        "issues": [
+          {
+            "finding": null,
+            "code": "raw-number",
+            "message": "\"2\" is a number in prose. Figures, dates and window lengths come only from facts, which GrowthOS writes out; refer to a product with {{product:<id>}}."
+          }
+        ],
+        "message": "The model's answer did not pass validation after one correction.",
+        "scope": {
+          "range": 30,
+          "channel": null,
+          "products": []
+        },
+        "window": {
+          "start": "2026-08-02",
+          "end": "2026-08-31",
+          "days": 30
+        },
+        "toolCalls": [
+          {
+            "id": "call_CSgyZbbxPf8QYiMPM3vkIePp",
+            "name": "get_support_feedback",
+            "input": {
+              "range": 30,
+              "products": [],
+              "category": null,
+              "channel": null
+            },
+            "status": "ok",
+            "summary": "0 findings, 10 citable figures, 0 gaps."
+          }
+        ],
+        "toolGaps": [],
+        "toolNotes": [],
+        "refusedActions": [],
+        "noActionTaken": false,
+        "citations": {
+          "refs": [
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:tickets",
+              "label": "Ridgeline 2P Backpacking Tent · support tickets",
+              "value": 5,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_ridgeline_2p_tent",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_ridgeline_2p_tent"
+            },
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:shipping",
+              "label": "Ridgeline 2P Backpacking Tent · Shipping tickets",
+              "value": 3,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_ridgeline_2p_tent",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_ridgeline_2p_tent&category=shipping"
+            },
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:quality",
+              "label": "Ridgeline 2P Backpacking Tent · Product quality tickets",
+              "value": 2,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_ridgeline_2p_tent",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_ridgeline_2p_tent&category=quality"
+            },
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_ridgeline_rain_shell:tickets",
+              "label": "Ridgeline Rain Shell · support tickets",
+              "value": 3,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_ridgeline_rain_shell",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_ridgeline_rain_shell"
+            },
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_ridgeline_rain_shell:fit",
+              "label": "Ridgeline Rain Shell · Sizing & fit tickets",
+              "value": 2,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_ridgeline_rain_shell",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_ridgeline_rain_shell&category=fit"
+            },
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_ridgeline_rain_shell:returns",
+              "label": "Ridgeline Rain Shell · Returns & exchanges tickets",
+              "value": 1,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_ridgeline_rain_shell",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_ridgeline_rain_shell&category=returns"
+            },
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_beacon_headlamp:tickets",
+              "label": "Beacon 400 Rechargeable Headlamp · support tickets",
+              "value": 2,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_beacon_headlamp",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_beacon_headlamp"
+            },
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_beacon_headlamp:information",
+              "label": "Beacon 400 Rechargeable Headlamp · Product information tickets",
+              "value": 1,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_beacon_headlamp",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_beacon_headlamp&category=information"
+            },
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_beacon_headlamp:quality",
+              "label": "Beacon 400 Rechargeable Headlamp · Product quality tickets",
+              "value": 1,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_beacon_headlamp",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_beacon_headlamp&category=quality"
+            },
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:unmatched:tickets",
+              "label": "Unmatched SKU · support tickets",
+              "value": 2,
+              "unit": "count",
+              "channel": null,
+              "productId": "unmatched",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=unmatched"
+            }
+          ],
+          "comparisons": [],
+          "audits": []
+        },
+        "provenance": {
+          "dataSources": [
+            "fixture:support (simulated NorthTrail support tickets)"
+          ],
+          "ruleVersions": [
+            "agent-priority-1.0.0"
+          ]
+        },
+        "usage": {
+          "promptTokens": 9747,
+          "completionTokens": 885,
+          "requests": 3,
+          "largestPromptTokens": 3988
+        },
+        "validation": [
+          {
+            "issueCodes": [
+              "raw-number"
+            ]
+          },
+          {
+            "issueCodes": [
+              "raw-number"
+            ]
+          }
+        ],
+        "failedChecks": [],
+        "notes": [],
+        "model": "openai:gpt-5.6-terra"
+      }
+    },
+    {
+      "question": "只看 Ridgeline 2P 呢？",
+      "scopeBefore": {
+        "range": 30,
+        "channel": null,
+        "products": []
+      },
+      "result": {
+        "status": "answered",
+        "answer": {
+          "summary": [
+            {
+              "kind": "link",
+              "text": "Ridgeline 2P Backpacking Tent",
+              "href": "/products/prd_ridgeline_2p_tent",
+              "title": "Ridgeline 2P Backpacking Tent"
+            },
+            {
+              "kind": "text",
+              "text": " 的客服反馈以配送与产品质量问题为主，属于值得进一步核查的信号。"
+            }
+          ],
+          "facts": [
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 2P Backpacking Tent · support tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "5",
+                "href": "/support?range=30&product=prd_ridgeline_2p_tent",
+                "title": "Ridgeline 2P Backpacking Tent · support tickets, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 2P Backpacking Tent · Shipping tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "3",
+                "href": "/support?range=30&product=prd_ridgeline_2p_tent&category=shipping",
+                "title": "Ridgeline 2P Backpacking Tent · Shipping tickets, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 2P Backpacking Tent · Product quality tickets, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "2",
+                "href": "/support?range=30&product=prd_ridgeline_2p_tent&category=quality",
+                "title": "Ridgeline 2P Backpacking Tent · Product quality tickets, 2026-08-02 — 2026-08-31"
+              }
+            ]
+          ],
+          "findings": [],
+          "separateFindings": [],
+          "rankingChannel": null,
+          "gaps": [
+            [
+              {
+                "kind": "text",
+                "text": "客服数据没有营销渠道或订单分母，因此无法判断这些反馈相对销量的发生率。"
+              }
+            ]
+          ],
+          "source": "model",
+          "citedRefIds": [
+            "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:tickets",
+            "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:shipping",
+            "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:quality"
+          ]
+        },
+        "issues": [],
+        "message": null,
+        "scope": {
+          "range": 30,
+          "channel": null,
+          "products": [
+            "Ridgeline 2P"
+          ]
+        },
+        "window": {
+          "start": "2026-08-02",
+          "end": "2026-08-31",
+          "days": 30
+        },
+        "toolCalls": [
+          {
+            "id": "call_HIKSS7RKDqHnRPyssIg0AX3f",
+            "name": "set_analysis_scope",
+            "input": {
+              "products": [
+                "Ridgeline 2P"
+              ]
+            },
+            "status": "ok",
+            "summary": "Scope set to 30 days, all channels."
+          },
+          {
+            "id": "call_86csIAaQdhgikHiTHDsfgzZY",
+            "name": "get_support_feedback",
+            "input": {
+              "products": [
+                "Ridgeline 2P"
+              ],
+              "range": 30,
+              "channel": null
+            },
+            "status": "ok",
+            "summary": "0 findings, 3 citable figures, 0 gaps."
+          }
+        ],
+        "toolGaps": [],
+        "toolNotes": [],
+        "refusedActions": [],
+        "noActionTaken": false,
+        "citations": {
+          "refs": [
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:tickets",
+              "label": "Ridgeline 2P Backpacking Tent · support tickets",
+              "value": 5,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_ridgeline_2p_tent",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_ridgeline_2p_tent"
+            },
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:shipping",
+              "label": "Ridgeline 2P Backpacking Tent · Shipping tickets",
+              "value": 3,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_ridgeline_2p_tent",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_ridgeline_2p_tent&category=shipping"
+            },
+            {
+              "refId": "support:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:quality",
+              "label": "Ridgeline 2P Backpacking Tent · Product quality tickets",
+              "value": 2,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_ridgeline_2p_tent",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/support?range=30&product=prd_ridgeline_2p_tent&category=quality"
+            }
+          ],
+          "comparisons": [],
+          "audits": []
+        },
+        "provenance": {
+          "dataSources": [
+            "fixture:support (simulated NorthTrail support tickets)"
+          ],
+          "ruleVersions": [
+            "agent-priority-1.0.0"
+          ]
+        },
+        "usage": {
+          "promptTokens": 7561,
+          "completionTokens": 238,
+          "requests": 3,
+          "largestPromptTokens": 2860
+        },
+        "validation": [
+          {
+            "issueCodes": []
+          }
+        ],
+        "failedChecks": [],
+        "notes": [],
+        "model": "openai:gpt-5.6-terra"
+      }
+    }
+  ]
+}

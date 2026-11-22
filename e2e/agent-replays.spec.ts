@@ -87,3 +87,27 @@ test('a two-period change in a real replay links each period to its own window',
   await expect(change).toContainText('2026-07-03 — 2026-08-01');
   await expect(change).toContainText('2026-08-02 — 2026-08-31');
 });
+
+test('the real support replay opens the three matching shipping tickets without calling the agent API', async ({ page }) => {
+  const agentCalls: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/agent') agentCalls.push(request.url());
+  });
+  await gotoReady(page, '/agent/replays');
+  await page.getByTestId('replay-link-live-support-feedback').click();
+  await expect(page.getByTestId('replay-source')).toContainText('Real model run');
+  await expect(page.getByTestId('replay-validation')).toContainText('Answer checks: 1 of 2');
+  const turns = page.getByTestId('agent-turn');
+  await expect(turns).toHaveCount(2);
+  await expect(turns.first().getByTestId('agent-fallback')).toBeVisible();
+  await expect(turns.first().getByTestId('agent-answer-fact').first()).toContainText('Ridgeline 2P Backpacking Tent');
+  await expect(turns.nth(1).getByTestId('agent-turn-scope')).toContainText('30 days');
+  const shipping = turns.nth(1).getByTestId('agent-answer-fact').filter({ hasText: 'Shipping tickets' });
+  await shipping.getByRole('link', { name: '3' }).click();
+  await expect(page).toHaveURL(/\/support\?range=30&product=prd_ridgeline_2p_tent&category=shipping$/);
+  await expect(page.getByTestId('support-count')).toHaveText('3 tickets · 2026-08-02 — 2026-08-31');
+  for (const id of ['SUP-101', 'SUP-102', 'SUP-103']) {
+    await expect(page.getByRole('cell', { name: id, exact: true })).toBeVisible();
+  }
+  expect(agentCalls).toEqual([]);
+});

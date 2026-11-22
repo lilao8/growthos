@@ -3,9 +3,10 @@
  */
 import replay0 from './live-lookup.json';
 import replay1 from './live-review.json';
-import replay2 from './live-write-request.json';
-import replay3 from './scripted-lookup.json';
-import replay4 from './scripted-review.json';
-import replay5 from './scripted-write-request.json';
+import replay2 from './live-support-feedback.json';
+import replay3 from './live-write-request.json';
+import replay4 from './scripted-lookup.json';
+import replay5 from './scripted-review.json';
+import replay6 from './scripted-write-request.json';
 
-export const REPLAY_FILES: readonly unknown[] = [replay0, replay1, replay2, replay3, replay4, replay5];
+export const REPLAY_FILES: readonly unknown[] = [replay0, replay1, replay2, replay3, replay4, replay5, replay6];

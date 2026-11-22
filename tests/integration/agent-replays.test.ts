@@ -7,6 +7,9 @@ import { runAgentTurn } from '@/services/agent/orchestrator';
 import { createDemoModel } from '@/services/agent/scripted-model';
 import { createFixtureTrafficRepository } from '@/repositories/traffic-repository';
 import { buildDemoSeedState } from '@/fixtures/demo-seed';
+import { supportCategory } from '@/domain/support-feedback';
+import { parseRangeParam } from '@/domain/url-params';
+import { supportFeedback } from '@/services/support-feedback';
 import { DEFAULT_SCOPE } from '@/domain/agent/scope';
 import { REPLAY_FILES } from '@/fixtures/agent-replays';
 
@@ -172,6 +175,34 @@ describe('bundled replays', () => {
     const { replays, invalid } = listReplays();
     expect(invalid).toEqual([]);
     expect(replays.map((item) => `${item.id}.json`).sort()).toEqual([...files].sort());
+  });
+
+  it('reproduces every real support replay citation from the linked filters', () => {
+    const recording = findReplay('live-support-feedback');
+    expect(recording?.source).toBe('live-model');
+    if (recording === null) throw new Error('Missing live support replay');
+    expect(recording.turns).toHaveLength(2);
+    expect(recording.turns.map(({ result }) => result.scope.range)).toEqual([30, 30]);
+    expect(recording.turns.map(({ result }) => result.status)).toEqual(['fallback', 'answered']);
+    expect(summarizeReplay(recording).firstPass).toBe(1);
+    expect(recording.turns[0]?.result.citations.refs[0]).toMatchObject({ productId: 'prd_ridgeline_2p_tent', value: 5 });
+    const followUp = recording.turns[1]!.result.citations.refs;
+    expect(followUp.map(({ productId, value }) => [productId, value])).toEqual([
+      ['prd_ridgeline_2p_tent', 5], ['prd_ridgeline_2p_tent', 3], ['prd_ridgeline_2p_tent', 2],
+    ]);
+    for (const { result } of recording.turns) {
+      for (const ref of result.citations.refs) {
+        const url = new URL(ref.href, 'https://growthos.invalid');
+        expect(url.pathname).toBe('/support');
+        const range = parseRangeParam(url.searchParams.get('range'), 30);
+        const report = supportFeedback(range, {
+          productId: url.searchParams.get('product'),
+          category: supportCategory(url.searchParams.get('category')),
+        });
+        expect(report.window).toMatchObject(ref.window);
+        expect(report.rows.length).toBe(ref.value);
+      }
+    }
   });
 
   it('contain no key, header or bearer token', () => {
