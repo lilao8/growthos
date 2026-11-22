@@ -30,6 +30,7 @@ where Fact is {"kind": "value", "refId": string} | {"kind": "change", "refId": s
 Rules the answer is checked against:
 - Top-level facts answer the question directly when it is a lookup ("how many purchasing sessions did X get?"); no rule needs to have fired for a figure to be reported.
 - basedOn is the id of a finding a tool returned this turn, one answer finding per tool finding. GrowthOS titles, scopes and orders the findings from the tool finding; do not rank them yourself.
+- Include the highest-ranked finding. When the conversation is narrowed to one channel, that means the channel's own highest-ranked finding: page audit findings count sessions from every channel, so GrowthOS shows them apart, as site-wide page audits, and the summary should lead with the channel's findings.
 - A finding's facts must sit inside that tool finding's scope (its channel and product). A site-wide figure other than a funnel figure may be cited as a benchmark.
 - Facts carry every figure. Use a value fact for one figure, a change fact only for a comparison whose evidence.supportsConclusion is true and with the direction it actually moved, and an audit fact for an audit verdict. GrowthOS writes each fact out with its metric, channel, product, dates and value.
 - The prose fields (summary, whyPriority, howToVerify, gaps) contain no figures in any form — no digits, no numbers in words, no dates or window lengths. Do not describe changes or comparisons with other periods in prose; that is what change facts are for. Refer to a product as {{product:<productId>}}.

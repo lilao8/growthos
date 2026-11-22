@@ -377,13 +377,88 @@ describe('model input budget', () => {
     expect(result.validation.length).toBeGreaterThan(0);
   });
 
-  it('gives up when the input runs far past the budget', async () => {
-    const model = createScriptedModel('flood', () => ({ type: 'tool_calls', calls: [{ id: 'a', name: 'get_audit_findings', arguments: '{}' }, { id: 'b', name: 'get_audit_findings', arguments: '{"kind":"geo"}' }] }));
-    // The system prompt fits; one large audit result then takes the input far past the budget.
-    const result = await runAgentTurn({ question: 'q', history: [], scope: DEFAULT_SCOPE }, { model, ...context(), limits: { maxInputChars: 4_000 } });
-    expect(result.status).toBe('fallback');
+  it('never lets a tool result take the input past the budget', async () => {
+    const model = createScriptedModel('flood', (messages) => {
+      if (messages.some((message) => message.role === 'user' && message.content.startsWith('The input budget'))) {
+        return { type: 'final', content: JSON.stringify({ summary: 'Stopped at the budget.', facts: [], findings: [], gaps: [] }) };
+      }
+      return { type: 'tool_calls', calls: [{ id: 'a', name: 'get_audit_findings', arguments: '{}' }, { id: 'b', name: 'get_audit_findings', arguments: '{"kind":"geo"}' }] };
+    });
+    const seen: AgentMessage[][] = [];
+    const watching = { ...model, next: (request: Parameters<typeof model.next>[0], signal: AbortSignal) => { seen.push([...request.messages]); return model.next(request, signal); } };
+    // Large audit results used to carry a small budget far past its limit in one step.
+    const result = await runAgentTurn({ question: 'q', history: [], scope: DEFAULT_SCOPE }, { model: watching, ...context(), limits: { maxInputChars: 8_000 } });
+    for (const messages of seen) expect(messageChars(messages)).toBeLessThanOrEqual(8_000);
+    expect(result.message ?? '').not.toContain('more data than fits');
+    expect(result.toolCalls.some((call) => call.status === 'budget-reached')).toBe(true);
+    expect(result.validation.length).toBeGreaterThan(0);
+  });
+
+  it('skips every call of a batch once the budget is spent, and the model still answers', async () => {
+    const model = createScriptedModel('spent', (messages) => {
+      if (messages.some((message) => message.role === 'user' && message.content.startsWith('The input budget'))) {
+        return { type: 'final', content: JSON.stringify({ summary: 'Answered within the budget.', facts: [], findings: [], gaps: [] }) };
+      }
+      const question = currentQuestion(messages);
+      const results = resultsSince(messages, question.index).length;
+      if (results === 0) return { type: 'tool_calls', calls: [{ id: 'first', name: 'get_audit_findings', arguments: '{}' }] };
+      if (results === 1) {
+        return {
+          type: 'tool_calls',
+          calls: ['a', 'b', 'c', 'd'].map((id) => ({ id, name: 'get_product_performance', arguments: '{"limit":20}' })),
+        };
+      }
+      return { type: 'final', content: JSON.stringify({ summary: 'Answered within the budget.', facts: [], findings: [], gaps: [] }) };
+    });
+    // The first result fills what is left of a 9,000-character budget, so the four lookups after it find no room.
+    const result = await runAgentTurn({ question: 'q', history: [], scope: DEFAULT_SCOPE }, { model, ...context(), limits: { maxInputChars: 9_000, maxToolResultChars: 24_000 } });
+    expect(result.toolCalls.map((call) => call.status)).toEqual(['ok', 'budget-reached', 'budget-reached', 'budget-reached', 'budget-reached']);
+    expect(result.message ?? '').not.toContain('more data than fits');
+    expect(result.validation.length).toBeGreaterThan(0);
+  });
+
+  it.each([1_000, 20, 2, 1])('keeps executed and skipped tool replies within a %i-character cap', async (cap) => {
+    const model = createScriptedModel('cap', (messages) => {
+      const question = currentQuestion(messages);
+      if (resultsSince(messages, question.index).length === 0) {
+        return {
+          type: 'tool_calls',
+          calls: [
+            { id: 'a', name: 'get_audit_findings', arguments: '{}' },
+            { id: 'b', name: 'get_funnel', arguments: '{}' },
+            { id: 'c', name: 'get_funnel', arguments: '{"range":"not a number"}' },
+            { id: 'd', name: 'no_such_tool', arguments: '{}' },
+            { id: 'e', name: 'set_analysis_scope', arguments: '{"channel":"Organic Search"}' },
+            { id: 'f', name: 'get_product_performance', arguments: '{}' },
+          ],
+        };
+      }
+      return { type: 'final', content: JSON.stringify({ summary: 'Done.', facts: [], findings: [], gaps: [] }) };
+    });
+    const seen: AgentMessage[][] = [];
+    const watching = { ...model, next: (request: Parameters<typeof model.next>[0], signal: AbortSignal) => { seen.push([...request.messages]); return model.next(request, signal); } };
+    const result = await runAgentTurn({ question: 'q', history: [], scope: DEFAULT_SCOPE }, { model: watching, ...context(), limits: { maxToolCalls: 5, maxToolResultChars: cap } });
+    const toolMessages = seen.flat().filter((message) => message.role === 'tool');
+    expect(new Set(toolMessages.map((message) => message.toolCallId))).toEqual(new Set(['a', 'b', 'c', 'd', 'e', 'f']));
+    for (const message of toolMessages) expect(message.content.length).toBeLessThanOrEqual(cap);
+    expect(result.scope.channel).toBe('Organic Search');
+    expect(result.toolCalls.at(-1)?.status).toBe('limit-reached');
+  });
+
+  it('cuts a result that does not fit at all down to the cap', async () => {
+    const outcome = await runTool('get_audit_findings', {}, context());
+    for (const cap of [1_000, 120, 40, 20, 2, 1]) expect(forModel(outcome, cap).length).toBeLessThanOrEqual(cap);
+    const failed = forModel({ status: 'error', message: 'x'.repeat(5_000) }, 1_000);
+    expect(failed.length).toBeLessThanOrEqual(1_000);
+    expect(JSON.parse(failed)).toMatchObject({ status: 'error' });
+  });
+
+  it('still gives up when the conversation alone is far past the budget', async () => {
+    const model = createScriptedModel('history', () => ({ type: 'final', content: JSON.stringify({ summary: 's', facts: [], findings: [], gaps: [] }) }));
+    const history = [{ question: 'earlier', answerSummary: 'y'.repeat(10_000) }];
+    const result = await runAgentTurn({ question: 'q', history, scope: DEFAULT_SCOPE }, { model, ...context(), limits: { maxInputChars: 4_000 } });
     expect(result.message).toContain('more data than fits');
-    expect(result.answer?.findings.length).toBeGreaterThan(0);
+    expect(result.toolCalls).toHaveLength(0);
   });
 
   it('counts message text and tool-call arguments', () => {

@@ -398,6 +398,46 @@ describe('cards stay inside their own scope', () => {
     }
   });
 
+  it('in an Organic Search conversation, leads with Organic Search findings and ranks page audits apart', async () => {
+    const seenFindings = (messages: readonly AgentMessage[]) =>
+      messages
+        .filter((message) => message.role === 'tool')
+        .flatMap((message) => (JSON.parse((message as { content: string }).content) as { findings?: (SeenFinding & { scope: { channel: string | null } })[] }).findings ?? []);
+    const asAnswer = (chosen: SeenFinding[]) =>
+      JSON.stringify({
+        summary: 'Start with the checkout step for search visitors.',
+        facts: [],
+        findings: chosen.map((finding) => ({
+          basedOn: finding.id,
+          facts: finding.refIds.slice(0, 1).map((refId) => ({ kind: refId.startsWith('audits:') ? 'audit' : 'value', refId })),
+          whyPriority: 'It affects the most search sessions.', howToVerify: 'Compare the step on the funnel page.',
+        })),
+        gaps: [],
+      });
+    const model = createScriptedModel('organic-audits', (messages) => {
+      const question = currentQuestion(messages);
+      const results = resultsSince(messages, question.index);
+      if (results.length === 0) {
+        return { type: 'tool_calls', calls: [{ id: 'f', name: 'get_funnel', arguments: '{}' }, { id: 'a', name: 'get_audit_findings', arguments: '{"kind":"geo"}' }] };
+      }
+      const findings = seenFindings(messages);
+      const audits = rankFindings(findings.filter((finding) => finding.scope.channel === null)).ranked.map((entry) => entry.finding);
+      const organic = rankFindings(findings.filter((finding) => finding.scope.channel === 'Organic Search')).ranked.map((entry) => entry.finding);
+      // First try leads with the audits alone; the correction adds the channel's own top finding.
+      const repairing = messages.some((message) => message.role === 'user' && message.content.includes('top-finding-omitted'));
+      return { type: 'final', content: asAnswer(repairing ? [audits[0]!, organic[0]!] : audits.slice(0, 1)) };
+    });
+    const { result } = await ask(ORGANIC, { range: 30, channel: 'Organic Search', products: [] }, { model });
+    expect(result.validation.map((entry) => entry.issueCodes)).toEqual([['top-finding-omitted'], []]);
+    expect(result.status).toBe('answered');
+    const answer = answered(result);
+    expect(answer.rankingChannel).toBe('Organic Search');
+    expect(answer.findings.length).toBe(1);
+    for (const finding of answer.findings) expect(finding.scope.channel).toBe('Organic Search');
+    expect(answer.separateFindings.length).toBe(1);
+    for (const finding of answer.separateFindings) expect(finding.scope.channel).toBeNull();
+  });
+
   it('keeps the Organic Search scope on fallback cards', async () => {
     const model = createScriptedModel('organic-broken', (messages) => {
       const question = currentQuestion(messages);

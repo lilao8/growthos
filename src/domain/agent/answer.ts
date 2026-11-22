@@ -119,6 +119,30 @@ export interface AnswerContext {
    * fallback answer shows when the question was a lookup, not a review.
    */
   figuresWithoutFindings: readonly string[];
+  /**
+   * The conversation's channel when it is narrowed to one, else null. Only
+   * findings for that channel compete in the main ranking; see
+   * `splitByRankingScope`.
+   */
+  rankingChannel: string | null;
+}
+
+/**
+ * Which findings compete in the main ranking. In a conversation narrowed to
+ * one channel, only that channel's findings do; everything else — page
+ * audits above all, whose sessions come from every channel — is ranked on
+ * its own and shown apart. Site-wide, everything competes. The validator,
+ * the rendered answer and the fallback all use this one rule.
+ */
+export function splitByRankingScope<T extends { scope: { channel: string | null } }>(
+  findings: readonly T[],
+  channel: string | null,
+): { main: T[]; separate: T[] } {
+  if (channel === null) return { main: [...findings], separate: [] };
+  return {
+    main: findings.filter((finding) => finding.scope.channel === channel),
+    separate: findings.filter((finding) => finding.scope.channel !== channel),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -335,11 +359,15 @@ export function validateAnswer(answer: AgentAnswer, context: AnswerContext): Ans
   // with figures alone.
   const rankable = [...context.findings.values()].filter((finding) => finding.strength !== 'insufficient');
   if (rankable.length > 0) {
-    const top = rankFindings(rankable).ranked[0]?.finding;
+    // In a channel conversation the finding to lead with is that channel's
+    // top one; findings outside the channel are ranked apart.
+    const { main, separate } = splitByRankingScope(rankable, context.rankingChannel);
+    const top = rankFindings(main.length > 0 ? main : separate).ranked[0]?.finding;
+    const which = main.length > 0 && context.rankingChannel !== null ? `${context.rankingChannel} finding` : 'finding';
     if (answer.findings.length === 0) {
       issues.push({ finding: null, code: 'findings-omitted', message: `The tools raised ${rankable.length > 1 ? 'findings' : 'a finding'} this turn, but the answer shows none. Include them as findings; GrowthOS orders them.` });
     } else if (top !== undefined && !answer.findings.some((finding) => finding.basedOn === top.id)) {
-      issues.push({ finding: null, code: 'top-finding-omitted', message: `"${top.id}" is the highest-ranked finding this turn and must be included.` });
+      issues.push({ finding: null, code: 'top-finding-omitted', message: `"${top.id}" is the highest-ranked ${which} this turn and must be included.` });
     }
   }
 

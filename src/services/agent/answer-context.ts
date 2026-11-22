@@ -115,8 +115,10 @@ export class AnswerContextBuilder {
     return this.gaps.map((gap) => ({ message: gap.message, links: [...gap.links] }));
   }
 
-  build(): AnswerContext {
+  /** `rankingChannel`: the conversation's channel, which limits the main ranking. */
+  build(rankingChannel: string | null): AnswerContext {
     return {
+      rankingChannel,
       refs: new Map(this.refs),
       comparisons: new Map(this.comparisons),
       audits: new Map(this.audits),

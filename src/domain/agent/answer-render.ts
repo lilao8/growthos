@@ -2,6 +2,7 @@ import { formatDateRange, formatInteger, formatMoneyMetric, formatMultiple, form
 import type { Priority } from '../types';
 import {
   PRODUCT_PLACEHOLDER,
+  splitByRankingScope,
   type AgentAnswer,
   type AnswerContext,
   type AnswerFact,
@@ -163,7 +164,16 @@ export interface RenderedAnswer {
   summary: Segment[];
   /** Figures that answer the question directly, each written out with its scope. */
   facts: Segment[][];
+  /** The main ranking: in a channel conversation, that channel's findings only. */
   findings: RenderedFinding[];
+  /**
+   * Findings ranked apart from the main list because they are not about the
+   * conversation's channel — chiefly page audits, which count sessions from
+   * every channel. Always empty in a site-wide conversation.
+   */
+  separateFindings: RenderedFinding[];
+  /** The conversation's channel the main ranking is limited to, or null. */
+  rankingChannel: string | null;
   gaps: Segment[][];
   /** 'model' when the model's answer passed validation; 'fallback' otherwise. */
   source: 'model' | 'fallback';
@@ -198,42 +208,51 @@ export function renderAnswer(answer: AgentAnswer, context: AnswerContext, source
   const bases = answer.findings
     .map((finding) => context.findings.get(finding.basedOn))
     .filter((basis): basis is KnownFinding => basis !== undefined);
-  const ranking = rankFindings(bases);
+  const { main, separate } = splitByRankingScope(bases, context.rankingChannel);
 
-  const findings: RenderedFinding[] = ranking.ranked.flatMap((entry) => {
-    const finding: AnswerFinding | undefined = byBasis.get(entry.finding.id);
-    if (finding === undefined) return [];
-    return [
-      {
-        rank: entry.rank,
-        basedOn: entry.finding.id,
-        title: entry.finding.title,
-        facts: finding.facts.map((fact) => renderFact(fact, context, entry.finding.scope)),
-        whyPriority: renderProse(finding.whyPriority, context),
-        howToVerify: renderProse(finding.howToVerify, context),
-        ruleGuidance: entry.finding.howToVerify,
-        scope: entry.finding.scope,
-        priority: entry.finding.priority,
-        effectivePriority: entry.effectivePriority,
-        downgraded: entry.downgraded,
-        strength: entry.finding.strength,
-        affectedSessions: entry.finding.affectedSessions,
-        sampleLabel: entry.finding.sampleLabel,
-        lostSessions: entry.finding.lostSessions,
-        evidence: linksFor(entry.finding, finding.facts.map((fact) => fact.refId), context),
-      },
-    ];
-  });
+  const render = (group: readonly KnownFinding[]): { findings: RenderedFinding[]; refIds: string[] } => {
+    const ranking = rankFindings(group);
+    const findings = ranking.ranked.flatMap((entry): RenderedFinding[] => {
+      const finding: AnswerFinding | undefined = byBasis.get(entry.finding.id);
+      if (finding === undefined) return [];
+      return [
+        {
+          rank: entry.rank,
+          basedOn: entry.finding.id,
+          title: entry.finding.title,
+          facts: finding.facts.map((fact) => renderFact(fact, context, entry.finding.scope)),
+          whyPriority: renderProse(finding.whyPriority, context),
+          howToVerify: renderProse(finding.howToVerify, context),
+          ruleGuidance: entry.finding.howToVerify,
+          scope: entry.finding.scope,
+          priority: entry.finding.priority,
+          effectivePriority: entry.effectivePriority,
+          downgraded: entry.downgraded,
+          strength: entry.finding.strength,
+          affectedSessions: entry.finding.affectedSessions,
+          sampleLabel: entry.finding.sampleLabel,
+          lostSessions: entry.finding.lostSessions,
+          evidence: linksFor(entry.finding, finding.facts.map((fact) => fact.refId), context),
+        },
+      ];
+    });
+    return { findings, refIds: ranking.ranked.flatMap((entry) => entry.finding.refIds) };
+  };
+  const ranked = render(main);
+  const apart = render(separate);
 
   const cited = [
     ...answer.facts.map((fact) => fact.refId),
     ...answer.findings.flatMap((finding) => finding.facts.map((fact) => fact.refId)),
-    ...ranking.ranked.flatMap((entry) => entry.finding.refIds),
+    ...ranked.refIds,
+    ...apart.refIds,
   ];
   return {
     summary: renderProse(answer.summary, context),
     facts: answer.facts.map((fact) => renderFact(fact, context)),
-    findings,
+    findings: ranked.findings,
+    separateFindings: apart.findings,
+    rankingChannel: context.rankingChannel,
     gaps: answer.gaps.map((gap) => renderProse(gap, context)),
     source,
     citedRefIds: withPrevious([...new Set(cited)], context),
@@ -246,45 +265,54 @@ export function renderAnswer(answer: AgentAnswer, context: AnswerContext, source
  * written by GrowthOS from the data.
  */
 export function fallbackAnswer(context: AnswerContext, reason: string, limit = 5): RenderedAnswer {
-  const ranking = rankFindings([...context.findings.values()]);
-  const findings: RenderedFinding[] = ranking.ranked.slice(0, limit).map((entry) => {
-    const basis = entry.finding;
-    const sample = basis.affectedSessions === null ? `an unknown number of ${basis.sampleLabel}` : `${formatInteger(basis.affectedSessions)} ${basis.sampleLabel}`;
-    const lost = basis.lostSessions === null ? '' : `, ${formatInteger(basis.lostSessions)} lost`;
-    return {
-      rank: entry.rank,
-      basedOn: basis.id,
-      title: basis.title,
-      facts: [[{ kind: 'text', text: basis.observed }]],
-      whyPriority: [
-        {
-          kind: 'text',
-          text: `Ranked ${entry.effectivePriority}: rule severity ${basis.priority}, evidence ${basis.strength}${entry.downgraded ? ' (moved down one level for limited evidence)' : ''}, ${sample}${lost}.`,
-        },
-      ],
-      howToVerify: [{ kind: 'text', text: basis.howToVerify }],
-      ruleGuidance: basis.howToVerify,
-      scope: basis.scope,
-      priority: basis.priority,
-      effectivePriority: entry.effectivePriority,
-      downgraded: entry.downgraded,
-      strength: basis.strength,
-      affectedSessions: basis.affectedSessions,
-      sampleLabel: basis.sampleLabel,
-      lostSessions: basis.lostSessions,
-      evidence: linksFor(basis, [], context),
-    };
-  });
+  const { main, separate } = splitByRankingScope([...context.findings.values()], context.rankingChannel);
+  const render = (group: readonly KnownFinding[], max: number): { findings: RenderedFinding[]; refIds: string[] } => {
+    const top = rankFindings(group).ranked.slice(0, max);
+    const findings = top.map((entry): RenderedFinding => {
+      const basis = entry.finding;
+      const sample = basis.affectedSessions === null ? `an unknown number of ${basis.sampleLabel}` : `${formatInteger(basis.affectedSessions)} ${basis.sampleLabel}`;
+      const lost = basis.lostSessions === null ? '' : `, ${formatInteger(basis.lostSessions)} lost`;
+      return {
+        rank: entry.rank,
+        basedOn: basis.id,
+        title: basis.title,
+        facts: [[{ kind: 'text', text: basis.observed }]],
+        whyPriority: [
+          {
+            kind: 'text',
+            text: `Ranked ${entry.effectivePriority}: rule severity ${basis.priority}, evidence ${basis.strength}${entry.downgraded ? ' (moved down one level for limited evidence)' : ''}, ${sample}${lost}.`,
+          },
+        ],
+        howToVerify: [{ kind: 'text', text: basis.howToVerify }],
+        ruleGuidance: basis.howToVerify,
+        scope: basis.scope,
+        priority: basis.priority,
+        effectivePriority: entry.effectivePriority,
+        downgraded: entry.downgraded,
+        strength: basis.strength,
+        affectedSessions: basis.affectedSessions,
+        sampleLabel: basis.sampleLabel,
+        lostSessions: basis.lostSessions,
+        evidence: linksFor(basis, [], context),
+      };
+    });
+    return { findings, refIds: top.flatMap((entry) => entry.finding.refIds) };
+  };
+  const ranked = render(main, limit);
+  // Shown apart, and fewer of them: they do not compete with the main list.
+  const apart = render(separate, Math.min(3, limit));
   // A lookup with no finding behind it still has its figures.
   const facts = context.figuresWithoutFindings
     .slice(0, 12)
     .map((refId) => renderFact({ kind: 'value', refId }, context))
     .filter((segments) => segments.length > 0);
-  const cited = [...context.figuresWithoutFindings.slice(0, 12), ...ranking.ranked.slice(0, limit).flatMap((entry) => entry.finding.refIds)];
+  const cited = [...context.figuresWithoutFindings.slice(0, 12), ...ranked.refIds, ...apart.refIds];
   return {
     summary: [{ kind: 'text', text: reason }],
     facts,
-    findings,
+    findings: ranked.findings,
+    separateFindings: apart.findings,
+    rankingChannel: context.rankingChannel,
     gaps: [],
     source: 'fallback',
     citedRefIds: withPrevious([...new Set(cited)], context),

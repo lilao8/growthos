@@ -42,6 +42,7 @@ function context(findings: KnownFinding[] = [], overrides: Partial<AnswerContext
     findings: new Map(findings.map((finding) => [finding.id, finding])),
     products: new Map([['prd_a', 'Ridgeline 2P Backpacking Tent']]),
     figuresWithoutFindings: [],
+    rankingChannel: null,
     ...overrides,
   };
 }
@@ -194,6 +195,25 @@ describe('renderAnswer', () => {
     expect(rendered.gaps).toEqual([[{ kind: 'text', text: 'g' }]]);
   });
 
+  it('in a channel conversation, ranks that channel\'s findings in the main list and site-wide audits apart', () => {
+    const audit = known('audit', { priority: 'Critical', affectedSessions: 900, scope: { channel: null, productId: 'prd_a' } });
+    const organic = known('organic', { priority: 'Medium' });
+    const answer = { summary: 'S', facts: [], findings: [finding('audit', 'aud'), finding('organic')], gaps: [] };
+
+    const scoped = renderAnswer(answer, context([audit, organic], { rankingChannel: 'Organic Search' }), 'model');
+    expect(scoped.rankingChannel).toBe('Organic Search');
+    expect(scoped.findings.map((item) => [item.basedOn, item.rank])).toEqual([['organic', 1]]);
+    expect(scoped.separateFindings.map((item) => [item.basedOn, item.rank])).toEqual([['audit', 1]]);
+    // Both groups' figures stay on the record.
+    expect(scoped.citedRefIds).toEqual(expect.arrayContaining(['aud', ORDERS]));
+
+    // Site-wide, one ranking as before.
+    const site = renderAnswer(answer, context([audit, organic]), 'model');
+    expect(site.findings.map((item) => item.basedOn)).toEqual(['audit', 'organic']);
+    expect(site.separateFindings).toEqual([]);
+    expect(site.rankingChannel).toBeNull();
+  });
+
   it('writes out the top-level facts that answer a lookup', () => {
     const rendered = renderAnswer({ summary: 'S', facts: [{ kind: 'value', refId: ORDERS }], findings: [], gaps: [] }, context(), 'model');
     expect(rendered.facts).toEqual([renderFact({ kind: 'value', refId: ORDERS }, context())]);
@@ -274,6 +294,21 @@ describe('fallbackAnswer', () => {
     expect(rendered.findings[0]?.whyPriority[0]?.kind).toBe('text');
     expect(rendered.findings[0]?.scope).toEqual({ channel: 'Organic Search', productId: null });
     expect(rendered.facts).toEqual([]);
+  });
+
+  it('uses the same channel rule: the channel\'s findings lead, at most three site-wide ones apart', () => {
+    const audits = ['a1', 'a2', 'a3', 'a4'].map((id) => known(id, { priority: 'Critical', affectedSessions: 900, scope: { channel: null, productId: 'prd_a' } }));
+    const organic = [known('o1', { priority: 'Medium' }), known('o2', { priority: 'High' })];
+    const other = known('meta', { priority: 'Critical', scope: { channel: 'Meta', productId: null } });
+    const rendered = fallbackAnswer(context([...audits, ...organic, other], { rankingChannel: 'Organic Search' }), 'Model failed.');
+    expect(rendered.findings.map((item) => item.basedOn)).toEqual(['o2', 'o1']);
+    expect(rendered.separateFindings).toHaveLength(3);
+    expect(rendered.separateFindings.every((item) => item.basedOn !== 'o1' && item.basedOn !== 'o2')).toBe(true);
+    expect(rendered.separateFindings.map((item) => item.rank)).toEqual([1, 2, 3]);
+
+    const site = fallbackAnswer(context([...audits, ...organic, other]), 'Model failed.');
+    expect(site.findings).toHaveLength(5);
+    expect(site.separateFindings).toEqual([]);
   });
 
   it('keeps the figures of a lookup that raised no finding, in order and at most twelve', () => {

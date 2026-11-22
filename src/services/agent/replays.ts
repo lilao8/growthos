@@ -75,6 +75,9 @@ const renderedAnswer = z.strictObject({
   summary: z.array(segment),
   facts: z.array(z.array(segment)),
   findings: z.array(renderedFinding),
+  // Recorded before findings outside a channel conversation were ranked apart.
+  separateFindings: z.array(renderedFinding).default([]),
+  rankingChannel: z.enum(CHANNELS).nullable().default(null),
   gaps: z.array(z.array(segment)),
   source: z.enum(['model', 'fallback']),
   citedRefIds: z.array(z.string()),

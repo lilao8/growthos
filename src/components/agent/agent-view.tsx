@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { ErrorBlock, LoadingBlock } from '@/components/ui/status-block';
+import type { RenderedFinding } from '@/domain/agent/answer-render';
 import { DEFAULT_SCOPE, scopeWindow, type ConversationScope } from '@/domain/agent/scope';
 import { formatDateRange, formatInteger } from '@/domain/format';
 import type { DemoState } from '@/repositories/types';
@@ -291,6 +292,70 @@ function Progress({ question, events }: { question: string; events: readonly Age
   );
 }
 
+/** Findings ranked apart in a channel conversation: page audits count sessions from every channel. */
+function separateHeading(findings: readonly RenderedFinding[], channel: string | null): string {
+  return findings.every((finding) => finding.scope.channel === null) ? 'Site-wide page audits' : `Outside the ${channel ?? 'channel'} ranking`;
+}
+
+function separateNote(findings: readonly RenderedFinding[], channel: string | null): string {
+  const name = channel ?? 'channel';
+  const other = findings.some((finding) => finding.scope.channel !== null) ? ' or from another channel' : '';
+  return `Ranked separately from the ${name} findings above: their sessions come from all channels${other}, so they are not compared with ${name} traffic.`;
+}
+
+function FindingCard({ finding }: { finding: RenderedFinding }) {
+  return (
+    <Card testId="agent-finding">
+      <CardHeader title={`${finding.rank}. ${finding.title}`}>
+        <Badge tone={finding.effectivePriority === 'Critical' ? 'accent' : 'neutral'}>{finding.effectivePriority}</Badge>
+      </CardHeader>
+      <CardBody className="flex flex-col gap-2 text-sm">
+        <div>
+          <p className="font-medium">Observed</p>
+          <ul className="mt-1 flex list-disc flex-col gap-1 pl-5" data-testid="agent-facts">
+            {finding.facts.map((fact, factIndex) => (
+              <li key={factIndex} data-testid="agent-fact">
+                <AnswerText segments={fact} />
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p>
+          <span className="font-medium">Why first: </span>
+          <AnswerText segments={finding.whyPriority} />
+        </p>
+        <p>
+          <span className="font-medium">How to verify: </span>
+          <AnswerText segments={finding.howToVerify} />
+        </p>
+        <p className="text-xs text-[var(--color-ink-muted)]" data-testid="agent-rule-guidance">
+          Rule guidance: {finding.ruleGuidance}
+        </p>
+        <p className="text-xs text-[var(--color-ink-muted)]" data-testid="agent-finding-sample">
+          Scope: {finding.scope.channel ?? 'All channels'}
+          {finding.scope.productId === null ? '' : ` · product ${finding.scope.productId}`} · Evidence {finding.strength}
+          {finding.affectedSessions === null
+            ? ''
+            : finding.affectedSessions === 0
+              ? ' · no sessions in this window, so the current impact is limited'
+              : ` · ${formatInteger(finding.affectedSessions)} ${finding.sampleLabel}`}
+          {finding.lostSessions === null ? '' : ` · ${formatInteger(finding.lostSessions)} lost at this step`}
+          {finding.downgraded ? ' · moved down one level because the sample is limited' : ''}
+        </p>
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-label="Evidence links">
+          {finding.evidence.map((link) => (
+            <li key={link.href}>
+              <Link href={link.href as Route} className="underline underline-offset-2" data-testid="agent-evidence-link">
+                {link.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </CardBody>
+    </Card>
+  );
+}
+
 export function TurnView({ turn, index }: { turn: Turn; index: number }) {
   const { result } = turn;
   const scripted = result.model.startsWith('scripted:');
@@ -360,60 +425,30 @@ export function TurnView({ turn, index }: { turn: Turn; index: number }) {
             </ul>
           )}
           {result.answer.findings.length > 0 && (
-            <ol className="flex flex-col gap-3">
+            <ol className="flex flex-col gap-3" aria-label={result.answer.rankingChannel === null ? 'Ranked findings' : `Ranked ${result.answer.rankingChannel} findings`}>
               {result.answer.findings.map((finding) => (
                 <li key={finding.basedOn}>
-                  <Card testId="agent-finding">
-                    <CardHeader title={`${finding.rank}. ${finding.title}`}>
-                      <Badge tone={finding.effectivePriority === 'Critical' ? 'accent' : 'neutral'}>{finding.effectivePriority}</Badge>
-                    </CardHeader>
-                    <CardBody className="flex flex-col gap-2 text-sm">
-                      <div>
-                        <p className="font-medium">Observed</p>
-                        <ul className="mt-1 flex list-disc flex-col gap-1 pl-5" data-testid="agent-facts">
-                          {finding.facts.map((fact, factIndex) => (
-                            <li key={factIndex} data-testid="agent-fact">
-                              <AnswerText segments={fact} />
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <p>
-                        <span className="font-medium">Why first: </span>
-                        <AnswerText segments={finding.whyPriority} />
-                      </p>
-                      <p>
-                        <span className="font-medium">How to verify: </span>
-                        <AnswerText segments={finding.howToVerify} />
-                      </p>
-                      <p className="text-xs text-[var(--color-ink-muted)]" data-testid="agent-rule-guidance">
-                        Rule guidance: {finding.ruleGuidance}
-                      </p>
-                      <p className="text-xs text-[var(--color-ink-muted)]" data-testid="agent-finding-sample">
-                        Scope: {finding.scope.channel ?? 'All channels'}
-                        {finding.scope.productId === null ? '' : ` · product ${finding.scope.productId}`} · Evidence {finding.strength}
-                        {finding.affectedSessions === null
-                          ? ''
-                          : finding.affectedSessions === 0
-                            ? ' · no sessions in this window, so the current impact is limited'
-                            : ` · ${formatInteger(finding.affectedSessions)} ${finding.sampleLabel}`}
-                        {finding.lostSessions === null ? '' : ` · ${formatInteger(finding.lostSessions)} lost at this step`}
-                        {finding.downgraded ? ' · moved down one level because the sample is limited' : ''}
-                      </p>
-                      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-label="Evidence links">
-                        {finding.evidence.map((link) => (
-                          <li key={link.href}>
-                            <Link href={link.href as Route} className="underline underline-offset-2" data-testid="agent-evidence-link">
-                              {link.label}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardBody>
-                  </Card>
+                  <FindingCard finding={finding} />
                 </li>
               ))}
             </ol>
+          )}
+          {result.answer.separateFindings.length > 0 && (
+            <section aria-labelledby={`turn-${index}-separate`} className="flex flex-col gap-3" data-testid="agent-separate-findings">
+              <div>
+                <h3 id={`turn-${index}-separate`} className="text-sm font-semibold">
+                  {separateHeading(result.answer.separateFindings, result.answer.rankingChannel)}
+                </h3>
+                <p className="text-xs text-[var(--color-ink-muted)]">{separateNote(result.answer.separateFindings, result.answer.rankingChannel)}</p>
+              </div>
+              <ol className="flex flex-col gap-3">
+                {result.answer.separateFindings.map((finding) => (
+                  <li key={finding.basedOn}>
+                    <FindingCard finding={finding} />
+                  </li>
+                ))}
+              </ol>
+            </section>
           )}
           {(result.answer.gaps.length > 0 || result.toolGaps.length > 0) && (
             <Card testId="agent-gaps">

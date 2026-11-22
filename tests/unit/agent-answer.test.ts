@@ -76,6 +76,7 @@ function context(overrides: Partial<AnswerContext> = {}): AnswerContext {
     ]),
     products: new Map([['prd_tent', 'Ridgeline 2P Backpacking Tent']]),
     figuresWithoutFindings: [],
+    rankingChannel: null,
     ...overrides,
   };
 }
@@ -315,6 +316,36 @@ describe('ranked findings are not dropped', () => {
     expect(validateAnswer(answer([finding({ basedOn: 'meta' })]), ctx)).toEqual([]);
     // The top finding alongside others is fine; only its absence is not.
     expect(validateAnswer(answer([finding({ basedOn: 'meta2' }), finding({ basedOn: 'meta' })]), ctx)).toEqual([]);
+  });
+
+  it('in a channel conversation, requires that channel\'s top finding, not a site-wide audit ranked above it', () => {
+    const findings = new Map([
+      // A page audit counts sessions from every channel, so it outranks on sample.
+      ['audit', known('audit', { priority: 'Critical', affectedSessions: 900, scope: { channel: null, productId: 'prd_tent' } })],
+      ['organic', known('organic', { priority: 'High', affectedSessions: 50, scope: { channel: 'Organic Search', productId: null } })],
+      ['organic2', known('organic2', { priority: 'Medium', affectedSessions: 500, scope: { channel: 'Organic Search', productId: null } })],
+    ]);
+    const organic = context({ findings, rankingChannel: 'Organic Search' });
+    const auditOnly = validateAnswer(answer([finding({ basedOn: 'audit', facts: [] })]), organic);
+    expect(codes(auditOnly)).toEqual(['top-finding-omitted']);
+    expect(auditOnly[0]?.message).toContain('"organic"');
+    expect(auditOnly[0]?.message).toContain('Organic Search finding');
+    expect(validateAnswer(answer([finding({ basedOn: 'organic', facts: [] })]), organic)).toEqual([]);
+
+    // Site-wide, everything competes, so the audit is the one to lead with.
+    const site = context({ findings, rankingChannel: null });
+    expect(codes(validateAnswer(answer([finding({ basedOn: 'organic', facts: [] })]), site))).toEqual(['top-finding-omitted']);
+    expect(validateAnswer(answer([finding({ basedOn: 'audit', facts: [] })]), site)).toEqual([]);
+  });
+
+  it('in a channel conversation with only site-wide findings, requires the top of those', () => {
+    const findings = new Map([
+      ['audit', known('audit', { priority: 'Critical', scope: { channel: null, productId: 'prd_tent' } })],
+      ['audit2', known('audit2', { priority: 'Low', scope: { channel: null, productId: 'prd_tent' } })],
+    ]);
+    const organic = context({ findings, rankingChannel: 'Organic Search' });
+    expect(codes(validateAnswer(answer([finding({ basedOn: 'audit2', facts: [] })]), organic))).toEqual(['top-finding-omitted']);
+    expect(validateAnswer(answer([finding({ basedOn: 'audit', facts: [] })]), organic)).toEqual([]);
   });
 });
 

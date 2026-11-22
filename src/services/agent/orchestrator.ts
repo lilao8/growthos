@@ -49,8 +49,21 @@ export interface AgentLimits {
   maxInputChars: number;
 }
 
-/** The smallest share a tool result is given, enough for its status and a few figures. */
+/**
+ * The smallest share worth running a tool for: its status and a few figures.
+ * With less room than this (or than the per-tool cap, if that is smaller) the
+ * tool is not run at all.
+ */
 const MIN_TOOL_RESULT_CHARS = 1_500;
+
+const BUDGET_NUDGE =
+  'The input budget for this question has been reached. Do not call more tools. Answer now with what you have, and list what you could not check as gaps.';
+
+/** Share of the turn's input budget kept free for answering and one correction. */
+const ANSWER_RESERVE_SHARE = 0.1;
+
+/** Room taken by the short reply sent for a call that is not run. */
+const SKIPPED_CALL_CHARS = 200;
 
 export const DEFAULT_LIMITS: AgentLimits = {
   maxToolCalls: 8,
@@ -248,7 +261,9 @@ export function forModel(
   maxChars: number = DEFAULT_LIMITS.maxToolResultChars,
 ): string {
   const full = fullForModel(outcome);
-  if (full.length <= maxChars || !('meta' in outcome) || (outcome.status !== 'ok' && outcome.status !== 'empty')) return full;
+  if (full.length <= maxChars) return full;
+  // An error or a refusal has no figures to keep: it is cut to the cap.
+  if (!('meta' in outcome) || (outcome.status !== 'ok' && outcome.status !== 'empty')) return tooLarge(outcome.status, maxChars);
 
   const ranked = rankFindings(outcome.findings).ranked.map((entry) => entry.finding);
   const ordered = [...ranked, ...outcome.findings.filter((finding) => !ranked.includes(finding))];
@@ -302,7 +317,26 @@ export function forModel(
     }
     return build(findings, kept, figures) ?? '';
   }
-  return JSON.stringify({ status: outcome.status, truncated: { reason: `This result was too large to send (limit ${maxChars} characters).` } });
+  return tooLarge(outcome.status, maxChars);
+}
+
+/**
+ * The reply for a result that does not fit at all — never longer than the
+ * cap, so the per-tool limit holds whatever the result was.
+ */
+function tooLarge(status: string, maxChars: number): string {
+  const candidates = [
+    JSON.stringify({ status, truncated: { reason: `This result was too large to send (limit ${maxChars} characters).` } }),
+    JSON.stringify({ status, truncated: true }),
+    JSON.stringify({ truncated: true }),
+    '{}',
+  ];
+  return candidates.find((text) => text.length <= maxChars) ?? '';
+}
+
+function skippedToolResult(status: string, message: string, maxChars: number): string {
+  const content = JSON.stringify({ status, message });
+  return content.length <= maxChars ? content : tooLarge(status, maxChars);
 }
 
 interface CompactComparison {
@@ -439,6 +473,8 @@ export async function runAgentTurn(
   let toolCallsUsed = 0;
   let usage = null as AgentTurnResult['usage'];
   let budgetReached = false;
+  let budgetAnnounced = false;
+  const answerReserve = Math.floor(limits.maxInputChars * ANSWER_RESERVE_SHARE);
   const validationLog: string[][] = [];
   /** Set when any answer this turn claimed an action was carried out. */
   let actionClaimed = false;
@@ -475,7 +511,7 @@ export async function runAgentTurn(
     const answer: RenderedAnswer | null = !noActionTaken
       ? result.answer
       : result.answer === null
-        ? { summary: refusal, facts: [], findings: [], gaps: [], source: 'fallback', citedRefIds: [] }
+        ? { summary: refusal, facts: [], findings: [], separateFindings: [], rankingChannel: scope.channel, gaps: [], source: 'fallback', citedRefIds: [] }
         : { ...result.answer, summary: refusal };
     const status = noActionTaken && result.status === 'failed' ? 'fallback' : result.status;
     const done: AgentTurnResult = {
@@ -489,7 +525,7 @@ export async function runAgentTurn(
       toolNotes: context.toolNotes(),
       refusedActions,
       noActionTaken,
-      citations: citationsFor(answer, context.build()),
+      citations: citationsFor(answer, context.build(scope.channel)),
       provenance: { ...context.provenance(), ruleVersions: [...context.provenance().ruleVersions, AGENT_PRIORITY_VERSION].sort() },
       usage,
       validation: validationLog.map((codes) => ({ issueCodes: codes })),
@@ -504,7 +540,7 @@ export async function runAgentTurn(
   };
 
   const fallback = (reason: string): AgentTurnResult => {
-    const built = context.build();
+    const built = context.build(scope.channel);
     // Nothing at all to show — no finding, no figure, no gap — is a failure.
     if (built.findings.size === 0 && built.figuresWithoutFindings.length === 0 && context.toolGaps().length === 0) {
       return finish({ status: 'failed', answer: null, issues, message: reason });
@@ -536,7 +572,7 @@ export async function runAgentTurn(
       };
       toolCalls.push(record);
       onEvent({ type: 'tool-end', record });
-      return JSON.stringify(result);
+      return forModel(result, allowance);
     }
 
     const effective = parsed.ok ? applyScope(call.name, parsed.value, scope) : call.arguments;
@@ -582,10 +618,13 @@ export async function runAgentTurn(
         notes.push(`The input to the model reached ${inputChars} characters, past the ${limits.maxInputChars}-character budget.`);
         return fallback('The analysis gathered more data than fits in one answer.');
       }
-      if (inputChars > limits.maxInputChars && !budgetReached) {
+      if (inputChars > limits.maxInputChars - answerReserve && !budgetReached) {
         budgetReached = true;
         notes.push(`The input budget of ${limits.maxInputChars} characters was reached, so no further tools were run.`);
-        messages.push({ role: 'user', content: 'The input budget for this question has been reached. Do not call more tools. Answer now with what you have, and list what you could not check as gaps.' });
+      }
+      if (budgetReached && !budgetAnnounced) {
+        budgetAnnounced = true;
+        messages.push({ role: 'user', content: BUDGET_NUDGE });
       }
 
       let reply;
@@ -619,30 +658,37 @@ export async function runAgentTurn(
           // A cancelled or timed-out turn starts nothing new, even mid-batch.
           if (turn.signal.aborted) {
             const message = 'Not run: the request was cancelled or ran out of time.';
-            messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify({ status: 'cancelled', message }) });
+            messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: skippedToolResult('cancelled', message, limits.maxToolResultChars) });
             toolCalls.push({ id: call.id, name: call.name, input: call.arguments, status: 'cancelled', summary: message });
             continue;
           }
+          // Each result's share of what is left of the turn budget, after the
+          // room kept for answering and for the replies to the calls after
+          // it — checked before every call, so a parallel batch stops as soon
+          // as the budget is spent instead of running past it.
+          const callsLeft = reply.calls.length - index;
+          const remaining =
+            limits.maxInputChars - answerReserve - messageChars(messages) - SKIPPED_CALL_CHARS * (callsLeft - 1);
+          const allowance = Math.min(limits.maxToolResultChars, Math.floor(remaining / callsLeft));
+          if (!budgetReached && allowance < Math.min(MIN_TOOL_RESULT_CHARS, limits.maxToolResultChars)) {
+            budgetReached = true;
+            notes.push(`The input budget of ${limits.maxInputChars} characters was reached, so no further tools were run.`);
+          }
           if (budgetReached) {
             const message = 'Not run: the input budget for this question has been reached.';
-            messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify({ status: 'budget-reached', message }) });
+            messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: skippedToolResult('budget-reached', message, limits.maxToolResultChars) });
             toolCalls.push({ id: call.id, name: call.name, input: call.arguments, status: 'budget-reached', summary: message });
             continue;
           }
           if (toolCallsUsed >= limits.maxToolCalls) {
             const refused = { status: 'limit-reached', message: `The limit of ${limits.maxToolCalls} tool calls per question has been reached.` };
-            messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify(refused) });
+            messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: skippedToolResult('limit-reached', refused.message, limits.maxToolResultChars) });
             toolCalls.push({ id: call.id, name: call.name, input: call.arguments, status: 'limit-reached', summary: refused.message });
             if (!limitAnnounced) notes.push(refused.message);
             limitAnnounced = true;
             continue;
           }
           toolCallsUsed += 1;
-          // Each result's share of what is left of the turn budget, so a
-          // parallel batch cannot carry the input far past it in one step.
-          const callsLeft = reply.calls.length - index;
-          const remaining = limits.maxInputChars - messageChars(messages);
-          const allowance = Math.max(MIN_TOOL_RESULT_CHARS, Math.min(limits.maxToolResultChars, Math.floor(remaining / callsLeft)));
           const content = await runCall(call, allowance);
           messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content });
         }
@@ -668,7 +714,7 @@ export async function runAgentTurn(
         continue;
       }
 
-      const built = context.build();
+      const built = context.build(scope.channel);
       issues = validateAnswer(answer, built);
       validationLog.push([...new Set(issues.map((issue) => issue.code))]);
       if (issues.some((issue) => issue.code === 'action-claim')) actionClaimed = true;

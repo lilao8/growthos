@@ -1,3 +1,4 @@
+import type { AgentTurnResult } from '../src/services/agent/orchestrator';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { gotoReady } from './ready';
@@ -207,14 +208,17 @@ test('leaving the page while the agent works cancels the request', async ({ page
 });
 
 test('a claimed action with no tool behind it is shown as not executed', async ({ page }) => {
-  const result = {
+  const result: AgentTurnResult = {
     status: 'answered',
     answer: {
       summary: [{ kind: 'text', text: 'No action was taken: this agent has no tool that changes anything, so nothing was changed.' }],
       facts: [],
       findings: [],
+      separateFindings: [],
+      rankingChannel: null,
       gaps: [],
       source: 'model',
+      citedRefIds: [],
     },
     scope: { range: 30, channel: null, products: [] },
     window: { start: '2026-08-02', end: '2026-08-31', days: 30 },
