@@ -20,6 +20,7 @@ import { AnswerText, plainText } from './answer-text';
 const EXAMPLES = [
   '过去 30 天，独立站最该优先排查什么？',
   'What should we look into first over the last 30 days?',
+  '过去 30 天，哪些 SKU 的客服反馈最多？',
 ];
 const FOLLOW_UP_EXAMPLE = '只看自然搜索呢？';
 
@@ -28,6 +29,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_funnel: 'Walking the conversion funnel',
   get_product_performance: 'Looking up product performance',
   get_audit_findings: 'Reading SEO and GEO audit findings',
+  get_support_feedback: 'Counting support tickets by SKU and issue',
   set_analysis_scope: 'Updating the analysis scope',
 };
 
@@ -155,7 +157,9 @@ export function AgentView({ mode }: { mode: DemoDataMode | null }) {
   }
 
   const running = status.kind === 'running';
-  const examples = turns.length === 0 ? EXAMPLES : [FOLLOW_UP_EXAMPLE];
+  const lastTurn = turns.at(-1);
+  const isSupportAnswer = lastTurn?.result.toolCalls.some((entry) => entry.name === 'get_support_feedback');
+  const examples = lastTurn === undefined ? EXAMPLES : [isSupportAnswer ? '只看 Ridgeline 2P 呢？' : FOLLOW_UP_EXAMPLE];
 
   return (
     <div className="flex flex-col gap-6" data-testid="agent-ready">

@@ -112,6 +112,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
       'Given everything above, what should I do on Monday morning?',
   },
   {
+    href: '/support',
+    label: 'Support Feedback',
+    purpose: 'Simulated support tickets by SKU and issue category.',
+    channel: 'Storefront',
+    question: 'Which products and issues account for the most support tickets?',
+  },
+  {
     href: '/agent',
     label: 'Ops Agent',
     purpose:

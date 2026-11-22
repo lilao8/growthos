@@ -34,6 +34,7 @@ describe('navigation items', () => {
       '/amazon',
       '/amazon/advertising',
       '/recommendations',
+      '/support',
       '/agent',
     ]);
   });

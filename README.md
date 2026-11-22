@@ -55,6 +55,7 @@ GrowthOS 针对四类具体的失效方式设计：
 | **Amazon** | 我们的亚马逊 listing 能不能卖，最差的是哪个？ | 17 个 ASIN 的 listing 质量审计，14 条规则（标题结构、五点描述、主图合规、**按字节计的后台搜索词**、变体关系、评论健康度、Buy Box 等） |
 | **Amazon Ads** | 哪些搜索词值得投，哪些在烧钱？ | Search Term 报表分析、ACOS/TACOS/CTR/CVR/CPC、收割与否定候选、Unit Session Percentage 与自然占比 |
 | **Recommendations** | 综合以上，周一早上该做什么？ | 汇总五类来源的统一任务清单，稳定 ID、影响/工作量四象限、证据、深链、完成状态持久化 |
+| **Support Feedback** | 哪些 SKU 的客服反馈最多，问题集中在哪？ | 模拟工单按 SKU 和问题分类聚合，保留未匹配工单，Ops Agent 的件数可跳转到对应工单 |
 | **About this project** | 我在看什么，该信到什么程度？ | 动机、问题、模块关系、模型局限、演示路径、**demo reset** |
 
 ## 技术架构

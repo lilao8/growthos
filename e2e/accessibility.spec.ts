@@ -57,6 +57,7 @@ const ROUTES = [
   '/amazon/lst_trailcell_lantern',
   '/amazon/advertising',
   '/recommendations',
+  '/support',
   '/agent',
   '/agent/replays',
   '/agent/replays/scripted-review',

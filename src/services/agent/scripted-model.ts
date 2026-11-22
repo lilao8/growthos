@@ -1,3 +1,6 @@
+import { supportProductForQuery } from '@/domain/support-feedback';
+import { SUPPORT_CATALOGUE } from '@/services/support-feedback';
+import { SUPPORT_TOOL_NAME } from '@/services/agent-tools/support';
 import { looksLikeActionRequest } from '@/domain/agent/intent';
 import { rankFindings, type EvidenceStrength } from '@/domain/agent/priority';
 import type { Priority } from '@/domain/types';
@@ -107,6 +110,57 @@ const PRODUCT_LOOKUP = /购买会话|purchasing sessions|how many purchases/i;
 const PRODUCT_NAME = /[A-Z][a-z]{3,}/;
 const ORGANIC = /自然搜索|organic/i;
 const CJK = /[一-鿿]/;
+const SUPPORT_QUESTION = /客服|工单|售后|support (feedback|tickets?)|customer (feedback|support)/i;
+const SUPPORT_SKU_FOLLOW_UP = /^(?:只看\s*|only\s+|what about\s+)(.+?)(?:\s*[呢?？。]+)?$/i;
+const QUESTION_RANGE = /(?:^|[^0-9])(7|30|90)\s*(?:天|days?\b)/i;
+
+function supportStep(messages: readonly AgentMessage[], question: ReturnType<typeof currentQuestion>, results: readonly ToolResult[]): ModelTurn | null {
+  const earlier = messages.slice(0, question.index).reverse();
+  const lastUser = earlier.find((message) => message.role === 'user' && !isSystemNudge(message.content));
+  const lastAnswer = earlier.find((message) => message.role === 'assistant');
+  const followUp = SUPPORT_SKU_FOLLOW_UP.exec(question.text.trim())?.[1];
+  const followsSupport = followUp !== undefined && (
+    SUPPORT_QUESTION.test(lastUser?.content ?? '') || SUPPORT_QUESTION.test(lastAnswer?.content ?? '')
+  );
+  if (!followsSupport && !SUPPORT_QUESTION.test(question.text)) return null;
+
+  const result = results.find(({ name }) => name === SUPPORT_TOOL_NAME);
+  if (result === undefined) {
+    const range = QUESTION_RANGE.exec(question.text)?.[1] ??
+      (followsSupport ? QUESTION_RANGE.exec(lastUser?.content ?? '')?.[1] : undefined);
+    const args: Record<string, unknown> = range === undefined ? {} : { range: Number(range) };
+    if (followsSupport) {
+      const product = supportProductForQuery(followUp, SUPPORT_CATALOGUE);
+      if (product !== null) {
+        return { type: 'tool_calls', calls: [
+          call(SCOPE_TOOL_NAME, { products: [product.id], ...(range === undefined ? {} : { range: Number(range) }) }),
+          call(SUPPORT_TOOL_NAME),
+        ] };
+      }
+      args['products'] = [followUp];
+    } else {
+      const text = question.text.toLowerCase();
+      const products = SUPPORT_CATALOGUE.filter(({ sku, title }) => text.includes(sku.toLowerCase()) || text.includes(title.toLowerCase()));
+      if (products.length > 0) args['products'] = products.map(({ id }) => id);
+    }
+    return { type: 'tool_calls', calls: [call(SUPPORT_TOOL_NAME, args)] };
+  }
+
+  const refs = listIn<SeenRef>([result], 'refs');
+  const available = refs.length > 0;
+  const chinese = CJK.test(question.text);
+  return {
+    type: 'final',
+    content: JSON.stringify({
+      summary: chinese
+        ? available ? '以下是模拟客服工单件数和主要问题，可点开数字核对工单。' : '没有找到可用的客服工单统计，请核对商品和筛选条件。'
+        : available ? 'These support ticket counts and leading issues link to the matching simulated tickets.' : 'No support ticket figures were available. Check the SKU and filters.',
+      facts: refs.map(({ refId }) => ({ kind: 'value', refId })),
+      findings: [],
+      gaps: [],
+    }),
+  };
+}
 
 function finalAnswer(question: string, results: readonly ToolResult[], scopeNote: string): ModelTurn {
   const chinese = CJK.test(question);
@@ -180,9 +234,13 @@ const demoStep: ScriptStep = (messages) => {
   if (looksLikeActionRequest(question.text)) {
     // Tries the action a careless agent would, and is refused: the registry
     // has no such tool.
-    if (!called.has('mark_recommendation_done')) return { type: 'tool_calls', calls: [call('mark_recommendation_done', { id: 'first' })] };
+    const action = SUPPORT_QUESTION.test(question.text) ? 'mark_support_ticket_processed' : 'mark_recommendation_done';
+    if (!called.has(action)) return { type: 'tool_calls', calls: [call(action, { id: 'first' })] };
     return readOnlyAnswer(question.text);
   }
+
+  const support = supportStep(messages, question, results);
+  if (support !== null) return support;
 
   if (PRODUCT_LOOKUP.test(question.text)) {
     if (!called.has('get_product_performance')) {

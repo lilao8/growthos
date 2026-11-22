@@ -51,6 +51,8 @@ export interface Gap {
     | 'below-minimum-sessions'
     | 'zero-sessions'
     | 'product-not-found'
+    | 'no-support-tickets'
+    | 'support-ranking-limited'
     | 'no-state'
     | 'not-audited';
   message: string;

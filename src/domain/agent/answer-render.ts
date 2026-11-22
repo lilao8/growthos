@@ -49,6 +49,7 @@ function period(ref: CitableRef): string {
  * an Organic Search one.
  */
 function describe(ref: CitableRef, scope: FindingScope | null = null): string {
+  if (ref.refId.startsWith('support:')) return ref.label;
   if (ref.channel !== null) return ref.label.includes(ref.channel) ? ref.label : `${ref.label} (${ref.channel})`;
   // A site figure inside a channel finding is a point of comparison, not the channel's own figure.
   if (scope !== null && scope.channel !== null && !ref.funnel) return `${ref.label} (site-wide benchmark)`;
@@ -241,15 +242,21 @@ export function renderAnswer(answer: AgentAnswer, context: AnswerContext, source
   const ranked = render(main);
   const apart = render(separate);
 
+  const lookupRefs = [...context.refs.keys()];
+  const supportLookup = lookupRefs.length > 0 && lookupRefs.every((id) => id.startsWith('support:')) &&
+    context.findings.size === 0 && context.audits.size === 0;
+  const facts: readonly AnswerFact[] = supportLookup
+    ? lookupRefs.slice(0, 12).map((refId) => ({ kind: 'value', refId }))
+    : answer.facts;
   const cited = [
-    ...answer.facts.map((fact) => fact.refId),
+    ...facts.map((fact) => fact.refId),
     ...answer.findings.flatMap((finding) => finding.facts.map((fact) => fact.refId)),
     ...ranked.refIds,
     ...apart.refIds,
   ];
   return {
     summary: renderProse(answer.summary, context),
-    facts: answer.facts.map((fact) => renderFact(fact, context)),
+    facts: facts.map((fact) => renderFact(fact, context)),
     findings: ranked.findings,
     separateFindings: apart.findings,
     rankingChannel: context.rankingChannel,

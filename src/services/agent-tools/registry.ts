@@ -2,6 +2,7 @@ import { auditFindingsTool } from './audits';
 import { channelPerformanceTool } from './channels';
 import { funnelTool } from './funnel';
 import { productPerformanceTool } from './products';
+import { supportFeedbackTool } from './support';
 import { messageFrom } from './shared';
 import type { AgentTool, ToolContext, ToolOutcome } from './types';
 
@@ -61,6 +62,7 @@ export const AGENT_TOOLS: readonly RegisteredTool[] = [
   register(funnelTool),
   register(productPerformanceTool),
   register(auditFindingsTool),
+  register(supportFeedbackTool),
 ];
 
 export const AGENT_TOOL_NAMES = AGENT_TOOLS.map((tool) => tool.name);

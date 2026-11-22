@@ -31,6 +31,7 @@ export const METRIC_DEFINITIONS = {
   product_conversion_rate:
     'Sessions that bought this product ÷ sessions that viewed it. Not additive across products.',
   product_revenue: 'Order-line revenue apportioned to this product.',
+  support_tickets: 'Distinct simulated support tickets, counted by creation date.',
   audit_check: 'One rule verdict from the versioned SEO or GEO engine.',
 } as const;
 

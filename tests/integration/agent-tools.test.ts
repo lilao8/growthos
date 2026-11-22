@@ -79,12 +79,13 @@ function failingOnCall(n: number): TrafficRepository {
 }
 
 describe('registry', () => {
-  it('exposes exactly the four read-only tools', () => {
+  it('exposes the five read-only tools', () => {
     expect(AGENT_TOOL_NAMES).toEqual([
       'get_channel_performance',
       'get_funnel',
       'get_product_performance',
       'get_audit_findings',
+      'get_support_feedback',
     ]);
     for (const tool of AGENT_TOOLS) expect(tool.readOnly).toBe(true);
   });
@@ -109,7 +110,7 @@ describe('registry', () => {
     expect(channel.status).toBe('invalid-input');
   });
 
-  it.each(AGENT_TOOL_NAMES)('%s turns a failing data source into an error outcome', async (name) => {
+  it.each(AGENT_TOOL_NAMES.filter((name) => name !== 'get_support_feedback'))('%s turns a failing traffic source into an error outcome', async (name) => {
     const outcome = await runTool(name, {}, context({ traffic: createFailingTrafficRepository('source down') }));
     expect(outcome).toEqual({ status: 'error', message: 'source down' });
   });
