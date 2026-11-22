@@ -63,6 +63,9 @@ it('records agent replays', async () => {
     let scope: ConversationScope = DEFAULT_SCOPE;
     const history: PriorTurn[] = [];
     const turns: ReplayTurn[] = [];
+    // Printed only after the recording passes the sensitive-content check, so
+    // nothing the model supplied (a tool name, say) reaches the terminal first.
+    const trace: string[] = [];
     for (const question of scenario.questions) {
       const result = await runAgentTurn(
         { question, history, scope },
@@ -71,9 +74,8 @@ it('records agent replays', async () => {
       turns.push({ question, scopeBefore: scope, result });
       history.push({ question, answerSummary: result.answer === null ? (result.message ?? '') : result.answer.summary.map((segment) => segment.text).join('') });
       scope = result.scope;
-      // A short, key-free trace for the operator running the recording.
-      process.stdout.write(
-        `[${name}] ${question}\n  status=${result.status} validation=${JSON.stringify(result.validation.map((round) => round.issueCodes))} calls=${result.toolCalls.map((call) => `${call.name}:${call.status}`).join(', ')}\n  issues=${result.issues.map((issue) => issue.code).join(', ') || 'none'} findings=${result.answer?.findings.length ?? 0} facts=${result.answer?.facts.length ?? 0} usage=${JSON.stringify(result.usage)}\n`,
+      trace.push(
+        `[${name}] ${question}\n  status=${result.status} validation=${JSON.stringify(result.validation.map((round) => round.issueCodes))} calls=${result.toolCalls.map((call) => `${call.name}:${call.status}`).join(', ')}\n  findings=${result.answer?.findings.length ?? 0} facts=${result.answer?.facts.length ?? 0} usage=${JSON.stringify(result.usage)}\n`,
       );
     }
 
@@ -92,6 +94,7 @@ it('records agent replays', async () => {
     // auth header, so a recording that captured one is never written.
     const checked = parseReplay(JSON.parse(JSON.stringify(replay)));
     if (!checked.ok) throw new Error(`Not written: ${checked.error}`);
+    for (const line of trace) process.stdout.write(line);
     writeFileSync(path.join(DIR, `${replay.id}.json`), `${JSON.stringify(replay, null, 2)}\n`);
   }
   writeIndex();

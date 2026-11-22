@@ -49,6 +49,9 @@ export interface AgentLimits {
   maxInputChars: number;
 }
 
+/** The smallest share a tool result is given, enough for its status and a few figures. */
+const MIN_TOOL_RESULT_CHARS = 1_500;
+
 export const DEFAULT_LIMITS: AgentLimits = {
   maxToolCalls: 8,
   toolTimeoutMs: 5_000,
@@ -136,9 +139,10 @@ export interface AgentTurnResult {
    */
   validation: Array<{ issueCodes: string[] }>;
   /**
-   * Tokens the model reported for this turn, when it reports them: totals
-   * across every request, how many requests, and the largest single prompt —
-   * the one that meets a per-request limit first.
+   * Tokens the model reported for this turn, when it reports them: totals,
+   * `requests` = the number of model responses that reported usage (an HTTP
+   * retry inside the adapter is not counted separately), and the largest
+   * single prompt — the one that meets a per-request limit first.
    */
   usage: { promptTokens: number; completionTokens: number; requests: number; largestPromptTokens: number } | null;
   /** Issues from the last validation, when the answer had to be repaired or replaced. */
@@ -251,21 +255,13 @@ export function forModel(
   const comparisons = comparisonsIn(outcome.data);
   const refsById = new Map(outcome.meta.refs.map((ref) => [ref.refId, ref]));
 
-  const build = (findings: AgentFinding[], extras: number): string | null => {
+  const build = (findings: AgentFinding[], keptComparisons: readonly CompactComparison[], extraFigures: ReadonlySet<string>): string | null => {
     const cited = new Set(findings.flatMap((finding) => finding.refIds));
-    // Extra units: each comparison (with both figures), then each other figure.
-    const units: Array<{ refIds: string[]; comparison: CompactComparison | null }> = [
-      ...comparisons.map((comparison) => ({
-        refIds: [comparison.currentRefId, ...(comparison.previousRefId === null ? [] : [comparison.previousRefId])],
-        comparison,
-      })),
-      ...outcome.meta.refs.map((ref) => ({ refIds: [ref.refId], comparison: null })),
-    ];
-    const included = new Set(cited);
-    const keptComparisons: CompactComparison[] = [];
-    for (const unit of units.slice(0, extras)) {
-      for (const id of unit.refIds) included.add(id);
-      if (unit.comparison !== null) keptComparisons.push(unit.comparison);
+    const included = new Set([...cited, ...extraFigures]);
+    // Each kept comparison brings both of its figures, so the pair is whole.
+    for (const comparison of keptComparisons) {
+      included.add(comparison.currentRefId);
+      if (comparison.previousRefId !== null) included.add(comparison.previousRefId);
     }
     const refs = outcome.meta.refs.filter((ref) => included.has(ref.refId) && refsById.has(ref.refId));
     const text = JSON.stringify({
@@ -290,19 +286,21 @@ export function forModel(
     return text.length <= maxChars ? text : null;
   };
 
-  const unitCount = comparisons.length + outcome.meta.refs.length;
   for (let keep = ordered.length; keep >= 0; keep -= 1) {
     const findings = ordered.slice(0, keep);
-    if (build(findings, 0) === null) continue;
-    // The largest number of extra units that still fits.
-    let low = 0;
-    let high = unitCount;
-    while (low < high) {
-      const mid = Math.ceil((low + high) / 2);
-      if (build(findings, mid) === null) high = mid - 1;
-      else low = mid;
+    if (build(findings, [], new Set()) === null) continue;
+    // Comparisons first, then plain figures, each in order, each kept if it
+    // still fits and skipped if not — so one item too large never blocks the
+    // smaller ones behind it.
+    const kept: CompactComparison[] = [];
+    for (const comparison of comparisons) {
+      if (build(findings, [...kept, comparison], new Set()) !== null) kept.push(comparison);
     }
-    return build(findings, low) ?? '';
+    const figures = new Set<string>();
+    for (const ref of outcome.meta.refs) {
+      if (build(findings, kept, new Set([...figures, ref.refId])) !== null) figures.add(ref.refId);
+    }
+    return build(findings, kept, figures) ?? '';
   }
   return JSON.stringify({ status: outcome.status, truncated: { reason: `This result was too large to send (limit ${maxChars} characters).` } });
 }
@@ -348,6 +346,10 @@ function findingForModel(finding: AgentFinding) {
     priority: finding.priority,
     strength: finding.strength,
     affectedSessions: finding.affectedSessions,
+    // What affectedSessions counts, so the prose cannot read a step's sample
+    // as the sessions it lost.
+    sampleLabel: finding.sampleLabel,
+    lostSessions: finding.lostSessions,
     observed: finding.observed,
     howToVerify: finding.howToVerify,
     refIds: finding.refIds,
@@ -517,7 +519,7 @@ export async function runAgentTurn(
 
   onEvent({ type: 'started', scope, window: scopeWindow(scope), model: deps.model.id });
 
-  const runCall = async (call: ToolCall): Promise<string> => {
+  const runCall = async (call: ToolCall, allowance: number): Promise<string> => {
     const parsed = parseArguments(call.arguments);
     if (call.name === SCOPE_TOOL_NAME) {
       const result = parsed.ok ? applyScopeUpdate(scope, parsed.value) : { status: 'invalid-input' as const, issues: [parsed.message] };
@@ -565,7 +567,7 @@ export async function runAgentTurn(
     };
     toolCalls.push(record);
     onEvent({ type: 'tool-end', record });
-    return forModel(outcome, limits.maxToolResultChars);
+    return forModel(outcome, allowance);
   };
 
   try {
@@ -613,7 +615,7 @@ export async function runAgentTurn(
 
       if (reply.type === 'tool_calls') {
         messages.push({ role: 'assistant', content: null, toolCalls: reply.calls });
-        for (const call of reply.calls) {
+        for (const [index, call] of reply.calls.entries()) {
           // A cancelled or timed-out turn starts nothing new, even mid-batch.
           if (turn.signal.aborted) {
             const message = 'Not run: the request was cancelled or ran out of time.';
@@ -636,7 +638,12 @@ export async function runAgentTurn(
             continue;
           }
           toolCallsUsed += 1;
-          const content = await runCall(call);
+          // Each result's share of what is left of the turn budget, so a
+          // parallel batch cannot carry the input far past it in one step.
+          const callsLeft = reply.calls.length - index;
+          const remaining = limits.maxInputChars - messageChars(messages);
+          const allowance = Math.max(MIN_TOOL_RESULT_CHARS, Math.min(limits.maxToolResultChars, Math.floor(remaining / callsLeft)));
+          const content = await runCall(call, allowance);
           messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content });
         }
         if (limitAnnounced) {

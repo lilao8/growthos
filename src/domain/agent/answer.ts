@@ -225,11 +225,23 @@ function checkProse(raw: string, finding: number | null, context: AnswerContext,
       message: `"${match[0]}" cannot be used in prose. Put figures, changes and audit verdicts in the finding's facts; GrowthOS writes them out.`,
     });
   }
-  for (const match of withoutProducts.replace(ANY_PLACEHOLDER, ' ').matchAll(DIGIT)) {
+  const plain = withoutProducts.replace(ANY_PLACEHOLDER, ' ');
+  for (const match of plain.matchAll(DIGIT)) {
+    // A small number opening a clause and followed by ".", "、" or ")" is a
+    // list marker. It is still refused — prose carries no digits — but the
+    // model is told what it is, which a bare "is a number" does not convey.
+    const after = plain.slice(match.index + match[0].length, match.index + match[0].length + 1);
+    const before = plain.slice(0, match.index).trimEnd();
+    const ordinal = /第$/.test(before) && /^[步项条点个]$/.test(after);
+    const listMarker =
+      /^\d{1,2}$/.test(match[0]) &&
+      (ordinal || (/^[.、)）:：]$/.test(after) && (before === '' || /[：:；;。.!?！？(（\n]$/.test(before))));
     issues.push({
       finding,
       code: 'raw-number',
-      message: `"${match[0]}" is a number in prose. Figures, dates and window lengths come only from facts, which GrowthOS writes out; refer to a product with {{product:<id>}}.`,
+      message: listMarker
+        ? `"${match[0]}${after}" numbers a step. Do not number steps or items: remove the numbering and write the steps as sentences joined by semicolons.`
+        : `"${match[0]}" is a number in prose. Figures, dates and window lengths come only from facts, which GrowthOS writes out; refer to a product with {{product:<id>}}.`,
     });
   }
   if (NUMBER_WORDS.test(withoutProducts)) {

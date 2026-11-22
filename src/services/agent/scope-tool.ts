@@ -22,7 +22,7 @@ export const scopeUpdateInput = z
   );
 
 export const SCOPE_TOOL_DESCRIPTION =
-  'Record that the user changed the analysis conditions (date range, channel, products). Call it before querying data whenever the user narrows or widens the scope. Fields left out keep their current value. Changes no business data.';
+  'Record that the user changed the analysis conditions for the rest of the conversation (date range, channel, products), as in a follow-up such as "only organic search?". Not for a condition inside a one-off question: pass that as a data-tool argument instead. Fields left out keep their current value. Changes no business data.';
 
 export type ScopeToolResult =
   | { status: 'ok'; scope: ConversationScope }

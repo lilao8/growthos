@@ -42,7 +42,10 @@ export default defineConfig({
     // because NEXT_PUBLIC_* values are inlined at build time.
     command: `npm run build && npx next start --port ${PORT}`,
     url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
+    // Never reuse a server already on the port: it may be a developer's
+    // server with a real model configured, which the environment below would
+    // not reach. A busy port fails the run instead (set E2E_PORT to move).
+    reuseExistingServer: false,
     timeout: 240_000,
     stdout: 'ignore',
     env: {

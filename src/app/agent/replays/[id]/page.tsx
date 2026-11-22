@@ -4,7 +4,7 @@ import { TurnView } from '@/components/agent/agent-view';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { findReplay, listReplays } from '@/services/agent/replays';
+import { findReplay, listReplays, publicTurn, summarizeReplay } from '@/services/agent/replays';
 
 interface ReplayPageProps {
   params: Promise<{ id: string }>;
@@ -21,17 +21,7 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
   if (replay === null) notFound();
 
   const live = replay.source === 'live-model';
-  const usage = replay.turns.reduce(
-    (total, turn) => ({
-      prompt: total.prompt + (turn.result.usage?.promptTokens ?? 0),
-      completion: total.completion + (turn.result.usage?.completionTokens ?? 0),
-      requests: total.requests + (turn.result.usage?.requests ?? 0),
-      largest: Math.max(total.largest, turn.result.usage?.largestPromptTokens ?? 0),
-    }),
-    { prompt: 0, completion: 0, requests: 0, largest: 0 },
-  );
-  const repaired = replay.turns.filter((turn) => turn.result.validation.length > 1).length;
-  const provenance = new Set(replay.turns.flatMap((turn) => [...turn.result.provenance.dataSources, ...turn.result.provenance.ruleVersions]));
+  const summary = summarizeReplay(replay);
 
   return (
     <>
@@ -55,20 +45,24 @@ export default async function ReplayPage({ params }: ReplayPageProps) {
             </p>
             {live && (
               <p data-testid="replay-usage">
-                Tokens: {usage.prompt.toLocaleString('en-US')} in, {usage.completion.toLocaleString('en-US')} out, over{' '}
-                {usage.requests} model requests (largest single prompt {usage.largest.toLocaleString('en-US')}).
+                Tokens: {summary.promptTokens.toLocaleString('en-US')} in, {summary.completionTokens.toLocaleString('en-US')} out, across{' '}
+                {summary.responsesWithUsage} model responses that reported usage (largest single prompt{' '}
+                {summary.largestPromptTokens.toLocaleString('en-US')}). Retried requests are not counted separately.
               </p>
             )}
             <p data-testid="replay-validation">
-              Answer checks: {replay.turns.length - repaired} of {replay.turns.length} turns passed on the first attempt
-              {repaired > 0 ? `; ${repaired} needed a correction or fell back to GrowthOS's own ranking` : ''}.
+              Answer checks: {summary.firstPass} of {summary.turns} turns were answered on the first attempt
+              {summary.firstPass < summary.turns
+                ? `; ${summary.turns - summary.firstPass} needed a correction, fell back to GrowthOS's own ranking or failed`
+                : ''}
+              .
             </p>
-            <p data-testid="replay-provenance">Sources and rules: {[...provenance].sort().join(' · ')}</p>
+            <p data-testid="replay-provenance">Sources and rules: {summary.provenance.join(' · ')}</p>
           </CardBody>
         </Card>
 
         {replay.turns.map((turn, index) => (
-          <TurnView key={index} turn={{ question: turn.question, result: turn.result }} index={index} />
+          <TurnView key={index} turn={{ question: turn.question, result: publicTurn(turn.result) }} index={index} />
         ))}
 
         <Link href="/agent/replays" className="text-sm underline underline-offset-2">

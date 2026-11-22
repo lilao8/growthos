@@ -2,7 +2,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { findReplay, findSensitive, isSiteLink, listReplays, parseReplay } from '@/services/agent/replays';
+import { findReplay, findSensitive, isSiteLink, listReplays, parseReplay, passedFirstTime, publicTurn, summarizeReplay } from '@/services/agent/replays';
 import { runAgentTurn } from '@/services/agent/orchestrator';
 import { createDemoModel } from '@/services/agent/scripted-model';
 import { createFixtureTrafficRepository } from '@/repositories/traffic-repository';
@@ -74,6 +74,21 @@ describe('replay format', () => {
     expect(parseReplay(inGap).ok).toBe(false);
   });
 
+  it('accepts only bounded tool inputs and well-formed citations, and no extra result fields', async () => {
+    const cases: Array<[string, (result: Record<string, unknown>) => void]> = [
+      ['nested tool input', (result) => { (result['toolCalls'] as Array<Record<string, unknown>>)[0]!['input'] = { deep: { nested: true } }; }],
+      ['oversized raw input', (result) => { (result['toolCalls'] as Array<Record<string, unknown>>)[0]!['input'] = 'x'.repeat(2001); }],
+      ['citation with an off-site link', (result) => { ((result['citations'] as { refs: Array<Record<string, unknown>> }).refs[0]!)['href'] = 'https://example.com'; }],
+      ['citation with an unknown unit', (result) => { ((result['citations'] as { refs: Array<Record<string, unknown>> }).refs[0]!)['unit'] = 'bitcoin'; }],
+      ['an extra result field', (result) => { result['debug'] = 'x'; }],
+    ];
+    for (const [label, mutate] of cases) {
+      const raw = await replay();
+      mutate((raw['turns'] as Array<{ result: Record<string, unknown> }>)[0]!.result);
+      expect(parseReplay(raw).ok, label).toBe(false);
+    }
+  });
+
   it('refuses a replay that carries a key, an organisation id or an auth header', async () => {
     for (const leak of ['sk-abcdef123456', 'org-AbCdEf1234', 'Bearer abc', 'Authorization: x']) {
       const raw = await replay();
@@ -82,6 +97,44 @@ describe('replay format', () => {
       expect(parsed.ok, leak).toBe(false);
       if (!parsed.ok) expect(parsed.error).toContain('sensitive content');
     }
+  });
+});
+
+describe('first-attempt count', () => {
+  it.each([
+    ['answered with one clean check', 'answered', [[]], true],
+    ['answered after a repair', 'answered', [['raw-number'], []], false],
+    ['no answer submitted at all', 'failed', [], false],
+    ['first answer refused, repair never came', 'fallback', [['raw-number']], false],
+    ['answered status but no submission recorded', 'answered', [], false],
+    ['one submission with issues, still answered', 'answered', [['raw-number']], false],
+  ] as const)('%s', (_label, status, rounds, expected) => {
+    expect(passedFirstTime({ status, validation: rounds.map((codes) => ({ issueCodes: [...codes] })) })).toBe(expected);
+  });
+
+  it('summarises a replay with the exact rule and labels usage as responses, not attempts', async () => {
+    const raw = await replay();
+    const turns = raw['turns'] as Array<{ result: { status: string; validation: unknown[]; usage: unknown } }>;
+    turns.push(JSON.parse(JSON.stringify(turns[0])) as (typeof turns)[number], JSON.parse(JSON.stringify(turns[0])) as (typeof turns)[number]);
+    turns[1]!.result.validation = [];
+    turns[1]!.result.status = 'failed';
+    turns[2]!.result.validation = [{ issueCodes: ['raw-number'] }];
+    turns[2]!.result.status = 'fallback';
+    turns[0]!.result.usage = { promptTokens: 100, completionTokens: 10, requests: 2, largestPromptTokens: 70 };
+    const parsed = parseReplay(raw);
+    if (!parsed.ok) throw new Error(parsed.error);
+    const summary = summarizeReplay(parsed.replay);
+    expect(summary).toMatchObject({ turns: 3, firstPass: 1, responsesWithUsage: 2, promptTokens: 100, largestPromptTokens: 70 });
+  });
+
+  it('sends the browser only what the turn view renders', async () => {
+    const parsed = parseReplay(await replay());
+    if (!parsed.ok) throw new Error(parsed.error);
+    const shown = publicTurn(parsed.replay.turns[0]!.result);
+    expect(Object.keys(shown).sort()).toEqual(
+      ['answer', 'failedChecks', 'message', 'model', 'noActionTaken', 'notes', 'refusedActions', 'scope', 'status', 'toolCalls', 'toolGaps', 'toolNotes', 'window'].sort(),
+    );
+    expect('citations' in shown || 'provenance' in shown || 'usage' in shown || 'validation' in shown || 'issues' in shown).toBe(false);
   });
 });
 

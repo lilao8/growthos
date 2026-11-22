@@ -305,6 +305,30 @@ describe('model input budget', () => {
     }
   });
 
+  it('still fits a short figure when the next comparison pair is too large', () => {
+    const window = { start: '2026-08-02', end: '2026-08-31', days: 30 };
+    const ref = (refId: string, label: string) => ({ refId, label, value: 1, unit: 'count' as const, definition: 'sessions' as const, window, channel: null, productId: null, href: '/analytics?range=30' });
+    const outcome = {
+      status: 'ok' as const,
+      data: {
+        blob: 'x'.repeat(20_000),
+        comparisons: [{ currentRefId: 'big-now', previousRefId: 'big-before', current: 1, previous: 2, relativeChange: -0.5, direction: 'down', evidence: { supportsConclusion: true } }],
+      },
+      meta: {
+        window,
+        previousWindow: null,
+        dataSources: [],
+        refs: [ref('big-now', 'L'.repeat(3_000)), ref('big-before', 'L'.repeat(3_000)), ref('short', 'Short figure')],
+        auditRefs: [],
+        gaps: [],
+      },
+      findings: [],
+    };
+    const body = JSON.parse(forModel(outcome, 2_000)) as { refs: { refId: string }[]; comparisons: unknown[] };
+    expect(body.comparisons).toEqual([]);
+    expect(body.refs.map((item) => item.refId)).toEqual(['short']);
+  });
+
   it('leaves a small result untouched', async () => {
     const outcome = await runTool('get_funnel', { channel: 'Email', compare: false }, context());
     expect(forModel(outcome, 24_000)).toBe(forModel(outcome, Number.MAX_SAFE_INTEGER));
@@ -327,6 +351,30 @@ describe('model input budget', () => {
     expect(result.notes.some((note) => note.includes('input budget of 6000 characters'))).toBe(true);
     expect(result.status).toBe('answered');
     expect(result.toolCalls.filter((call) => call.status === 'ok').length).toBeLessThan(8);
+  });
+
+  it('shares what is left of the budget across a parallel batch, so the model still gets to answer', async () => {
+    const model = createScriptedModel('batch', (messages) => {
+      const question = currentQuestion(messages);
+      if (resultsSince(messages, question.index).length === 0) {
+        return {
+          type: 'tool_calls',
+          calls: [
+            { id: 'a', name: 'get_funnel', arguments: '{}' },
+            { id: 'b', name: 'get_channel_performance', arguments: '{}' },
+            { id: 'c', name: 'get_product_performance', arguments: '{}' },
+            { id: 'd', name: 'get_audit_findings', arguments: '{}' },
+          ],
+        };
+      }
+      return { type: 'final', content: JSON.stringify({ summary: 'Answered within the budget.', facts: [], findings: [], gaps: [] }) };
+    });
+    const result = await runAgentTurn({ question: 'q', history: [], scope: DEFAULT_SCOPE }, { model, ...context(), limits: { maxInputChars: 20_000, maxToolResultChars: 6_000 } });
+    expect(result.toolCalls.map((call) => call.status)).toEqual(['ok', 'ok', 'ok', 'ok']);
+    // The batch stays under 1.25 times the budget, so the model is asked to answer instead of the turn falling back.
+    expect(result.notes.some((note) => note.includes('more data than fits') || note.includes('past the 20000-character budget'))).toBe(false);
+    // The model got to submit an answer (validated on its own merits).
+    expect(result.validation.length).toBeGreaterThan(0);
   });
 
   it('gives up when the input runs far past the budget', async () => {

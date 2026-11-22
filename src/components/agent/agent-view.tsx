@@ -43,7 +43,11 @@ function describeScope(scope: ConversationScope): string {
 
 export interface Turn {
   question: string;
-  result: AgentTurnResult;
+  /** The fields the view renders; a replay passes only these. */
+  result: Pick<
+    AgentTurnResult,
+    'status' | 'answer' | 'scope' | 'window' | 'toolCalls' | 'toolGaps' | 'toolNotes' | 'refusedActions' | 'noActionTaken' | 'failedChecks' | 'notes' | 'model' | 'message'
+  >;
 }
 
 type Status =

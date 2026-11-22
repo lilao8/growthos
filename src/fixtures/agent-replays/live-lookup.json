@@ -4,7 +4,7 @@
   "title": "Lookup with no alert: Ridgeline purchasing sessions from organic search",
   "source": "live-model",
   "model": "openai:gpt-5.6-terra",
-  "recordedAt": "2026-11-22T05:17:48.116Z",
+  "recordedAt": "2026-11-22T05:47:53.654Z",
   "demoAsOf": "2026-08-31",
   "stateSource": "seed",
   "turns": [
@@ -21,7 +21,7 @@
           "summary": [
             {
               "kind": "text",
-              "text": "自然搜索下，名称匹配 Ridgeline 的商品购买会话如下。"
+              "text": "自然搜索带来的购买会话已按所有名称含 Ridgeline 的商品列出。"
             }
           ],
           "facts": [
@@ -75,10 +75,8 @@
         "message": null,
         "scope": {
           "range": 30,
-          "channel": "Organic Search",
-          "products": [
-            "Ridgeline"
-          ]
+          "channel": null,
+          "products": []
         },
         "window": {
           "start": "2026-08-02",
@@ -87,19 +85,7 @@
         },
         "toolCalls": [
           {
-            "id": "call_o1JpoFkQk2u1zOaRqzwXQybr",
-            "name": "set_analysis_scope",
-            "input": {
-              "products": [
-                "Ridgeline"
-              ],
-              "channel": "Organic Search"
-            },
-            "status": "ok",
-            "summary": "Scope set to 30 days, Organic Search."
-          },
-          {
-            "id": "call_5SSszZaYQp2FstOHGcuA4fZh",
+            "id": "call_woxmuZuXp1UPH3FMQEzRHHe2",
             "name": "get_product_performance",
             "input": {
               "range": 30,
@@ -178,10 +164,10 @@
           ]
         },
         "usage": {
-          "promptTokens": 5640,
-          "completionTokens": 228,
+          "promptTokens": 5489,
+          "completionTokens": 192,
           "requests": 2,
-          "largestPromptTokens": 3822
+          "largestPromptTokens": 3559
         },
         "validation": [
           {

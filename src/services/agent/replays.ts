@@ -80,18 +80,62 @@ const renderedAnswer = z.strictObject({
   citedRefIds: z.array(z.string()),
 });
 
-const turnResult = z.object({
+/**
+ * What a recorded tool call may carry as input: the parsed arguments (short
+ * text, numbers, booleans, short lists) or, when the model sent invalid JSON,
+ * the raw text — bounded either way. Anything else is not a recording.
+ */
+const toolInput = z.union([
+  z.string().max(2000),
+  z.record(
+    z.string().max(40),
+    z.union([z.string().max(200), z.number(), z.boolean(), z.null(), z.array(z.string().max(200)).max(20)]),
+  ),
+]);
+
+const window2 = z.strictObject({ start: z.string(), end: z.string() });
+const citableRef = z.strictObject({
+  refId: z.string().max(300),
+  label: z.string().max(300),
+  value: z.number().nullable(),
+  unit: z.enum(['count', 'ratio', 'cents', 'multiple']),
+  channel: z.string().nullable(),
+  productId: z.string().nullable(),
+  window: window2,
+  funnel: z.boolean(),
+  href: siteHref,
+});
+const citableComparison = z.strictObject({
+  currentRefId: z.string().max(300),
+  previousRefId: z.string().max(300).nullable(),
+  current: z.number().nullable(),
+  previous: z.number().nullable(),
+  relativeChange: z.number().nullable(),
+  direction: z.enum(['up', 'down', 'flat', 'unknown']),
+  supportsConclusion: z.boolean(),
+});
+const citableAudit = z.strictObject({
+  refId: z.string().max(300),
+  ruleId: z.string().max(80),
+  status: z.string().max(20),
+  evidence: z.string().max(1000).nullable(),
+  productId: z.string().nullable(),
+  pageLabel: z.string().max(300),
+  href: siteHref,
+});
+
+const turnResult = z.strictObject({
   status: z.enum(['answered', 'fallback', 'failed']),
   answer: renderedAnswer.nullable(),
   scope,
   window,
-  toolCalls: z.array(z.strictObject({ id: z.string(), name: z.string(), input: z.unknown(), status: z.string(), summary: z.string() })),
+  toolCalls: z.array(z.strictObject({ id: z.string().max(100), name: z.string().max(64), input: toolInput, status: z.string().max(40), summary: z.string().max(2000) })),
   toolGaps: z.array(z.strictObject({ message: z.string(), links: z.array(z.strictObject({ label: z.string(), href: siteHref })) })),
   toolNotes: z.array(z.string()),
   refusedActions: z.array(z.string()),
   noActionTaken: z.boolean(),
   failedChecks: z.array(z.strictObject({ name: z.string(), message: z.string() })),
-  citations: z.strictObject({ refs: z.array(z.unknown()), comparisons: z.array(z.unknown()), audits: z.array(z.unknown()) }),
+  citations: z.strictObject({ refs: z.array(citableRef), comparisons: z.array(citableComparison), audits: z.array(citableAudit) }),
   provenance: z.strictObject({ dataSources: z.array(z.string()), ruleVersions: z.array(z.string()) }),
   usage: z.strictObject({ promptTokens: z.number(), completionTokens: z.number(), requests: z.number(), largestPromptTokens: z.number() }).nullable(),
   validation: z.array(z.strictObject({ issueCodes: z.array(z.string()) })),
@@ -164,4 +208,77 @@ export function listReplays(files: readonly unknown[] = REPLAY_FILES): ReplayLis
 
 export function findReplay(id: string, files: readonly unknown[] = REPLAY_FILES): Replay | null {
   return listReplays(files).replays.find((replay) => replay.id === id) ?? null;
+}
+
+/**
+ * A turn passed on the first attempt only if it was answered and the model's
+ * single submitted answer had no issues. No submission at all (`[]`), a first
+ * answer refused and never repaired (`[["code"]]`), a repair, a fallback or a
+ * failure are all something else.
+ */
+export function passedFirstTime(result: Pick<AgentTurnResult, 'status' | 'validation'>): boolean {
+  return result.status === 'answered' && result.validation.length === 1 && result.validation[0]?.issueCodes.length === 0;
+}
+
+export interface ReplaySummary {
+  turns: number;
+  firstPass: number;
+  /** Responses from the model that reported token usage — not HTTP attempts, which include retries. */
+  responsesWithUsage: number;
+  promptTokens: number;
+  completionTokens: number;
+  largestPromptTokens: number;
+  provenance: string[];
+}
+
+export function summarizeReplay(replay: Replay): ReplaySummary {
+  let responsesWithUsage = 0;
+  let promptTokens = 0;
+  let completionTokens = 0;
+  let largestPromptTokens = 0;
+  for (const turn of replay.turns) {
+    const usage = turn.result.usage;
+    if (usage === null) continue;
+    responsesWithUsage += usage.requests;
+    promptTokens += usage.promptTokens;
+    completionTokens += usage.completionTokens;
+    largestPromptTokens = Math.max(largestPromptTokens, usage.largestPromptTokens);
+  }
+  return {
+    turns: replay.turns.length,
+    firstPass: replay.turns.filter((turn) => passedFirstTime(turn.result)).length,
+    responsesWithUsage,
+    promptTokens,
+    completionTokens,
+    largestPromptTokens,
+    provenance: [...new Set(replay.turns.flatMap((turn) => [...turn.result.provenance.dataSources, ...turn.result.provenance.ruleVersions]))].sort(),
+  };
+}
+
+/**
+ * Only what the turn view renders crosses to the browser. The raw citations,
+ * provenance, usage and validation messages stay on the server; the page
+ * shows their summary instead.
+ */
+export type PublicTurnResult = Pick<
+  AgentTurnResult,
+  'status' | 'answer' | 'scope' | 'window' | 'toolCalls' | 'toolGaps' | 'toolNotes' | 'refusedActions' | 'noActionTaken' | 'failedChecks' | 'notes' | 'model' | 'message'
+>;
+
+export function publicTurn(result: AgentTurnResult): PublicTurnResult {
+  return {
+    status: result.status,
+    answer: result.answer,
+    scope: result.scope,
+    window: result.window,
+    toolCalls: result.toolCalls.map((call) => ({ id: call.id, name: call.name, input: call.input, status: call.status, summary: call.summary })),
+    toolGaps: result.toolGaps,
+    toolNotes: result.toolNotes,
+    refusedActions: result.refusedActions,
+    noActionTaken: result.noActionTaken,
+    failedChecks: result.failedChecks,
+    notes: result.notes,
+    model: result.model,
+    message: result.message,
+  };
 }

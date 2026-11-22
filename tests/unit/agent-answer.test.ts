@@ -241,6 +241,16 @@ describe('prose', () => {
     }
   });
 
+  it('tells the model when a refused number is step numbering', () => {
+    const numbered = validateAnswer(answer([], '按以下步骤核查：1. 检查运费；2. 检查支付方式。'), bare());
+    expect(codes(numbered)).toEqual(['raw-number', 'raw-number']);
+    expect(numbered[0]?.message).toContain('"1." numbers a step');
+    expect(numbered[1]?.message).toContain('"2." numbers a step');
+    expect(validateAnswer(answer([], '第1步检查运费。'), bare())[0]?.message).toContain('"1步" numbers a step');
+    const figure = validateAnswer(answer([], 'Conversion was 3.5 here.'), bare());
+    expect(figure[0]?.message).toContain('is a number in prose');
+  });
+
   it('names a product only through its placeholder', () => {
     expect(validateAnswer(answer([], 'Look at {{product:prd_tent}} first.'), bare())).toEqual([]);
     expect(codes(validateAnswer(answer([], 'Look at Ridgeline 2P first.'), bare()))).toEqual(['raw-number']);

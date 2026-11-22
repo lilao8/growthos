@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { gotoReady } from './ready';
 
 /**
@@ -58,7 +60,14 @@ test('an unknown replay is a 404', async ({ page }) => {
 test('a figure from the real-model replay opens on its page with the same number', async ({ page }) => {
   await gotoReady(page, '/agent/replays/live-review');
   await expect(page.getByTestId('replay-source')).toContainText('Real model run');
-  await expect(page.getByTestId('replay-validation')).toContainText('turns passed on the first attempt');
+  // The count shown is the exact rule applied to the recording itself:
+  // answered, with exactly one submitted answer that had no issues.
+  const recorded = JSON.parse(readFileSync(path.join(process.cwd(), 'src/fixtures/agent-replays/live-review.json'), 'utf8')) as {
+    turns: Array<{ result: { status: string; validation: Array<{ issueCodes: string[] }> } }>;
+  };
+  const turns = recorded.turns.length;
+  const firstPass = recorded.turns.filter(({ result }) => result.status === 'answered' && result.validation.length === 1 && result.validation[0]?.issueCodes.length === 0).length;
+  await expect(page.getByTestId('replay-validation')).toContainText(`Answer checks: ${firstPass} of ${turns} turns were answered on the first attempt`);
   const followUp = page.getByTestId('agent-turn').nth(1);
   const fact = followUp.getByTestId('agent-fact').filter({ hasText: 'Add to Cart → Checkout conversion (Organic Search), 2026-08-02 — 2026-08-31' }).first();
   await expect(fact).toContainText('39.49%');
@@ -68,4 +77,13 @@ test('a figure from the real-model replay opens on its page with the same number
   await expect(page.getByTestId('funnel-scope')).toHaveText('Scope: Organic Search sessions only');
   await expect(page.getByTestId('stage-add_to_cart')).toContainText('195');
   await expect(page.getByTestId('conversion-add_to_cart-checkout')).toHaveText('39.49%');
+});
+
+test('a two-period change in a real replay links each period to its own window', async ({ page }) => {
+  await gotoReady(page, '/agent/replays/live-review');
+  const change = page.getByTestId('agent-turn').nth(1).getByTestId('agent-answer-fact').filter({ hasText: '→' }).first();
+  const hrefs = await change.getByTestId('agent-figure').evaluateAll((links) => links.map((link) => link.getAttribute('href')));
+  expect(hrefs).toEqual(['/analytics?range=30&end=2026-08-01', '/analytics?range=30']);
+  await expect(change).toContainText('2026-07-03 — 2026-08-01');
+  await expect(change).toContainText('2026-08-02 — 2026-08-31');
 });

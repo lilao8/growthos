@@ -4,7 +4,7 @@
   "title": "30-day storefront review, then \"only organic search?\"",
   "source": "live-model",
   "model": "openai:gpt-5.6-terra",
-  "recordedAt": "2026-11-22T05:17:44.363Z",
+  "recordedAt": "2026-11-22T05:50:48.187Z",
   "demoAsOf": "2026-08-31",
   "stateSource": "seed",
   "turns": [
@@ -16,15 +16,160 @@
         "products": []
       },
       "result": {
-        "status": "answered",
+        "status": "fallback",
         "answer": {
           "summary": [
             {
               "kind": "text",
-              "text": "最该优先排查结账至购买环节的流失；这是站内漏斗中已达到可判断样本要求、且转化表现低于阈值的关键问题。"
+              "text": "The model's answer did not pass validation after one correction. The findings below are GrowthOS's own ranking of what the tools returned."
             }
           ],
-          "facts": [],
+          "facts": [
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 2P Backpacking Tent view sessions (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "203",
+                "href": "/products/prd_ridgeline_2p_tent?range=30",
+                "title": "Ridgeline 2P Backpacking Tent view sessions (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 2P Backpacking Tent purchasing sessions (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "8",
+                "href": "/products/prd_ridgeline_2p_tent?range=30",
+                "title": "Ridgeline 2P Backpacking Tent purchasing sessions (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 2P Backpacking Tent product conversion (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "3.94%",
+                "href": "/products/prd_ridgeline_2p_tent?range=30",
+                "title": "Ridgeline 2P Backpacking Tent product conversion (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Ridgeline 2P Backpacking Tent revenue (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "$2,928.10",
+                "href": "/products/prd_ridgeline_2p_tent?range=30",
+                "title": "Ridgeline 2P Backpacking Tent revenue (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Summit 20 Down Sleeping Bag view sessions (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "175",
+                "href": "/products/prd_summit_20_bag?range=30",
+                "title": "Summit 20 Down Sleeping Bag view sessions (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Summit 20 Down Sleeping Bag purchasing sessions (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "7",
+                "href": "/products/prd_summit_20_bag?range=30",
+                "title": "Summit 20 Down Sleeping Bag purchasing sessions (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Summit 20 Down Sleeping Bag product conversion (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "4.00%",
+                "href": "/products/prd_summit_20_bag?range=30",
+                "title": "Summit 20 Down Sleeping Bag product conversion (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Summit 20 Down Sleeping Bag revenue (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "$1,870.00",
+                "href": "/products/prd_summit_20_bag?range=30",
+                "title": "Summit 20 Down Sleeping Bag revenue (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Basecamp Ultralight Tarp Shelter view sessions (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "157",
+                "href": "/products/prd_basecamp_tarp?range=30",
+                "title": "Basecamp Ultralight Tarp Shelter view sessions (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Basecamp Ultralight Tarp Shelter purchasing sessions (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "8",
+                "href": "/products/prd_basecamp_tarp?range=30",
+                "title": "Basecamp Ultralight Tarp Shelter purchasing sessions (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Basecamp Ultralight Tarp Shelter product conversion (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "5.10%",
+                "href": "/products/prd_basecamp_tarp?range=30",
+                "title": "Basecamp Ultralight Tarp Shelter product conversion (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Basecamp Ultralight Tarp Shelter revenue (all channels), 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "$1,460.20",
+                "href": "/products/prd_basecamp_tarp?range=30",
+                "title": "Basecamp Ultralight Tarp Shelter revenue (all channels), 2026-08-02 — 2026-08-31"
+              }
+            ]
+          ],
           "findings": [
             {
               "rank": 1,
@@ -34,50 +179,20 @@
                 [
                   {
                     "kind": "text",
-                    "text": "Checkout sessions (all channels), 2026-08-02 — 2026-08-31: "
-                  },
-                  {
-                    "kind": "link",
-                    "text": "213",
-                    "href": "/funnel?range=30",
-                    "title": "Checkout sessions (all channels), 2026-08-02 — 2026-08-31"
-                  }
-                ],
-                [
-                  {
-                    "kind": "text",
-                    "text": "Checkout → Purchase conversion (all channels), 2026-08-02 — 2026-08-31: "
-                  },
-                  {
-                    "kind": "link",
-                    "text": "37.09%",
-                    "href": "/funnel?range=30",
-                    "title": "Checkout → Purchase conversion (all channels), 2026-08-02 — 2026-08-31"
-                  }
-                ],
-                [
-                  {
-                    "kind": "text",
-                    "text": "Checkout → Purchase drop-off (all channels), 2026-08-02 — 2026-08-31: "
-                  },
-                  {
-                    "kind": "link",
-                    "text": "62.91%",
-                    "href": "/funnel?range=30",
-                    "title": "Checkout → Purchase drop-off (all channels), 2026-08-02 — 2026-08-31"
+                    "text": "This step converts at 37.09%, below the 45.00% threshold, on 213 sessions."
                   }
                 ]
               ],
               "whyPriority": [
                 {
                   "kind": "text",
-                  "text": "该环节在接近成交时发生明显损失，优先确认结账体验与交易条件是否阻碍完成购买。"
+                  "text": "Ranked Critical: rule severity Critical, evidence sufficient, 213 sessions that entered this step, 134 lost."
                 }
               ],
               "howToVerify": [
                 {
                   "kind": "text",
-                  "text": "核对运费与免运门槛是否符合预期，并与客单价比较。盘点可用支付方式，并与目标市场的常用支付方式及钱包支付比较。检查购买所需字段与步骤，以及是否支持游客结账。确认结账页内是否展示退换政策、安全提示和联系方式。将结账页展示的送达时效与竞品承诺进行比较。"
+                  "text": "Work through the hypotheses, none of which is a diagnosis: 1. Shipping cost at checkout may be higher than expected. Compare shipping cost and any free-shipping threshold against the average order value. 2. The payment methods offered may not cover what buyers use. List the methods available and compare against what the market expects — wallets included. 3. The checkout may be asking for too much, or across too many steps. Count the fields and steps required to buy, and whether guest checkout exists. 4. The checkout may not carry the reassurance a first-time buyer needs. Check for returns policy, security indicators and contact details inside the checkout. 5. Quoted delivery time may be slower than buyers will accept. Compare the delivery estimate shown at checkout against what competitors promise."
                 }
               ],
               "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Shipping cost at checkout may be higher than expected. Compare shipping cost and any free-shipping threshold against the average order value. 2. The payment methods offered may not cover what buyers use. List the methods available and compare against what the market expects — wallets included. 3. The checkout may be asking for too much, or across too many steps. Count the fields and steps required to buy, and whether guest checkout exists. 4. The checkout may not carry the reassurance a first-time buyer needs. Check for returns policy, security indicators and contact details inside the checkout. 5. Quoted delivery time may be slower than buyers will accept. Compare the delivery estimate shown at checkout against what competitors promise.",
@@ -102,50 +217,225 @@
                   "label": "Checkout → Purchase conversion (all channels), 2026-07-03 — 2026-08-01"
                 }
               ]
+            },
+            {
+              "rank": 2,
+              "basedOn": "rec_seo_2fac631f@2026-08-02..2026-08-31",
+              "title": "Single H1 — Summit 20 Down Sleeping Bag",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "This page has no H1. One H1 states what the page is about. None leaves it ambiguous; several compete."
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "Ranked Critical: rule severity Critical, evidence sufficient, 175 sessions that viewed this page in the window."
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "Add a single H1 that names the product, matching what the page is about."
+                }
+              ],
+              "ruleGuidance": "Add a single H1 that names the product, matching what the page is about.",
+              "scope": {
+                "channel": null,
+                "productId": "prd_summit_20_bag"
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 175,
+              "sampleLabel": "sessions that viewed this page in the window",
+              "lostSessions": null,
+              "evidence": [
+                {
+                  "href": "/seo/snap_summit_20_bag?preview=1",
+                  "label": "Single H1 — Summit 20 Down Sleeping Bag"
+                }
+              ]
+            },
+            {
+              "rank": 3,
+              "basedOn": "rec_seo_5a9f4638@2026-08-02..2026-08-31",
+              "title": "Canonical URL — Summit 20 Down Sleeping Bag",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "This page declares no canonical URL. The canonical names the preferred version of a page. A wrong one can point ranking signals at something else."
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "Ranked Critical: rule severity Critical, evidence sufficient, 175 sessions that viewed this page in the window."
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "Add a self-referencing canonical unless this page is deliberately a duplicate of another."
+                }
+              ],
+              "ruleGuidance": "Add a self-referencing canonical unless this page is deliberately a duplicate of another.",
+              "scope": {
+                "channel": null,
+                "productId": "prd_summit_20_bag"
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 175,
+              "sampleLabel": "sessions that viewed this page in the window",
+              "lostSessions": null,
+              "evidence": [
+                {
+                  "href": "/seo/snap_summit_20_bag?preview=1",
+                  "label": "Canonical URL — Summit 20 Down Sleeping Bag"
+                }
+              ]
+            },
+            {
+              "rank": 4,
+              "basedOn": "rec_seo_0226f630@2026-08-02..2026-08-31",
+              "title": "Single H1 — Basecamp Ultralight Tarp Shelter",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "This page has no H1. One H1 states what the page is about. None leaves it ambiguous; several compete."
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "Ranked Critical: rule severity Critical, evidence sufficient, 157 sessions that viewed this page in the window."
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "Add a single H1 that names the product, matching what the page is about."
+                }
+              ],
+              "ruleGuidance": "Add a single H1 that names the product, matching what the page is about.",
+              "scope": {
+                "channel": null,
+                "productId": "prd_basecamp_tarp"
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 157,
+              "sampleLabel": "sessions that viewed this page in the window",
+              "lostSessions": null,
+              "evidence": [
+                {
+                  "href": "/seo/snap_basecamp_tarp?preview=1",
+                  "label": "Single H1 — Basecamp Ultralight Tarp Shelter"
+                }
+              ]
+            },
+            {
+              "rank": 5,
+              "basedOn": "rec_funnel_9bc52355@all:2026-08-02..2026-08-31",
+              "title": "Product View → Add to Cart: investigate the drop-off",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "This step loses the largest share in the funnel — 71.89% of 1,825 sessions. Its conversion is within threshold, so this is about volume rather than underperformance."
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "text",
+                  "text": "Ranked High: rule severity High, evidence sufficient, 1,825 sessions that entered this step, 1,312 lost."
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "Work through the hypotheses, none of which is a diagnosis: 1. Price may be out of line with what comparable products ask. Compare price against the alternatives a shopper would see in the same search. 2. The page may not make the case for the product in concrete terms. Check whether the first screen states weight, capacity, rating or whatever the category buys on. 3. Absent or thin reviews may leave the claim unsupported. Check review count and recency against the better-converting products. 4. The add-to-cart control may be unclear or below the fold. View the page at mobile width and confirm the action is visible without scrolling. 5. Images may not show the product in use, at scale or in detail. Compare the image set against what the category leaders show, including scale references. 6. Delivery cost and timing may not be visible before the cart. Check whether shipping cost and delivery estimate appear on the product page itself."
+                }
+              ],
+              "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Price may be out of line with what comparable products ask. Compare price against the alternatives a shopper would see in the same search. 2. The page may not make the case for the product in concrete terms. Check whether the first screen states weight, capacity, rating or whatever the category buys on. 3. Absent or thin reviews may leave the claim unsupported. Check review count and recency against the better-converting products. 4. The add-to-cart control may be unclear or below the fold. View the page at mobile width and confirm the action is visible without scrolling. 5. Images may not show the product in use, at scale or in detail. Compare the image set against what the category leaders show, including scale references. 6. Delivery cost and timing may not be visible before the cart. Check whether shipping cost and delivery estimate appear on the product page itself.",
+              "scope": {
+                "channel": null,
+                "productId": null
+              },
+              "priority": "High",
+              "effectivePriority": "High",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 1825,
+              "sampleLabel": "sessions that entered this step",
+              "lostSessions": 1312,
+              "evidence": [
+                {
+                  "href": "/funnel?range=30",
+                  "label": "Product View → Add to Cart: investigate the drop-off"
+                },
+                {
+                  "href": "/funnel?range=30&end=2026-08-01",
+                  "label": "Product View → Add to Cart conversion (all channels), 2026-07-03 — 2026-08-01"
+                }
+              ]
             }
           ],
-          "gaps": [
-            [
-              {
-                "kind": "text",
-                "text": "未能进一步核查各渠道的独立漏斗，因此无法定位该流失主要来自哪个渠道。"
-              }
-            ],
-            [
-              {
-                "kind": "text",
-                "text": "Meta 的获客成本、广告回报与转化率均被工具标记为样本不足，不能作为确定性发现；需要更多订单后复核。"
-              }
-            ],
-            [
-              {
-                "kind": "text",
-                "text": "未能核查结账页的实际运费、支付方式、表单流程、信任信息与配送承诺，因此尚不能判断流失原因。"
-              }
-            ],
-            [
-              {
-                "kind": "text",
-                "text": "未能完成产品页与商品层面的页面质量或审计核查；产品浏览至加购的损失量较大，但工具提示其转化表现未低于阈值，需结合页面检查确认是否存在可优化问题。"
-              }
-            ],
-            [
-              {
-                "kind": "text",
-                "text": "TikTok、邮件、引荐和人工智能引荐渠道的会话样本不足，无法根据其费率得出结论。"
-              }
-            ]
-          ],
-          "source": "model",
+          "gaps": [],
+          "source": "fallback",
           "citedRefIds": [
-            "funnel:2026-08-02..2026-08-31:all:all:stage:checkout",
+            "products:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:view_sessions",
+            "products:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:purchase_sessions",
+            "products:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:conversion_rate",
+            "products:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:revenue",
+            "products:2026-08-02..2026-08-31:all:prd_summit_20_bag:view_sessions",
+            "products:2026-08-02..2026-08-31:all:prd_summit_20_bag:purchase_sessions",
+            "products:2026-08-02..2026-08-31:all:prd_summit_20_bag:conversion_rate",
+            "products:2026-08-02..2026-08-31:all:prd_summit_20_bag:revenue",
+            "products:2026-08-02..2026-08-31:all:prd_basecamp_tarp:view_sessions",
+            "products:2026-08-02..2026-08-31:all:prd_basecamp_tarp:purchase_sessions",
+            "products:2026-08-02..2026-08-31:all:prd_basecamp_tarp:conversion_rate",
+            "products:2026-08-02..2026-08-31:all:prd_basecamp_tarp:revenue",
             "funnel:2026-08-02..2026-08-31:all:all:conversion:checkout->purchase",
             "funnel:2026-08-02..2026-08-31:all:all:drop_off:checkout->purchase",
-            "funnel:2026-07-03..2026-08-01:all:all:conversion:checkout->purchase"
+            "funnel:2026-08-02..2026-08-31:all:all:stage:checkout",
+            "audits:seo:snap_summit_20_bag:h1:2cc06589-c6654b9e",
+            "audits:seo:snap_summit_20_bag:canonical:2cc06589-c6654b9e",
+            "audits:seo:snap_basecamp_tarp:h1:95788f3c-e32e7869",
+            "funnel:2026-08-02..2026-08-31:all:all:conversion:product_view->add_to_cart",
+            "funnel:2026-08-02..2026-08-31:all:all:drop_off:product_view->add_to_cart",
+            "funnel:2026-08-02..2026-08-31:all:all:stage:product_view",
+            "funnel:2026-07-03..2026-08-01:all:all:conversion:checkout->purchase",
+            "funnel:2026-07-03..2026-08-01:all:all:conversion:product_view->add_to_cart"
           ]
         },
-        "issues": [],
-        "message": null,
+        "issues": [
+          {
+            "finding": 1,
+            "code": "raw-number",
+            "message": "\"1\" is a number in prose. Figures, dates and window lengths come only from facts, which GrowthOS writes out; refer to a product with {{product:<id>}}."
+          },
+          {
+            "finding": 3,
+            "code": "raw-number",
+            "message": "\"1\" is a number in prose. Figures, dates and window lengths come only from facts, which GrowthOS writes out; refer to a product with {{product:<id>}}."
+          }
+        ],
+        "message": "The model's answer did not pass validation after one correction.",
         "scope": {
           "range": 30,
           "channel": null,
@@ -158,7 +448,7 @@
         },
         "toolCalls": [
           {
-            "id": "call_SjObOTlTkS2U09sHtAlxLtfL",
+            "id": "call_pqej77ULCPPW3XDlcGWKI4dS",
             "name": "get_funnel",
             "input": {
               "range": 30,
@@ -169,7 +459,7 @@
             "summary": "2 findings, 28 citable figures, 0 gaps."
           },
           {
-            "id": "call_x7K67WjKkzPz7NgE61epqKb0",
+            "id": "call_dzqx84R6YWGA2RQj9nemVM6h",
             "name": "get_channel_performance",
             "input": {
               "range": 30,
@@ -180,7 +470,7 @@
             "summary": "3 findings, 122 citable figures, 4 gaps."
           },
           {
-            "id": "call_3nNLPHNNGIYJmzdYA8F4rfvF",
+            "id": "call_6eFoiU4zkvx6h3LYbWzxoplE",
             "name": "get_product_performance",
             "input": {
               "range": 30,
@@ -191,6 +481,18 @@
             },
             "status": "ok",
             "summary": "0 findings, 40 citable figures, 0 gaps."
+          },
+          {
+            "id": "call_UxJ6Fbt6AA9BpcQ09ZcQ88U6",
+            "name": "get_audit_findings",
+            "input": {
+              "kind": "both",
+              "range": 30,
+              "products": [],
+              "minSeverity": "high"
+            },
+            "status": "ok",
+            "summary": "14 findings, 14 citable figures, 1 gaps."
           }
         ],
         "toolGaps": [
@@ -209,6 +511,10 @@
           {
             "message": "AI Referral had 124 sessions, below the 300 this project needs before drawing a conclusion from its rates.",
             "links": []
+          },
+          {
+            "message": "34 of 34 page audits were not current in this browser and were computed for this answer only. Their audit pages will show \"Not audited\" or \"stale\" until the audit is run there; running it produces the same checks.",
+            "links": []
           }
         ],
         "toolNotes": [],
@@ -217,18 +523,172 @@
         "citations": {
           "refs": [
             {
-              "refId": "funnel:2026-08-02..2026-08-31:all:all:stage:checkout",
-              "label": "Checkout sessions",
-              "value": 213,
+              "refId": "products:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:view_sessions",
+              "label": "Ridgeline 2P Backpacking Tent view sessions",
+              "value": 203,
               "unit": "count",
               "channel": null,
-              "productId": null,
+              "productId": "prd_ridgeline_2p_tent",
               "window": {
                 "start": "2026-08-02",
                 "end": "2026-08-31"
               },
-              "funnel": true,
-              "href": "/funnel?range=30"
+              "funnel": false,
+              "href": "/products/prd_ridgeline_2p_tent?range=30"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:purchase_sessions",
+              "label": "Ridgeline 2P Backpacking Tent purchasing sessions",
+              "value": 8,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_ridgeline_2p_tent",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_ridgeline_2p_tent?range=30"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:conversion_rate",
+              "label": "Ridgeline 2P Backpacking Tent product conversion",
+              "value": 0.03940886699507389,
+              "unit": "ratio",
+              "channel": null,
+              "productId": "prd_ridgeline_2p_tent",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_ridgeline_2p_tent?range=30"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:all:prd_ridgeline_2p_tent:revenue",
+              "label": "Ridgeline 2P Backpacking Tent revenue",
+              "value": 292810,
+              "unit": "cents",
+              "channel": null,
+              "productId": "prd_ridgeline_2p_tent",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_ridgeline_2p_tent?range=30"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:all:prd_summit_20_bag:view_sessions",
+              "label": "Summit 20 Down Sleeping Bag view sessions",
+              "value": 175,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_summit_20_bag",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_summit_20_bag?range=30"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:all:prd_summit_20_bag:purchase_sessions",
+              "label": "Summit 20 Down Sleeping Bag purchasing sessions",
+              "value": 7,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_summit_20_bag",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_summit_20_bag?range=30"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:all:prd_summit_20_bag:conversion_rate",
+              "label": "Summit 20 Down Sleeping Bag product conversion",
+              "value": 0.04,
+              "unit": "ratio",
+              "channel": null,
+              "productId": "prd_summit_20_bag",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_summit_20_bag?range=30"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:all:prd_summit_20_bag:revenue",
+              "label": "Summit 20 Down Sleeping Bag revenue",
+              "value": 187000,
+              "unit": "cents",
+              "channel": null,
+              "productId": "prd_summit_20_bag",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_summit_20_bag?range=30"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:all:prd_basecamp_tarp:view_sessions",
+              "label": "Basecamp Ultralight Tarp Shelter view sessions",
+              "value": 157,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_basecamp_tarp",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_basecamp_tarp?range=30"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:all:prd_basecamp_tarp:purchase_sessions",
+              "label": "Basecamp Ultralight Tarp Shelter purchasing sessions",
+              "value": 8,
+              "unit": "count",
+              "channel": null,
+              "productId": "prd_basecamp_tarp",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_basecamp_tarp?range=30"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:all:prd_basecamp_tarp:conversion_rate",
+              "label": "Basecamp Ultralight Tarp Shelter product conversion",
+              "value": 0.050955414012738856,
+              "unit": "ratio",
+              "channel": null,
+              "productId": "prd_basecamp_tarp",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_basecamp_tarp?range=30"
+            },
+            {
+              "refId": "products:2026-08-02..2026-08-31:all:prd_basecamp_tarp:revenue",
+              "label": "Basecamp Ultralight Tarp Shelter revenue",
+              "value": 146020,
+              "unit": "cents",
+              "channel": null,
+              "productId": "prd_basecamp_tarp",
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": false,
+              "href": "/products/prd_basecamp_tarp?range=30"
             },
             {
               "refId": "funnel:2026-08-02..2026-08-31:all:all:conversion:checkout->purchase",
@@ -259,9 +719,79 @@
               "href": "/funnel?range=30"
             },
             {
+              "refId": "funnel:2026-08-02..2026-08-31:all:all:stage:checkout",
+              "label": "Checkout sessions",
+              "value": 213,
+              "unit": "count",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:all:all:conversion:product_view->add_to_cart",
+              "label": "Product View → Add to Cart conversion",
+              "value": 0.2810958904109589,
+              "unit": "ratio",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:all:all:drop_off:product_view->add_to_cart",
+              "label": "Product View → Add to Cart drop-off",
+              "value": 0.7189041095890412,
+              "unit": "ratio",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30"
+            },
+            {
+              "refId": "funnel:2026-08-02..2026-08-31:all:all:stage:product_view",
+              "label": "Product View sessions",
+              "value": 1825,
+              "unit": "count",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-08-02",
+                "end": "2026-08-31"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30"
+            },
+            {
               "refId": "funnel:2026-07-03..2026-08-01:all:all:conversion:checkout->purchase",
               "label": "Checkout → Purchase conversion",
               "value": 0.37681159420289856,
+              "unit": "ratio",
+              "channel": null,
+              "productId": null,
+              "window": {
+                "start": "2026-07-03",
+                "end": "2026-08-01"
+              },
+              "funnel": true,
+              "href": "/funnel?range=30&end=2026-08-01"
+            },
+            {
+              "refId": "funnel:2026-07-03..2026-08-01:all:all:conversion:product_view->add_to_cart",
+              "label": "Product View → Add to Cart conversion",
+              "value": 0.2943898207056102,
               "unit": "ratio",
               "channel": null,
               "productId": null,
@@ -282,30 +812,79 @@
               "relativeChange": -0.015709642470205808,
               "direction": "down",
               "supportsConclusion": true
+            },
+            {
+              "currentRefId": "funnel:2026-08-02..2026-08-31:all:all:conversion:product_view->add_to_cart",
+              "previousRefId": "funnel:2026-07-03..2026-08-01:all:all:conversion:product_view->add_to_cart",
+              "current": 0.2810958904109589,
+              "previous": 0.2943898207056102,
+              "relativeChange": -0.045157574615819485,
+              "direction": "down",
+              "supportsConclusion": true
             }
           ],
-          "audits": []
+          "audits": [
+            {
+              "refId": "audits:seo:snap_summit_20_bag:h1:2cc06589-c6654b9e",
+              "ruleId": "h1",
+              "status": "error",
+              "evidence": "h1: absent",
+              "productId": "prd_summit_20_bag",
+              "pageLabel": "Summit 20 Down Sleeping Bag",
+              "href": "/seo/snap_summit_20_bag?preview=1"
+            },
+            {
+              "refId": "audits:seo:snap_summit_20_bag:canonical:2cc06589-c6654b9e",
+              "ruleId": "canonical",
+              "status": "error",
+              "evidence": "canonical: absent",
+              "productId": "prd_summit_20_bag",
+              "pageLabel": "Summit 20 Down Sleeping Bag",
+              "href": "/seo/snap_summit_20_bag?preview=1"
+            },
+            {
+              "refId": "audits:seo:snap_basecamp_tarp:h1:95788f3c-e32e7869",
+              "ruleId": "h1",
+              "status": "error",
+              "evidence": "h1: absent",
+              "productId": "prd_basecamp_tarp",
+              "pageLabel": "Basecamp Ultralight Tarp Shelter",
+              "href": "/seo/snap_basecamp_tarp?preview=1"
+            }
+          ]
         },
         "provenance": {
           "dataSources": [
             "fixture:traffic (NorthTrail demo data, 2026-06-03..2026-08-31, UTC)",
-            "seed:catalogue"
+            "rules:geo-1.0.0",
+            "rules:seo-1.0.0",
+            "seed:audit-results",
+            "seed:catalogue",
+            "seed:page-snapshots"
           ],
           "ruleVersions": [
             "agent-priority-1.0.0",
             "funnel-1.0.0",
-            "recommendations-1.0.0"
+            "recommendations-1.0.0",
+            "seo-1.0.0"
           ]
         },
         "usage": {
-          "promptTokens": 10081,
-          "completionTokens": 600,
-          "requests": 2,
-          "largestPromptTokens": 8263
+          "promptTokens": 19077,
+          "completionTokens": 2368,
+          "requests": 3,
+          "largestPromptTokens": 9311
         },
         "validation": [
           {
-            "issueCodes": []
+            "issueCodes": [
+              "raw-number"
+            ]
+          },
+          {
+            "issueCodes": [
+              "raw-number"
+            ]
           }
         ],
         "failedChecks": [],
@@ -328,7 +907,17 @@
           "summary": [
             {
               "kind": "text",
-              "text": "自然搜索应优先排查从加购到结账的流失，其次排查结账到购买的流失；两处均有足够样本支持进一步核查。"
+              "text": "自然搜索需要同时排查商品页内容质量与购物车至结账路径；高优先级页面问题集中在 "
+            },
+            {
+              "kind": "link",
+              "text": "Beacon 400 Rechargeable Headlamp",
+              "href": "/products/prd_beacon_headlamp",
+              "title": "Beacon 400 Rechargeable Headlamp"
+            },
+            {
+              "kind": "text",
+              "text": "。"
             }
           ],
           "facts": [
@@ -359,13 +948,37 @@
             [
               {
                 "kind": "text",
-                "text": "Organic Search conversion rate: "
+                "text": "Organic Search revenue, 2026-08-02 — 2026-08-31: "
               },
               {
                 "kind": "link",
-                "text": "3.62%",
+                "text": "$5,352.00",
+                "href": "/analytics?range=30",
+                "title": "Organic Search revenue, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Organic Search conversion rate, 2026-08-02 — 2026-08-31: "
+              },
+              {
+                "kind": "link",
+                "text": "3.05%",
+                "href": "/analytics?range=30",
+                "title": "Organic Search conversion rate, 2026-08-02 — 2026-08-31"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Organic Search sessions: "
+              },
+              {
+                "kind": "link",
+                "text": "967",
                 "href": "/analytics?range=30&end=2026-08-01",
-                "title": "Organic Search conversion rate, 2026-07-03 — 2026-08-01"
+                "title": "Organic Search sessions, 2026-07-03 — 2026-08-01"
               },
               {
                 "kind": "text",
@@ -373,13 +986,39 @@
               },
               {
                 "kind": "link",
-                "text": "3.05%",
+                "text": "1,048",
                 "href": "/analytics?range=30",
-                "title": "Organic Search conversion rate, 2026-08-02 — 2026-08-31"
+                "title": "Organic Search sessions, 2026-08-02 — 2026-08-31"
               },
               {
                 "kind": "text",
-                "text": " (2026-08-02 — 2026-08-31), −15.6%"
+                "text": " (2026-08-02 — 2026-08-31), +8.4%"
+              }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Organic Search orders: "
+              },
+              {
+                "kind": "link",
+                "text": "35",
+                "href": "/analytics?range=30&end=2026-08-01",
+                "title": "Organic Search orders, 2026-07-03 — 2026-08-01"
+              },
+              {
+                "kind": "text",
+                "text": " (2026-07-03 — 2026-08-01) → "
+              },
+              {
+                "kind": "link",
+                "text": "32",
+                "href": "/analytics?range=30",
+                "title": "Organic Search orders, 2026-08-02 — 2026-08-31"
+              },
+              {
+                "kind": "text",
+                "text": " (2026-08-02 — 2026-08-31), −8.6%"
               }
             ],
             [
@@ -407,11 +1046,202 @@
                 "kind": "text",
                 "text": " (2026-08-02 — 2026-08-31), −15.9%"
               }
+            ],
+            [
+              {
+                "kind": "text",
+                "text": "Organic Search conversion rate: "
+              },
+              {
+                "kind": "link",
+                "text": "3.62%",
+                "href": "/analytics?range=30&end=2026-08-01",
+                "title": "Organic Search conversion rate, 2026-07-03 — 2026-08-01"
+              },
+              {
+                "kind": "text",
+                "text": " (2026-07-03 — 2026-08-01) → "
+              },
+              {
+                "kind": "link",
+                "text": "3.05%",
+                "href": "/analytics?range=30",
+                "title": "Organic Search conversion rate, 2026-08-02 — 2026-08-31"
+              },
+              {
+                "kind": "text",
+                "text": " (2026-08-02 — 2026-08-31), −15.6%"
+              }
             ]
           ],
           "findings": [
             {
               "rank": 1,
+              "basedOn": "rec_geo_4ff5ec94@2026-08-02..2026-08-31",
+              "title": "Original information — Beacon 400 Rechargeable Headlamp",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "Beacon 400 Rechargeable Headlamp: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "original-information: error (originality claim: absent; supporting evidence entries: 0; facts: 4)",
+                    "href": "/geo/snap_beacon_headlamp?preview=1",
+                    "title": "Open the audit evidence for Beacon 400 Rechargeable Headlamp"
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "link",
+                  "text": "Beacon 400 Rechargeable Headlamp",
+                  "href": "/products/prd_beacon_headlamp",
+                  "title": "Beacon 400 Rechargeable Headlamp"
+                },
+                {
+                  "kind": "text",
+                  "text": " 是目录中访问量较高的页面，且缺少可归属的原创信息。"
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "说明该页面提供了哪些其他地方没有的信息，例如自行完成的测量、测试或比较。"
+                }
+              ],
+              "ruleGuidance": "State what this page adds that is not available elsewhere — a measurement, a test, a comparison you ran.",
+              "scope": {
+                "channel": null,
+                "productId": "prd_beacon_headlamp"
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 256,
+              "sampleLabel": "sessions that viewed this page in the window",
+              "lostSessions": null,
+              "evidence": [
+                {
+                  "href": "/geo/snap_beacon_headlamp?preview=1",
+                  "label": "Original information — Beacon 400 Rechargeable Headlamp"
+                }
+              ]
+            },
+            {
+              "rank": 2,
+              "basedOn": "rec_geo_74350786@2026-08-02..2026-08-31",
+              "title": "Entity clarity — Beacon 400 Rechargeable Headlamp",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "Beacon 400 Rechargeable Headlamp: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "entity-clarity: error (brand in title: false; brand in content: false; product identifier: true)",
+                    "href": "/geo/snap_beacon_headlamp?preview=1",
+                    "title": "Open the audit evidence for Beacon 400 Rechargeable Headlamp"
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "link",
+                  "text": "Beacon 400 Rechargeable Headlamp",
+                  "href": "/products/prd_beacon_headlamp",
+                  "title": "Beacon 400 Rechargeable Headlamp"
+                },
+                {
+                  "kind": "text",
+                  "text": " 缺少清晰的品牌归属，使页面内容难以被明确引用。"
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "在标题和正文中写明品牌名称，以便引用内容时能够明确归属。"
+                }
+              ],
+              "ruleGuidance": "Name the brand in the title and in the content, so a quote can be attributed.",
+              "scope": {
+                "channel": null,
+                "productId": "prd_beacon_headlamp"
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 256,
+              "sampleLabel": "sessions that viewed this page in the window",
+              "lostSessions": null,
+              "evidence": [
+                {
+                  "href": "/geo/snap_beacon_headlamp?preview=1",
+                  "label": "Entity clarity — Beacon 400 Rechargeable Headlamp"
+                }
+              ]
+            },
+            {
+              "rank": 3,
+              "basedOn": "rec_geo_d41a7dd7@2026-08-02..2026-08-31",
+              "title": "Source and evidence — Beacon 400 Rechargeable Headlamp",
+              "facts": [
+                [
+                  {
+                    "kind": "text",
+                    "text": "Beacon 400 Rechargeable Headlamp: "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "source-evidence: error (evidence: none)",
+                    "href": "/geo/snap_beacon_headlamp?preview=1",
+                    "title": "Open the audit evidence for Beacon 400 Rechargeable Headlamp"
+                  }
+                ]
+              ],
+              "whyPriority": [
+                {
+                  "kind": "link",
+                  "text": "Beacon 400 Rechargeable Headlamp",
+                  "href": "/products/prd_beacon_headlamp",
+                  "title": "Beacon 400 Rechargeable Headlamp"
+                },
+                {
+                  "kind": "text",
+                  "text": " 的产品主张缺少可核验的来源或证据支撑。"
+                }
+              ],
+              "howToVerify": [
+                {
+                  "kind": "text",
+                  "text": "为页面中的主张引用其背后的测试、标准或测量依据。"
+                }
+              ],
+              "ruleGuidance": "Cite the test, standard or measurement behind the claims on the page.",
+              "scope": {
+                "channel": null,
+                "productId": "prd_beacon_headlamp"
+              },
+              "priority": "Critical",
+              "effectivePriority": "Critical",
+              "downgraded": false,
+              "strength": "sufficient",
+              "affectedSessions": 256,
+              "sampleLabel": "sessions that viewed this page in the window",
+              "lostSessions": null,
+              "evidence": [
+                {
+                  "href": "/geo/snap_beacon_headlamp?preview=1",
+                  "label": "Source and evidence — Beacon 400 Rechargeable Headlamp"
+                }
+              ]
+            },
+            {
+              "rank": 4,
               "basedOn": "rec_funnel_4c5888c1@Organic Search:2026-08-02..2026-08-31",
               "title": "Organic Search: Add to Cart → Checkout: investigate the drop-off",
               "facts": [
@@ -450,18 +1280,44 @@
                     "href": "/funnel?range=30&channel=Organic+Search",
                     "title": "Add to Cart → Checkout drop-off (Organic Search), 2026-08-02 — 2026-08-31"
                   }
+                ],
+                [
+                  {
+                    "kind": "text",
+                    "text": "Add to Cart → Checkout conversion (Organic Search): "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "43.94%",
+                    "href": "/funnel?range=30&channel=Organic+Search&end=2026-08-01",
+                    "title": "Add to Cart → Checkout conversion (Organic Search), 2026-07-03 — 2026-08-01"
+                  },
+                  {
+                    "kind": "text",
+                    "text": " (2026-07-03 — 2026-08-01) → "
+                  },
+                  {
+                    "kind": "link",
+                    "text": "39.49%",
+                    "href": "/funnel?range=30&channel=Organic+Search",
+                    "title": "Add to Cart → Checkout conversion (Organic Search), 2026-08-02 — 2026-08-31"
+                  },
+                  {
+                    "kind": "text",
+                    "text": " (2026-08-02 — 2026-08-31), −10.1%"
+                  }
                 ]
               ],
               "whyPriority": [
                 {
                   "kind": "text",
-                  "text": "该环节是自然搜索购物意图在进入结账前的主要流失点，且已达到可判断样本要求。"
+                  "text": "自然搜索访客在加入购物车后至结账环节流失明显，直接限制购买完成。"
                 }
               ],
               "howToVerify": [
                 {
                   "kind": "text",
-                  "text": "将商品加入购物车，确认无需寻找即可看到进入结账的路径；对比商品页价格与购物车中含运费和税费的小计；加入商品后离开并稍后返回，确认购物车仍被保留。"
+                  "text": "逐项检查可能性，但不要将其视为诊断：加入购物车后，确认无需寻找即可看到前往结账的路径。对照商品页价格与购物车小计中的运费和税费。加入商品后离开并稍后返回，确认购物车仍被保留。"
                 }
               ],
               "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Adding to cart may not make the next step obvious, leaving people stalled. Add an item and confirm the path to checkout is visible without hunting for it. 2. Costs first revealed at the cart may be causing people to reconsider. Compare the price shown on the product page against the cart subtotal including shipping and tax. 3. Carts may not survive a return visit, so intent is lost between sessions. Add an item, leave, return later and confirm the cart is still there.",
@@ -486,104 +1342,33 @@
                   "label": "Add to Cart → Checkout conversion (Organic Search), 2026-07-03 — 2026-08-01"
                 }
               ]
-            },
-            {
-              "rank": 2,
-              "basedOn": "rec_funnel_eb1c1da9@Organic Search:2026-08-02..2026-08-31",
-              "title": "Organic Search: Checkout → Purchase: investigate the drop-off",
-              "facts": [
-                [
-                  {
-                    "kind": "text",
-                    "text": "Checkout sessions (Organic Search), 2026-08-02 — 2026-08-31: "
-                  },
-                  {
-                    "kind": "link",
-                    "text": "77",
-                    "href": "/funnel?range=30&channel=Organic+Search",
-                    "title": "Checkout sessions (Organic Search), 2026-08-02 — 2026-08-31"
-                  }
-                ],
-                [
-                  {
-                    "kind": "text",
-                    "text": "Checkout → Purchase conversion (Organic Search), 2026-08-02 — 2026-08-31: "
-                  },
-                  {
-                    "kind": "link",
-                    "text": "41.56%",
-                    "href": "/funnel?range=30&channel=Organic+Search",
-                    "title": "Checkout → Purchase conversion (Organic Search), 2026-08-02 — 2026-08-31"
-                  }
-                ],
-                [
-                  {
-                    "kind": "text",
-                    "text": "Checkout → Purchase drop-off (Organic Search), 2026-08-02 — 2026-08-31: "
-                  },
-                  {
-                    "kind": "link",
-                    "text": "58.44%",
-                    "href": "/funnel?range=30&channel=Organic+Search",
-                    "title": "Checkout → Purchase drop-off (Organic Search), 2026-08-02 — 2026-08-31"
-                  }
-                ]
-              ],
-              "whyPriority": [
-                {
-                  "kind": "text",
-                  "text": "已进入结账的自然搜索访客仍在购买前大量流失，直接影响订单与收入。"
-                }
-              ],
-              "howToVerify": [
-                {
-                  "kind": "text",
-                  "text": "对比结账页运费及免邮门槛与客单价；盘点可用支付方式并与市场预期进行核对；检查购买所需字段、步骤和访客结账；检查结账页是否提供退货政策、安全提示和联系方式；将结账页展示的配送时效与竞品承诺进行对比。"
-                }
-              ],
-              "ruleGuidance": "Work through the hypotheses, none of which is a diagnosis: 1. Shipping cost at checkout may be higher than expected. Compare shipping cost and any free-shipping threshold against the average order value. 2. The payment methods offered may not cover what buyers use. List the methods available and compare against what the market expects — wallets included. 3. The checkout may be asking for too much, or across too many steps. Count the fields and steps required to buy, and whether guest checkout exists. 4. The checkout may not carry the reassurance a first-time buyer needs. Check for returns policy, security indicators and contact details inside the checkout. 5. Quoted delivery time may be slower than buyers will accept. Compare the delivery estimate shown at checkout against what competitors promise.",
-              "scope": {
-                "channel": "Organic Search",
-                "productId": null
-              },
-              "priority": "Critical",
-              "effectivePriority": "Critical",
-              "downgraded": false,
-              "strength": "sufficient",
-              "affectedSessions": 77,
-              "sampleLabel": "sessions that entered this step",
-              "lostSessions": 45,
-              "evidence": [
-                {
-                  "href": "/funnel?range=30&channel=Organic+Search",
-                  "label": "Organic Search: Checkout → Purchase: investigate the drop-off"
-                },
-                {
-                  "href": "/funnel?range=30&channel=Organic+Search&end=2026-08-01",
-                  "label": "Checkout → Purchase conversion (Organic Search), 2026-07-03 — 2026-08-01"
-                }
-              ]
             }
           ],
-          "gaps": [],
+          "gaps": [
+            [
+              {
+                "kind": "text",
+                "text": "页面审计面向全站页面流量，无法直接归因到自然搜索流量。漏斗数据只能定位到自然搜索渠道层级，无法判断流失集中在哪个具体商品页。部分页面审计为本次临时计算，尚未在审计页面中保存为当前结果。"
+              }
+            ]
+          ],
           "source": "model",
           "citedRefIds": [
             "channels:2026-08-02..2026-08-31:Organic Search:all:sessions",
             "channels:2026-08-02..2026-08-31:Organic Search:all:orders",
-            "channels:2026-08-02..2026-08-31:Organic Search:all:conversion_rate",
             "channels:2026-08-02..2026-08-31:Organic Search:all:revenue",
+            "channels:2026-08-02..2026-08-31:Organic Search:all:conversion_rate",
+            "audits:geo:snap_beacon_headlamp:original-information:4e5f1862",
+            "audits:geo:snap_beacon_headlamp:entity-clarity:4e5f1862",
+            "audits:geo:snap_beacon_headlamp:source-evidence:4e5f1862",
             "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:add_to_cart",
             "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:add_to_cart->checkout",
             "funnel:2026-08-02..2026-08-31:Organic Search:all:drop_off:add_to_cart->checkout",
-            "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:checkout",
-            "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:checkout->purchase",
-            "funnel:2026-08-02..2026-08-31:Organic Search:all:drop_off:checkout->purchase",
             "channels:2026-07-03..2026-08-01:Organic Search:all:sessions",
             "channels:2026-07-03..2026-08-01:Organic Search:all:orders",
-            "channels:2026-07-03..2026-08-01:Organic Search:all:conversion_rate",
             "channels:2026-07-03..2026-08-01:Organic Search:all:revenue",
-            "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:add_to_cart->checkout",
-            "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:checkout->purchase"
+            "channels:2026-07-03..2026-08-01:Organic Search:all:conversion_rate",
+            "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:add_to_cart->checkout"
           ]
         },
         "issues": [],
@@ -600,7 +1385,7 @@
         },
         "toolCalls": [
           {
-            "id": "call_COiLWL2Y9FCfUrH2jivVbkKX",
+            "id": "call_rouZMAAT6YHkeed3KVmilJ0k",
             "name": "set_analysis_scope",
             "input": {
               "channel": "Organic Search"
@@ -609,7 +1394,18 @@
             "summary": "Scope set to 30 days, Organic Search."
           },
           {
-            "id": "call_aa9nluAghADcBJCu8oxCXjoV",
+            "id": "call_T0hDmLyKo8WAZ2Tud3OjB7sJ",
+            "name": "get_channel_performance",
+            "input": {
+              "channel": "Organic Search",
+              "range": 30,
+              "compare": true
+            },
+            "status": "ok",
+            "summary": "0 findings, 24 citable figures, 0 gaps."
+          },
+          {
+            "id": "call_Hy648stYgSSFKXhddAHScVBw",
             "name": "get_funnel",
             "input": {
               "channel": "Organic Search",
@@ -620,18 +1416,36 @@
             "summary": "3 findings, 28 citable figures, 0 gaps."
           },
           {
-            "id": "call_TBvjDKwV5iPff71bHP96PcEZ",
-            "name": "get_channel_performance",
+            "id": "call_vu5PwSGsut5DSqgXJW2ZEVh6",
+            "name": "get_product_performance",
             "input": {
               "channel": "Organic Search",
               "range": 30,
-              "compare": true
+              "products": [],
+              "limit": 10
             },
             "status": "ok",
-            "summary": "0 findings, 24 citable figures, 0 gaps."
+            "summary": "0 findings, 40 citable figures, 0 gaps."
+          },
+          {
+            "id": "call_Y0YL0SANAWq9DjY8FeqsiSh8",
+            "name": "get_audit_findings",
+            "input": {
+              "kind": "both",
+              "range": 30,
+              "products": [],
+              "minSeverity": "medium"
+            },
+            "status": "ok",
+            "summary": "88 findings, 88 citable figures, 1 gaps."
           }
         ],
-        "toolGaps": [],
+        "toolGaps": [
+          {
+            "message": "34 of 34 page audits were not current in this browser and were computed for this answer only. Their audit pages will show \"Not audited\" or \"stale\" until the audit is run there; running it produces the same checks.",
+            "links": []
+          }
+        ],
         "toolNotes": [],
         "refusedActions": [],
         "noActionTaken": false,
@@ -666,10 +1480,10 @@
               "href": "/analytics?range=30"
             },
             {
-              "refId": "channels:2026-08-02..2026-08-31:Organic Search:all:conversion_rate",
-              "label": "Organic Search conversion rate",
-              "value": 0.030534351145038167,
-              "unit": "ratio",
+              "refId": "channels:2026-08-02..2026-08-31:Organic Search:all:revenue",
+              "label": "Organic Search revenue",
+              "value": 535200,
+              "unit": "cents",
               "channel": "Organic Search",
               "productId": null,
               "window": {
@@ -680,10 +1494,10 @@
               "href": "/analytics?range=30"
             },
             {
-              "refId": "channels:2026-08-02..2026-08-31:Organic Search:all:revenue",
-              "label": "Organic Search revenue",
-              "value": 535200,
-              "unit": "cents",
+              "refId": "channels:2026-08-02..2026-08-31:Organic Search:all:conversion_rate",
+              "label": "Organic Search conversion rate",
+              "value": 0.030534351145038167,
+              "unit": "ratio",
               "channel": "Organic Search",
               "productId": null,
               "window": {
@@ -736,48 +1550,6 @@
               "href": "/funnel?range=30&channel=Organic+Search"
             },
             {
-              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:stage:checkout",
-              "label": "Checkout sessions",
-              "value": 77,
-              "unit": "count",
-              "channel": "Organic Search",
-              "productId": null,
-              "window": {
-                "start": "2026-08-02",
-                "end": "2026-08-31"
-              },
-              "funnel": true,
-              "href": "/funnel?range=30&channel=Organic+Search"
-            },
-            {
-              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:checkout->purchase",
-              "label": "Checkout → Purchase conversion",
-              "value": 0.4155844155844156,
-              "unit": "ratio",
-              "channel": "Organic Search",
-              "productId": null,
-              "window": {
-                "start": "2026-08-02",
-                "end": "2026-08-31"
-              },
-              "funnel": true,
-              "href": "/funnel?range=30&channel=Organic+Search"
-            },
-            {
-              "refId": "funnel:2026-08-02..2026-08-31:Organic Search:all:drop_off:checkout->purchase",
-              "label": "Checkout → Purchase drop-off",
-              "value": 0.5844155844155844,
-              "unit": "ratio",
-              "channel": "Organic Search",
-              "productId": null,
-              "window": {
-                "start": "2026-08-02",
-                "end": "2026-08-31"
-              },
-              "funnel": true,
-              "href": "/funnel?range=30&channel=Organic+Search"
-            },
-            {
               "refId": "channels:2026-07-03..2026-08-01:Organic Search:all:sessions",
               "label": "Organic Search sessions",
               "value": 967,
@@ -806,20 +1578,6 @@
               "href": "/analytics?range=30&end=2026-08-01"
             },
             {
-              "refId": "channels:2026-07-03..2026-08-01:Organic Search:all:conversion_rate",
-              "label": "Organic Search conversion rate",
-              "value": 0.03619441571871768,
-              "unit": "ratio",
-              "channel": "Organic Search",
-              "productId": null,
-              "window": {
-                "start": "2026-07-03",
-                "end": "2026-08-01"
-              },
-              "funnel": false,
-              "href": "/analytics?range=30&end=2026-08-01"
-            },
-            {
               "refId": "channels:2026-07-03..2026-08-01:Organic Search:all:revenue",
               "label": "Organic Search revenue",
               "value": 636680,
@@ -834,9 +1592,9 @@
               "href": "/analytics?range=30&end=2026-08-01"
             },
             {
-              "refId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:add_to_cart->checkout",
-              "label": "Add to Cart → Checkout conversion",
-              "value": 0.4393939393939394,
+              "refId": "channels:2026-07-03..2026-08-01:Organic Search:all:conversion_rate",
+              "label": "Organic Search conversion rate",
+              "value": 0.03619441571871768,
               "unit": "ratio",
               "channel": "Organic Search",
               "productId": null,
@@ -844,13 +1602,13 @@
                 "start": "2026-07-03",
                 "end": "2026-08-01"
               },
-              "funnel": true,
-              "href": "/funnel?range=30&channel=Organic+Search&end=2026-08-01"
+              "funnel": false,
+              "href": "/analytics?range=30&end=2026-08-01"
             },
             {
-              "refId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:checkout->purchase",
-              "label": "Checkout → Purchase conversion",
-              "value": 0.40229885057471265,
+              "refId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:add_to_cart->checkout",
+              "label": "Add to Cart → Checkout conversion",
+              "value": 0.4393939393939394,
               "unit": "ratio",
               "channel": "Organic Search",
               "productId": null,
@@ -882,20 +1640,20 @@
               "supportsConclusion": true
             },
             {
-              "currentRefId": "channels:2026-08-02..2026-08-31:Organic Search:all:conversion_rate",
-              "previousRefId": "channels:2026-07-03..2026-08-01:Organic Search:all:conversion_rate",
-              "current": 0.030534351145038167,
-              "previous": 0.03619441571871768,
-              "relativeChange": -0.1563794983642312,
-              "direction": "down",
-              "supportsConclusion": true
-            },
-            {
               "currentRefId": "channels:2026-08-02..2026-08-31:Organic Search:all:revenue",
               "previousRefId": "channels:2026-07-03..2026-08-01:Organic Search:all:revenue",
               "current": 535200,
               "previous": 636680,
               "relativeChange": -0.159389332160583,
+              "direction": "down",
+              "supportsConclusion": true
+            },
+            {
+              "currentRefId": "channels:2026-08-02..2026-08-31:Organic Search:all:conversion_rate",
+              "previousRefId": "channels:2026-07-03..2026-08-01:Organic Search:all:conversion_rate",
+              "current": 0.030534351145038167,
+              "previous": 0.03619441571871768,
+              "relativeChange": -0.1563794983642312,
               "direction": "down",
               "supportsConclusion": true
             },
@@ -907,41 +1665,75 @@
               "relativeChange": -0.10132625994694963,
               "direction": "down",
               "supportsConclusion": true
-            },
-            {
-              "currentRefId": "funnel:2026-08-02..2026-08-31:Organic Search:all:conversion:checkout->purchase",
-              "previousRefId": "funnel:2026-07-03..2026-08-01:Organic Search:all:conversion:checkout->purchase",
-              "current": 0.4155844155844156,
-              "previous": 0.40229885057471265,
-              "relativeChange": 0.0330241187384045,
-              "direction": "up",
-              "supportsConclusion": true
             }
           ],
-          "audits": []
+          "audits": [
+            {
+              "refId": "audits:geo:snap_beacon_headlamp:original-information:4e5f1862",
+              "ruleId": "original-information",
+              "status": "error",
+              "evidence": "originality claim: absent; supporting evidence entries: 0; facts: 4",
+              "productId": "prd_beacon_headlamp",
+              "pageLabel": "Beacon 400 Rechargeable Headlamp",
+              "href": "/geo/snap_beacon_headlamp?preview=1"
+            },
+            {
+              "refId": "audits:geo:snap_beacon_headlamp:entity-clarity:4e5f1862",
+              "ruleId": "entity-clarity",
+              "status": "error",
+              "evidence": "brand in title: false; brand in content: false; product identifier: true",
+              "productId": "prd_beacon_headlamp",
+              "pageLabel": "Beacon 400 Rechargeable Headlamp",
+              "href": "/geo/snap_beacon_headlamp?preview=1"
+            },
+            {
+              "refId": "audits:geo:snap_beacon_headlamp:source-evidence:4e5f1862",
+              "ruleId": "source-evidence",
+              "status": "error",
+              "evidence": "evidence: none",
+              "productId": "prd_beacon_headlamp",
+              "pageLabel": "Beacon 400 Rechargeable Headlamp",
+              "href": "/geo/snap_beacon_headlamp?preview=1"
+            }
+          ]
         },
         "provenance": {
           "dataSources": [
-            "fixture:traffic (NorthTrail demo data, 2026-06-03..2026-08-31, UTC)"
+            "fixture:traffic (NorthTrail demo data, 2026-06-03..2026-08-31, UTC)",
+            "rules:geo-1.0.0",
+            "rules:seo-1.0.0",
+            "seed:audit-results",
+            "seed:catalogue",
+            "seed:page-snapshots"
           ],
           "ruleVersions": [
             "agent-priority-1.0.0",
-            "funnel-1.0.0"
+            "funnel-1.0.0",
+            "geo-1.0.0",
+            "seo-1.0.0"
           ]
         },
         "usage": {
-          "promptTokens": 10027,
-          "completionTokens": 760,
-          "requests": 3,
-          "largestPromptTokens": 6223
+          "promptTokens": 20211,
+          "completionTokens": 1801,
+          "requests": 4,
+          "largestPromptTokens": 8513
         },
         "validation": [
+          {
+            "issueCodes": [
+              "top-finding-omitted",
+              "change-in-prose"
+            ]
+          },
           {
             "issueCodes": []
           }
         ],
         "failedChecks": [],
-        "notes": [],
+        "notes": [
+          "The input budget of 20000 characters was reached, so no further tools were run."
+        ],
         "model": "openai:gpt-5.6-terra"
       }
     }
